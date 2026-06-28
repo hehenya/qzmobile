@@ -1,0 +1,790 @@
+package com.example.toolbox.settings
+
+import android.app.Activity
+import android.content.Context.MODE_PRIVATE
+import android.content.Intent
+import android.os.Bundle
+import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.draw.alpha
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.toolbox.lanzou.viewmodel.LanzouAuthViewModel
+import com.example.toolbox.ui.theme.ToolBoxTheme
+import com.example.toolbox.webview.WebViewActivity
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.tooling.preview.Preview
+import com.example.toolbox.utils.getAppVersionInfo
+
+/**
+ * 计算目录大小（字节）
+ */
+fun calculateDirSize(dir: java.io.File): Long {
+    var size = 0L
+    if (dir.exists()) {
+        val files = dir.listFiles()
+        if (files != null) {
+            for (file in files) {
+                size += if (file.isDirectory) {
+                    calculateDirSize(file)
+                } else {
+                    file.length()
+                }
+            }
+        }
+    }
+    return size
+}
+
+/**
+ * 格式化文件大小
+ */
+fun formatFileSize(size: Long): String {
+    return when {
+        size < 1024 -> "$size B"
+        size < 1024 * 1024 -> "${size / 1024} KB"
+        size < 1024 * 1024 * 1024 -> "${size / (1024 * 1024)} MB"
+        else -> "${size / (1024 * 1024 * 1024)} GB"
+    }
+}
+
+/**
+ * 清除缓存
+ */
+fun clearCache(context: android.content.Context) {
+    val cacheDir = context.cacheDir
+    if (cacheDir.exists() && cacheDir.isDirectory) {
+        val files = cacheDir.listFiles()
+        if (files != null) {
+            for (file in files) {
+                deleteRecursively(file)
+            }
+        }
+    }
+}
+
+/**
+ * 递归删除文件或目录
+ */
+fun deleteRecursively(file: java.io.File) {
+    if (file.isDirectory) {
+        val files = file.listFiles()
+        if (files != null) {
+            for (child in files) {
+                deleteRecursively(child)
+            }
+        }
+    }
+    file.delete()
+}
+
+class SettingsActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContent {
+            ToolBoxTheme {
+                SettingsScreen()
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsScreen(
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val lanzouAuthViewModel: LanzouAuthViewModel = viewModel()
+    val isLanzouLoggedIn by lanzouAuthViewModel.isLoggedIn.collectAsState()
+    val lanzouLoginLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        lanzouAuthViewModel.refresh(context)
+        if (it.resultCode == Activity.RESULT_OK) {
+            Toast.makeText(context, "蓝奏云登录成功", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
+    val prefs = context.getSharedPreferences("app_preferences", MODE_PRIVATE)
+    
+    var isOpenCancelTips by remember { 
+        mutableStateOf(prefs.getBoolean("exit_confirmation", false)) 
+    }
+    
+    var isDisabledNotice by remember { 
+        mutableStateOf(prefs.getBoolean("disabled_community_notices", false)) 
+    }
+    
+    var isEnabledAutoCheckUpdate by remember { 
+        mutableStateOf(prefs.getBoolean("autoCheckUpdate", true)) 
+    }
+    
+    var updateChannel by remember { 
+        mutableStateOf(prefs.getString("update_channel", "stable") ?: "stable") 
+    }
+
+    // 缓存设置
+    var cacheMaxSize by remember {
+        mutableIntStateOf(prefs.getInt("cache_max_size_mb", 100))
+    }
+    var showCacheDialog by remember { mutableStateOf(false) }
+    var showClearCacheDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        lanzouAuthViewModel.refresh(context)
+    }
+
+    Scaffold(
+        modifier = modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            LargeTopAppBar(
+                title = {
+                    Text("设置")
+                },
+                navigationIcon = {
+                    FilledTonalIconButton(onClick = { (context as Activity).finish() }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "返回"
+                        )
+                    }
+                },
+                colors = topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surface
+                ),
+                scrollBehavior = scrollBehavior
+            )
+        },
+        contentWindowInsets = WindowInsets.safeDrawing
+    ) { innerPadding ->
+        if (showCacheDialog) {
+            val sizes = listOf(0 to "关闭", 10 to "10MB", 50 to "50MB", 100 to "100MB", 200 to "200MB", 500 to "500MB", 1000 to "1000MB")
+            AlertDialog(
+                onDismissRequest = { showCacheDialog = false },
+                title = { Text("设置缓存大小限制") },
+                text = {
+                    Column {
+                        Text("选择最大缓存大小")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        LazyColumn(
+                            modifier = Modifier.heightIn(max = 300.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            items(sizes.size) { index ->
+                                val (size, displayText) = sizes[index]
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            cacheMaxSize = size
+                                            prefs.edit().apply {
+                                                putInt("cache_max_size_mb", size)
+                                                apply()
+                                            }
+                                            Toast.makeText(context, if (size == 0) "缓存已关闭" else "已设置为 ${size}MB", Toast.LENGTH_SHORT).show()
+                                            showCacheDialog = false
+                                        },
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    RadioButton(
+                                        selected = cacheMaxSize == size,
+                                        onClick = {
+                                            cacheMaxSize = size
+                                            prefs.edit().apply {
+                                                putInt("cache_max_size_mb", size)
+                                                apply()
+                                            }
+                                            Toast.makeText(context, if (size == 0) "缓存已关闭" else "已设置为 ${size}MB", Toast.LENGTH_SHORT).show()
+                                            showCacheDialog = false
+                                        }
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(displayText)
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showCacheDialog = false }) {
+                        Text("取消")
+                    }
+                }
+            )
+        }
+
+        // 清除缓存确认对话框
+        if (showClearCacheDialog) {
+            val cacheDir = context.cacheDir
+            val cacheSize = calculateDirSize(cacheDir)
+            AlertDialog(
+                onDismissRequest = { showClearCacheDialog = false },
+                title = { Text("清除缓存") },
+                text = {
+                    Column {
+                        Text("当前缓存大小: ${formatFileSize(cacheSize)}")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("确定要清除所有缓存吗？这可能会导致应用重新加载数据。")
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            clearCache(context)
+                            Toast.makeText(context, "缓存已清除", Toast.LENGTH_SHORT).show()
+                            showClearCacheDialog = false
+                        }
+                    ) {
+                        Text("清除")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showClearCacheDialog = false }) {
+                        Text("取消")
+                    }
+                }
+            )
+        }
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = innerPadding.calculateTopPadding()),
+            contentPadding = PaddingValues(vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp)
+        ) {
+            item {
+                SettingsGroup(
+                    title = "行为",
+                    items = listOf(
+                        {
+                            SettingsItemCell(
+                                icon = Icons.Default.Home,
+                                title = "默认启动页",
+                                subtitle = "设置应用启动时默认显示的页面",
+                                onClick = {
+                                    val intent = Intent(context, DefaultStartPageActivity::class.java)
+                                    context.startActivity(intent)
+                                }
+                            )
+                        },
+                        {
+                            SettingsSwitchItem(
+                                icon = Icons.AutoMirrored.Filled.ArrowBack,
+                                title = "返回二次确认",
+                                subtitle = "在主页面按返回键退出时二次确认",
+                                checked = isOpenCancelTips,
+                                onCheckedChange = { checked ->
+                                    isOpenCancelTips = checked
+                                    prefs.edit().apply {
+                                        putBoolean("exit_confirmation", isOpenCancelTips)
+                                        apply()
+                                    }
+                                }
+                            )
+                        },
+                        {
+                            SettingsSwitchItem(
+                                icon = Icons.Default.Notifications,
+                                title = "禁用社区通知",
+                                subtitle = "不再显示通知按钮",
+                                checked = isDisabledNotice,
+                                onCheckedChange = { checked ->
+                                    isDisabledNotice = checked
+                                    prefs.edit().apply {
+                                        putBoolean("disabled_community_notices", isDisabledNotice)
+                                        apply()
+                                    }
+                                }
+                            )
+                        }
+                    )
+                )
+            }
+
+            item {
+                SettingsGroup(
+                    title = "外观",
+                    items = listOf(
+                        {
+                            SettingsItemCell(
+                                icon = Icons.Default.Draw,
+                                title = "外观设置",
+                                subtitle = "设置应用外观",
+                                onClick = {
+                                    val intent = Intent(context, ThemeActivity::class.java)
+                                    context.startActivity(intent)
+                                }
+                            )
+                        }
+                    )
+                )
+            }
+            
+            item {
+                SettingsGroup(
+                    title = "更新",
+                    items = listOf(
+                        {
+                            SettingsSwitchItem(
+                                icon = Icons.Default.Update,
+                                title = "自动检查更新",
+                                subtitle = "在应用启动时自动检查更新",
+                                checked = isEnabledAutoCheckUpdate,
+                                onCheckedChange = { checked ->
+                                    isEnabledAutoCheckUpdate = checked
+                                    prefs.edit().apply {
+                                        putBoolean("autoCheckUpdate", isEnabledAutoCheckUpdate)
+                                        apply()
+                                    }
+                                }
+                            )
+                        },
+                        {
+                            SettingsDropdownItem(
+                                icon = Icons.AutoMirrored.Filled.List,
+                                title = "更新频道",
+                                subtitle = if (updateChannel == "stable") "仅检查正式版本" else "检查预发布版本",
+                                options = listOf("stable" to "仅正式版", "prerelease" to "正式版 + 预发布版"),
+                                selectedValue = updateChannel,
+                                onOptionSelected = { selected ->
+                                    updateChannel = selected
+                                    prefs.edit().apply {
+                                        putString("update_channel", selected)
+                                        apply()
+                                    }
+                                }
+                            )
+                        },
+                    )
+                )
+            }
+
+            item {
+                SettingsGroup(
+                    title = "账号",
+                    items = buildList {
+                        add {
+                            SettingsItemCell(
+                                icon = Icons.Default.Person,
+                                title = "账号设置",
+                                subtitle = "设置你的轻昼账号",
+                                onClick = {
+                                    val intent = Intent(context, UserSettingsActivity::class.java)
+                                    context.startActivity(intent)
+                                }
+                            )
+                        }
+                        add {
+                            SettingsItemCell(
+                                icon = Icons.Default.Cloud,
+                                title = "蓝奏云账号登录",
+                                subtitle = if (isLanzouLoggedIn) "已登录" else "未登录",
+                                onClick = {
+                                    val intent = Intent(context, WebViewActivity::class.java).apply {
+                                        putExtra(WebViewActivity.EXTRA_URL, "https://pc.woozooo.com/account.php?action=login&ref=/mydisk.php")
+                                        putExtra(WebViewActivity.EXTRA_LANZOU_LOGIN_MODE, !isLanzouLoggedIn)
+                                    }
+                                    lanzouLoginLauncher.launch(intent)
+                                }
+                            )
+                        }
+                        if (isLanzouLoggedIn) {
+                            add {
+                                SettingsItemCell(
+                                    icon = Icons.AutoMirrored.Filled.Logout,
+                                    title = "退出蓝奏云账号",
+                                    subtitle = "清除本地保存的蓝奏云登录状态",
+                                    onClick = {
+                                        lanzouAuthViewModel.logout(context)
+                                        Toast.makeText(context, "已退出蓝奏云账号", Toast.LENGTH_SHORT).show()
+                                    },
+                                    isDestructive = true
+                                )
+                            }
+                        }
+                    }
+                )
+            }
+
+            item {
+                SettingsGroup(
+                    title = "关于",
+                    items = listOf(
+                        {
+                            SettingsItemCell(
+                                icon = Icons.Default.Info,
+                                title = "关于应用",
+                                subtitle = "版本号 ${context.getAppVersionInfo().versionName}",
+                                onClick = {
+                                    val intent = Intent(context, InfoActivity::class.java)
+                                    context.startActivity(intent)
+                                }
+                            )
+                        }
+                    )
+                )
+            }
+
+            item {
+                SettingsGroup(
+                    title = "缓存",
+                    items = listOf(
+                        {
+                            SettingsItemCell(
+                                icon = Icons.Default.Storage,
+                                title = "缓存设置",
+                                subtitle = if (cacheMaxSize == 0) "缓存已关闭" else "当前限制: ${cacheMaxSize}MB",
+                                onClick = {
+                                    showCacheDialog = true
+                                }
+                            )
+                        },
+                        {
+                            SettingsItemCell(
+                                icon = Icons.Default.DeleteSweep,
+                                title = "清除缓存",
+                                subtitle = "清除所有应用缓存数据",
+                                onClick = {
+                                    showClearCacheDialog = true
+                                }
+                            )
+                        },
+                    )
+                )
+            }
+
+            item {
+                SettingsGroup(
+                    title = "其他",
+                    items = listOf(
+                        {
+                            SettingsItemCell(
+                                icon = Icons.Default.Delete,
+                                title = "清空已完成引导页状态",
+                                subtitle = "重启应用后将会重新前往引导页",
+                                onClick = {
+                                    val prefs = context.getSharedPreferences("app_preferences", MODE_PRIVATE)
+                                    prefs.edit().apply {
+                                        remove("guideFinished")
+                                        apply()
+                                    }
+                                    Toast.makeText(context, "操作已完成，重启生效", Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        }
+                    )
+                )
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(innerPadding.calculateBottomPadding()))
+            }
+        }
+    }
+}
+
+/**
+ * 设置组容器 (SplicedColumnGroup 风格)
+ */
+@Composable
+fun SettingsGroup(
+    modifier: Modifier = Modifier,
+    title: String? = null,
+    items: List<@Composable () -> Unit>,
+) {
+    if (items.isEmpty()) return
+
+    Column(modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        if (!title.isNullOrEmpty()) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
+            )
+        }
+
+        val cornerRadius = 24.dp
+        val smallRadius = 4.dp
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            items.forEachIndexed { index, item ->
+                val shape = when {
+                    items.size == 1 -> RoundedCornerShape(cornerRadius)
+                    index == 0 -> RoundedCornerShape(topStart = cornerRadius, topEnd = cornerRadius, bottomStart = smallRadius, bottomEnd = smallRadius)
+                    index == items.size - 1 -> RoundedCornerShape(topStart = smallRadius, topEnd = smallRadius, bottomStart = cornerRadius, bottomEnd = cornerRadius)
+                    else -> RoundedCornerShape(smallRadius)
+                }
+
+                Surface(
+                    shape = shape,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    item()
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 标准设置项
+ */
+@Composable
+fun SettingsItemCell(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+    isDestructive: Boolean = false,
+    isEnabled: Boolean = true
+) {
+    SettingsCustomItem(onClick = { if (isEnabled) onClick() }) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .alpha(if (isEnabled) 1.0f else 0.38f),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                modifier = Modifier.size(24.dp),
+                tint = if (isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            )
+        }
+    }
+}
+
+/**
+ * 带 Switch 的设置项
+ */
+@Composable
+fun SettingsSwitchItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    isError: Boolean = false,
+    isEnabled: Boolean = true
+) {
+    SettingsCustomItem(onClick = { if (isEnabled) onCheckedChange(!checked) }) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                modifier = Modifier.size(24.dp),
+                tint = when {
+                    isError -> MaterialTheme.colorScheme.error
+                    !isEnabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    else -> MaterialTheme.colorScheme.primary
+                }
+            )
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (isEnabled) MaterialTheme.colorScheme.onSurface
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                        alpha = if (isEnabled) 1f else 0.38f
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Switch(
+                checked = checked,
+                onCheckedChange = null,
+                enabled = isEnabled,
+                thumbContent = {
+                    Icon(
+                        imageVector = if (checked) Icons.Default.Check else Icons.Default.Close,
+                        contentDescription = null,
+                        modifier = Modifier.size(SwitchDefaults.IconSize),
+                        tint = if (checked) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainerHighest
+                        }
+                    )
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun SettingsDropdownItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    options: List<Pair<String, String>>,  // Pair<值, 显示文本>
+    selectedValue: String,
+    onOptionSelected: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    SettingsCustomItem(onClick = { expanded = true }) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                modifier = Modifier.size(24.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Icon(
+                imageVector = Icons.Default.ArrowDropDown,
+                contentDescription = "选择",
+                modifier = Modifier.size(24.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = { expanded = false },
+        modifier = Modifier
+            .fillMaxWidth(0.9f)
+            .padding(horizontal = 16.dp)
+    ) {
+        options.forEach { (value, displayText) ->
+            DropdownMenuItem(
+                text = { Text(displayText) },
+                onClick = {
+                    onOptionSelected(value)
+                    expanded = false
+                },
+                trailingIcon = {
+                    if (selectedValue == value) {
+                        Icon(
+                            Icons.Default.Check,
+                            contentDescription = "已选中"
+                        )
+                    }
+                }
+            )
+        }
+    }
+}
+
+/**
+ * 自定义内容的设置项
+ */
+@Composable
+fun SettingsCustomItem(
+    onClick: (() -> Unit)? = null,
+    content: @Composable () -> Unit
+) {
+    if (onClick != null) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+        ) {
+            content()
+        }
+    } else {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            content()
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun SettingsScreenPreview() {
+    ToolBoxTheme {
+        SettingsScreen()
+    }
+}
