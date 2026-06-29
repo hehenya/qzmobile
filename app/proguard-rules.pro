@@ -21,7 +21,12 @@
 -dontwarn com.google.re2j.**
 
 # 保留 Haze 毛玻璃库
--keep class dev.chrisbanes.haze.** { *; }
+-keep class dev.chrisbanes.haze.HazeMaterials { *; }
+-keep class dev.chrisbanes.haze.HazeMaterials$* { *; }
+-keep class dev.chrisbanes.haze.HazeState { *; }
+-keep class dev.chrisbanes.haze.HazeStyle { *; }
+-keep class dev.chrisbanes.haze.HazeTint { *; }
+-keepclassmembers class dev.chrisbanes.haze.** { *; }
 -dontwarn dev.chrisbanes.haze.**
 
 -keepattributes Signature
