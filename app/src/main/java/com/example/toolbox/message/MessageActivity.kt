@@ -167,7 +167,7 @@ class MessageDetailActivity : ComponentActivity() {
                 val hazeState = remember { HazeState() }
                 Scaffold(modifier = Modifier.fillMaxSize(), topBar = {
                     TopAppBar(
-                        modifier = Modifier.hazeEffect(state = hazeState) { style = HazeStyle.ultraThin() },
+                        modifier = Modifier.hazeEffect(state = hazeState) { style = HazeStyle.regular() },
                         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                         title = {
                             if (chatType == 2 && uiState.groupInfo != null) {
@@ -453,7 +453,7 @@ fun MessageInput(
     hazeState: HazeState
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth().hazeEffect(state = hazeState) { style = HazeStyle.ultraThin() },
+        modifier = Modifier.fillMaxWidth().hazeEffect(state = hazeState) { style = HazeStyle.regular() },
         color = Color.Transparent,
         shadowElevation = 0.dp,
         shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
