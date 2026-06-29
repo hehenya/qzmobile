@@ -122,7 +122,8 @@ import com.example.toolbox.data.displayAvatar
 import com.example.toolbox.data.displayName
 import com.example.toolbox.data.effectiveMsgId
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeMaterials
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.hazeEffect
 import kotlinx.coroutines.Dispatchers
@@ -167,7 +168,9 @@ class MessageDetailActivity : ComponentActivity() {
                 val hazeState = remember { HazeState() }
                 Scaffold(modifier = Modifier.fillMaxSize(), topBar = {
                     TopAppBar(
-                        modifier = Modifier.hazeEffect(state = hazeState) { style = HazeMaterials.ultraThin() },
+                        modifier = Modifier.hazeEffect(state = hazeState) {
+                            style = HazeStyle(blurRadius = 20.dp, tint = HazeTint(Color.White.copy(alpha = 0.2f)))
+                        },
                         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                         title = {
                             if (chatType == 2 && uiState.groupInfo != null) {
@@ -453,7 +456,9 @@ fun MessageInput(
     hazeState: HazeState
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth().hazeEffect(state = hazeState) { style = HazeMaterials.ultraThin() },
+        modifier = Modifier.fillMaxWidth().hazeEffect(state = hazeState) {
+            style = HazeStyle(blurRadius = 20.dp, tint = HazeTint(Color.White.copy(alpha = 0.2f)))
+        },
         color = Color.Transparent,
         shadowElevation = 0.dp,
         shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
