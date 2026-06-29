@@ -8,6 +8,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.material3.TextFieldDefaults
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -163,7 +164,7 @@ class MessageDetailActivity : ComponentActivity() {
                 val uiState by viewModel.uiState.collectAsState()
                 Scaffold(modifier = Modifier.fillMaxSize(), contentWindowInsets = WindowInsets(0.dp), topBar = {
                     TopAppBar(
-                        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
+                        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)),
                         title = {
                             if (chatType == 2 && uiState.groupInfo != null) {
                                 val group = uiState.groupInfo!!
@@ -391,7 +392,7 @@ fun MessageBubble(
                 Column(horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
                     // 消息气泡透明度 90%
                     Card(shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = if (isMine) 16.dp else if (isLastFromSender) 16.dp else 4.dp,bottomEnd = if (isMine) if (isLastFromSender) 16.dp else 4.dp else 16.dp),
-                        colors = CardDefaults.cardColors(containerColor = if (isMine) MaterialTheme.colorScheme.primary.copy(alpha = 0.9f) else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.9f))) {
+                        colors = CardDefaults.cardColors(containerColor = if (isMine) MaterialTheme.colorScheme.primary.copy(0.2f) else MaterialTheme.colorScheme.surfaceContainer)) {
                         Column(modifier = Modifier.padding(8.dp)) {
                             if (!isMine && isFirstFromSender) { Text(message.displayName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 2.dp)) }
                             if (message.quoteMsgInfo != null) {
@@ -486,7 +487,10 @@ fun MessageInput(
                     contentColor = if (isMarkdown) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
                 ) { Icon(painter = painterResource(R.drawable.markdown), contentDescription = "Markdown模式", modifier = Modifier.size(20.dp)) }
                 Spacer(modifier = Modifier.width(5.dp))
-                OutlinedTextField(value = inputText, onValueChange = onTextChange, modifier = Modifier.weight(1f), placeholder = { Text("输入消息...") }, shape = RoundedCornerShape(20.dp), maxLines = 5)
+                OutlinedTextField(value = inputText, onValueChange = onTextChange, modifier = Modifier.weight(1f), placeholder = { Text("输入消息...") }, shape = RoundedCornerShape(20.dp), maxLines = 5, colors = TextFieldDefaults.outlinedTextFieldColors(
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent
+                ))
                 Spacer(modifier = Modifier.width(5.dp))
                 IconButton(onClick = onSendClick, modifier = Modifier.size(40.dp), enabled = inputText.isNotBlank() || selectedImages.isNotEmpty()) { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "发送") }
             }
