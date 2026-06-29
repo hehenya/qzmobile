@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import androidx.compose.foundation.border
 import android.widget.Toast
 import androidx.compose.material3.TextFieldDefaults
 import androidx.activity.ComponentActivity
@@ -487,13 +488,14 @@ fun MessageInput(
                     contentColor = if (isMarkdown) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
                 ) { Icon(painter = painterResource(R.drawable.markdown), contentDescription = "Markdown模式", modifier = Modifier.size(20.dp)) }
                 Spacer(modifier = Modifier.width(5.dp))
-                OutlinedTextField(value = inputText, onValueChange = onTextChange, modifier = Modifier.weight(1f), placeholder = { Text("输入消息...") }, shape = RoundedCornerShape(20.dp), maxLines = 5, colors = androidx.compose.material3.TextFieldDefaults.outlinedTextFieldColors(
-    focusedBorderColor = Color.Transparent,
-    unfocusedBorderColor = Color.Transparent
-)(
-                    focusedBorderColor = Color.Transparent,
-                    unfocusedBorderColor = Color.Transparent
-                ))
+                OutlinedTextField(
+                    value = inputText,
+                    onValueChange = onTextChange,
+                    modifier = Modifier.weight(1f).border(0.dp, Color.Transparent, RoundedCornerShape(20.dp)),
+                    placeholder = { Text("输入消息...") },
+                    shape = RoundedCornerShape(20.dp),
+                    maxLines = 5
+                )
                 Spacer(modifier = Modifier.width(5.dp))
                 IconButton(onClick = onSendClick, modifier = Modifier.size(40.dp), enabled = inputText.isNotBlank() || selectedImages.isNotEmpty()) { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "发送") }
             }
