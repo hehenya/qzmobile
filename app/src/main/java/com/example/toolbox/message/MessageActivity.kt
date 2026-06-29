@@ -35,6 +35,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
@@ -488,13 +490,19 @@ fun MessageInput(
                     contentColor = if (isMarkdown) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
                 ) { Icon(painter = painterResource(R.drawable.markdown), contentDescription = "Markdown模式", modifier = Modifier.size(20.dp)) }
                 Spacer(modifier = Modifier.width(5.dp))
-                OutlinedTextField(
+                TextField(
                     value = inputText,
                     onValueChange = onTextChange,
-                    modifier = Modifier.weight(1f).border(0.dp, Color.Transparent, RoundedCornerShape(20.dp)),
+                    modifier = Modifier.weight(1f).background(Color.Transparent, RoundedCornerShape(20.dp)),
                     placeholder = { Text("输入消息...") },
                     shape = RoundedCornerShape(20.dp),
-                    maxLines = 5
+                    maxLines = 5,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    )
                 )
                 Spacer(modifier = Modifier.width(5.dp))
                 IconButton(onClick = onSendClick, modifier = Modifier.size(40.dp), enabled = inputText.isNotBlank() || selectedImages.isNotEmpty()) { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "发送") }
