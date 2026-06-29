@@ -257,18 +257,21 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
     val replyTo by viewModel.replyTo.collectAsState()
 
     // 浮动头像
-    val floatingAvatar by remember { derivedStateOf {
-        val visible = listState.layoutInfo.visibleItemsInfo
-        if (visible.isEmpty() || uiState.messages.isEmpty()) null
-        else {
-            val idx = visible.first().index
-            val msg = uiState.messages.getOrNull(idx)
-            if (msg != null && !msg.isMine && !msg.isRecalled && !msg.isSystem) {
-                val next = uiState.messages.getOrNull(idx - 1)
-                if (next != null && next.senderId == msg.senderId && !next.isRecalled) msg.displayAvatar else null
-            } else null
-        }
-    } }
+    var floatingAvatar by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            val vi = listState.layoutInfo.visibleItemsInfo
+            if (vi.isEmpty()) null
+            else {
+                val idx = vi.first().index
+                val msg = uiState.messages.getOrNull(idx)
+                if (msg != null && !msg.isMine && !msg.isRecalled && !msg.isSystem) {
+                    val next = uiState.messages.getOrNull(idx - 1)
+                    if (next != null && next.senderId == msg.senderId && !next.isRecalled) msg.displayAvatar else null
+                } else null
+            }
+        }.collect { floatingAvatar = it }
+    }
 
     LaunchedEffect(listState) {
         snapshotFlow {
@@ -320,10 +323,10 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
                         val newerMessage = uiState.messages.getOrNull(index - 1)
                         val olderMessage = uiState.messages.getOrNull(index + 1)
                         MessageBubble(message = message, onRecall = { viewModel.showRecallDialog(message.effectiveMsgId) }, onEdit = { viewModel.showEditDialog(message) },
-                            onImageClick = { urls, idx -> imageViewerUrls = urls; imageViewerInitialPage = idx; showImageViewer = true },
-                            clipboard = clipboard, context = context, onReply = { viewModel.setReplyTo(message) },
-                            isAdmin = uiState.isAdmin, newerMessage = newerMessage, olderMessage = olderMessage)
-                    }
+                        onImageClick = { urls, idx -> imageViewerUrls = urls; imageViewerInitialPage = idx; showImageViewer = true },
+                        clipboard = clipboard, context = context, onReply = { viewModel.setReplyTo(message) },
+                        isAdmin = uiState.isAdmin, newerMessage = newerMessage, olderMessage = olderMessage,
+                        chatType = uiState.chatType)
                     if (uiState.isLoadingMore) { item { Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { ContainedLoadingIndicator() } } }
                 }
             }
@@ -394,7 +397,8 @@ fun AnimatedScrollToBottomButton(visible: Boolean, unreadCount: Int, onClick: ()
 fun MessageBubble(
     context: Context, clipboard: Clipboard, message: Message,
     onRecall: () -> Unit, onEdit: () -> Unit, onImageClick: (List<String>, Int) -> Unit, onReply: () -> Unit,
-    isAdmin: Boolean = false, newerMessage: Message? = null, olderMessage: Message? = null
+    isAdmin: Boolean = false, newerMessage: Message? = null, olderMessage: Message? = null,
+    chatType: Int = 1
 ) {
     var showMenu by remember { mutableStateOf(false) }
     val isMine = message.isMine || message.direction == "right"
@@ -423,9 +427,10 @@ fun MessageBubble(
         Row(modifier = Modifier.fillMaxWidth().combinedClickable(onClick = {}, onLongClick = { showMenu = true }).padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.Bottom, horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
             
-            // 左侧头像 - 只在第一条消息显示
+            // 左侧头像 - 只在第一条消息显示，私聊和群聊都显示
             if (!isMine) {
-                if (isFirstFromSender) {
+                val showAvatar = isFirstFromSender
+                if (showAvatar) {
                     AsyncImage(model = message.displayAvatar, contentDescription = null, contentScale = ContentScale.Crop,
                         modifier = Modifier.size(36.dp).clip(CircleShape))
                     Spacer(Modifier.width(8.dp))
@@ -464,85 +469,105 @@ fun MessageBubble(
                                 if (message.isMarkdown) MarkdownRenderer.Render(content = message.content)
                                 else Text(message.content, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
                             }
-                                                        // TG风格图片显示
-                                                        if (message.images.isNotEmpty()) {
-                                                            Spacer(Modifier.height(4.dp))
-                                                            val hasText = message.content.isNotBlank()
-                                                            val imgCount = message.images.size
-                                                            
-                                                            if (imgCount == 1) {
-                                                                // 单张图片
-                                                                Box(modifier = Modifier.widthIn(max = 280.dp).clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, 0) }) {
-                                                                    AsyncImage(
-                                                                        model = message.images[0],
-                                                                        contentDescription = null,
-                                                                        contentScale = ContentScale.FillWidth,
-                                                                        modifier = Modifier.fillMaxWidth()
-                                                                    )
-                                                                    // 时间标注在图片右下角 - 仅当没有文字时
-                                                                    if (!hasText) {
-                                                                        Surface(
-                                                                            color = Color.Black.copy(alpha = 0.5f),
-                                                                            shape = RoundedCornerShape(4.dp),
-                                                                            modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp)
-                                                                        ) {
-                                                                            Text(
-                                                                                timestampDisplay,
-                                                                                color = Color.White,
-                                                                                fontSize = 11.sp,
-                                                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                                                            )
-                                                                        }
-                                                                    }
-                                                                }
-                                                            } else if (imgCount == 2) {
-                                                                // 两张图片 - 并排
-                                                                Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.height(180.dp).widthIn(max = 280.dp)) {
-                                                                    message.images.forEachIndexed { index, url ->
-                                                                        AsyncImage(
-                                                                            model = url,
-                                                                            contentDescription = null,
-                                                                            contentScale = ContentScale.Crop,
-                                                                            modifier = Modifier
-                                                                                .weight(1f)
-                                                                                .fillMaxHeight()
-                                                                                .clip(RoundedCornerShape(8.dp))
-                                                                                .clickable { onImageClick(message.images, index) }
-                                                                        )
-                                                                    }
-                                                                }
-                                                            } else if (imgCount == 3) {
-                                                                // 三张图片 - 左边大图，右边两张小图
-                                                                Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.height(200.dp).widthIn(max = 280.dp)) {
-                                                                    AsyncImage(model = message.images[0], contentDescription = null, contentScale = ContentScale.Crop,
-                                                                        modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, 0) })
-                                                                    Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f).fillMaxHeight()) {
-                                                                        AsyncImage(model = message.images[1], contentDescription = null, contentScale = ContentScale.Crop,
-                                                                            modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, 1) })
-                                                                        AsyncImage(model = message.images[2], contentDescription = null, contentScale = ContentScale.Crop,
-                                                                            modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, 2) })
-                                                                    }
-                                                                }
-                                                            } else {
-                                                                // 四张及以上 - 2x2 网格
-                                                                val rows = (imgCount + 1) / 2
-                                                                Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.widthIn(max = 280.dp)) {
-                                                                    for (row in 0 until rows) {
-                                                                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.height(120.dp)) {
-                                                                            for (col in 0..1) {
-                                                                                val idx = row * 2 + col
-                                                                                if (idx < imgCount) {
-                                                                                    AsyncImage(model = message.images[idx], contentDescription = null, contentScale = ContentScale.Crop,
-                                                                                        modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, idx) })
-                                                                                } else {
-                                                                                    Spacer(Modifier.weight(1f))
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
+                            // TG风格图片显示
+                            if (message.images.isNotEmpty()) {
+                                Spacer(Modifier.height(4.dp))
+                                val hasText = message.content.isNotBlank()
+                                val imgCount = message.images.size
+                                
+                                if (imgCount == 1) {
+                                    // 单张图片
+                                    Box(modifier = Modifier.widthIn(max = 280.dp).clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, 0) }) {
+                                        AsyncImage(
+                                            model = message.images[0],
+                                            contentDescription = null,
+                                            contentScale = ContentScale.FillWidth,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                        // 时间标注在图片右下角 - 仅当没有文字时
+                                        if (!hasText) {
+                                            Text(
+                                                timestampDisplay,
+                                                color = Color.White,
+                                                fontSize = 11.sp,
+                                                modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp)
+                                                    .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                                                    .padding(horizontal = 5.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
+                                } else if (imgCount == 2) {
+                                    // 两张图片 - 并排
+                                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.height(180.dp).widthIn(max = 280.dp)) {
+                                        message.images.forEachIndexed { index, url ->
+                                            AsyncImage(
+                                                model = url,
+                                                contentDescription = null,
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .fillMaxHeight()
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .clickable { onImageClick(message.images, index) }
+                                            )
+                                        }
+                                    }
+                                    if (!hasText) {
+                                        Spacer(Modifier.height(2.dp))
+                                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) {
+                                            Text(timestampDisplay, color = Color.White, fontSize = 11.sp,
+                                                modifier = Modifier.background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                                                    .padding(horizontal = 5.dp, vertical = 2.dp))
+                                        }
+                                    }
+                                } else if (imgCount == 3) {
+                                    // 三张图片 - 左边大图，右边两张小图
+                                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.height(200.dp).widthIn(max = 280.dp)) {
+                                        AsyncImage(model = message.images[0], contentDescription = null, contentScale = ContentScale.Crop,
+                                            modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, 0) })
+                                        Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f).fillMaxHeight()) {
+                                            AsyncImage(model = message.images[1], contentDescription = null, contentScale = ContentScale.Crop,
+                                                modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, 1) })
+                                            AsyncImage(model = message.images[2], contentDescription = null, contentScale = ContentScale.Crop,
+                                                modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, 2) })
+                                        }
+                                    }
+                                    if (!hasText) {
+                                        Spacer(Modifier.height(2.dp))
+                                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) {
+                                            Text(timestampDisplay, color = Color.White, fontSize = 11.sp,
+                                                modifier = Modifier.background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                                                    .padding(horizontal = 5.dp, vertical = 2.dp))
+                                        }
+                                    }
+                                } else {
+                                    // 四张及以上 - 2x2 网格
+                                    val rows = (imgCount + 1) / 2
+                                    Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.widthIn(max = 280.dp)) {
+                                        for (row in 0 until rows) {
+                                            Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.height(120.dp)) {
+                                                for (col in 0..1) {
+                                                    val idx = row * 2 + col
+                                                    if (idx < imgCount) {
+                                                        AsyncImage(model = message.images[idx], contentDescription = null, contentScale = ContentScale.Crop,
+                                                            modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, idx) })
+                                                    } else {
+                                                        Spacer(Modifier.weight(1f))
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    if (!hasText) {
+                                        Spacer(Modifier.height(2.dp))
+                                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) {
+                                            Text(timestampDisplay, color = Color.White, fontSize = 11.sp,
+                                                modifier = Modifier.background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                                                    .padding(horizontal = 5.dp, vertical = 2.dp))
+                                        }
+                                    }
+                                }
+                            }
                             Row(modifier = Modifier.align(if (isMine) Alignment.End else Alignment.Start)) {
                                 if (message.content.isNotBlank()) {
                                     Text(timestampDisplay, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -570,19 +595,13 @@ fun MessageBubble(
                 }
             }
 
-            // 右侧头像 - 只在第一条消息显示
+            // 右侧头像 - 不显示自己的头像
             if (isMine) {
-                if (isFirstFromSender) {
-                    Spacer(Modifier.width(8.dp))
-                    AsyncImage(model = message.displayAvatar, contentDescription = null, contentScale = ContentScale.Crop,
-                        modifier = Modifier.size(36.dp).clip(CircleShape))
-                } else {
-                    Spacer(Modifier.width(44.dp))
-                }
+                Spacer(Modifier.width(44.dp))
             }
         }
     }
-}        
+}     
 @Composable
 fun MessageInput(
     inputText: String,
