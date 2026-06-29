@@ -34,6 +34,7 @@ android {
 
     buildTypes {
         release {
+            signingConfig = signingConfigs.debug
             isShrinkResources = true
             isMinifyEnabled = true
             proguardFiles(
@@ -122,6 +123,8 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+    //亚克力
+    implementation("dev.chrisbanes.haze:haze:1.5.0")
 }
 
 configurations.all {

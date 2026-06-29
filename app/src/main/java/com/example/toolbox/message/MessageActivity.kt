@@ -121,6 +121,10 @@ import coil3.compose.AsyncImage
 import com.example.toolbox.data.displayAvatar
 import com.example.toolbox.data.displayName
 import com.example.toolbox.data.effectiveMsgId
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeMaterials
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.hazeEffect
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -160,9 +164,11 @@ class MessageDetailActivity : ComponentActivity() {
                 val token = TokenManager.get(this)
                 val viewModel: MessageDetailViewModel = viewModel(factory = token?.let { MessageDetailViewModelFactory(it, chatType, finalChatId) })
                 val uiState by viewModel.uiState.collectAsState()
+                val hazeState = remember { HazeState() }
                 Scaffold(modifier = Modifier.fillMaxSize(), topBar = {
                     TopAppBar(
-                        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)),
+                        modifier = Modifier.hazeEffect(state = hazeState) { style = HazeMaterials.ultraThin() },
+                        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                         title = {
                             if (chatType == 2 && uiState.groupInfo != null) {
                                 val group = uiState.groupInfo!!
@@ -188,7 +194,9 @@ class MessageDetailActivity : ComponentActivity() {
                         navigationIcon = { FilledTonalIconButton(onClick = { finish() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回") } }
                     )
                 }) { innerPadding ->
-                    Box(modifier = Modifier.padding(top = innerPadding.calculateTopPadding())) { MessageDetailScreen(innerPadding, viewModel) }
+                    Box(modifier = Modifier.padding(top = innerPadding.calculateTopPadding())) { 
+                        MessageDetailScreen(innerPadding, viewModel, hazeState) 
+                    }
                 }
             }
         }
@@ -197,7 +205,7 @@ class MessageDetailActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailViewModel) {
+fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailViewModel, hazeState: HazeState) {
     val context = LocalContext.current
     val token = TokenManager.get(context)
     val scope = rememberCoroutineScope()
@@ -251,12 +259,11 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
             val backgroundUrl by viewModel.backgroundUrl.collectAsState()
             backgroundUrl?.takeIf { it.isNotEmpty() }?.let { bgUrl -> AsyncImage(model = bgUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().alpha(0.3f)) }
             PullToRefreshBox(isRefreshing = uiState.isRefreshing, onRefresh = { viewModel.refresh() }, modifier = Modifier.fillMaxSize()) {
-                LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), reverseLayout = true, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                LazyColumn(state = listState, modifier = Modifier.fillMaxSize().hazeSource(state = hazeState), reverseLayout = true, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     items(uiState.messages.size) { index ->
                         val message = uiState.messages[index]
                         val newerMessage = uiState.messages.getOrNull(index - 1)
                         val olderMessage = uiState.messages.getOrNull(index + 1)
-                        
                         val showDate = index == uiState.messages.size - 1 || getDateString(message.sendTime) != getDateString(olderMessage?.sendTime ?: 0L)
                         if (showDate) {
                             Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
@@ -265,7 +272,6 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
                                 }
                             }
                         }
-                        
                         MessageBubble(message = message, onRecall = { viewModel.showRecallDialog(message.effectiveMsgId) }, onEdit = { viewModel.showEditDialog(message) },
                             onImageClick = { urls, idx -> imageViewerUrls = urls; imageViewerInitialPage = idx; showImageViewer = true },
                             clipboard = clipboard, context = context, onReply = { viewModel.setReplyTo(message) },
@@ -304,7 +310,7 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
                 MessageInput(inputText = uiState.inputText, selectedImages = uiState.selectedImages, isMarkdown = uiState.isMarkdown,
                     onTextChange = { viewModel.updateInputText(it) }, onSendClick = { viewModel.sendMessage() },
                     onAddImageClick = { imagePicker.launch("image/*") }, onRemoveImage = { viewModel.removeImage(it) },
-                    onToggleMarkdown = { viewModel.toggleMarkdown() }, innerPadding = innerPadding)
+                    onToggleMarkdown = { viewModel.toggleMarkdown() }, innerPadding = innerPadding, hazeState = hazeState)
             }
         }
     }
@@ -373,7 +379,6 @@ fun MessageBubble(
     } else {
         Row(modifier = Modifier.fillMaxWidth().combinedClickable(onClick = {}, onLongClick = { showMenu = true }).padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.Bottom, horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
-            
             if (!isMine) {
                 if (isFirstFromSender) {
                     AsyncImage(model = message.displayAvatar, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(36.dp).clip(CircleShape))
@@ -382,10 +387,9 @@ fun MessageBubble(
                     Spacer(Modifier.width(44.dp))
                 }
             }
-
             Box(modifier = Modifier.weight(1f, fill = false)) {
                 Column(horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
-                    Card(shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = if (isMine) 16.dp else if (isLastFromSender) 16.dp else 4.dp,bottomEnd = if (isMine) if (isLastFromSender) 16.dp else 4.dp else 16.dp),
+                    Card(shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = if (isMine) 16.dp else if (isLastFromSender) 16.dp else 4.dp, bottomEnd = if (isMine) if (isLastFromSender) 16.dp else 4.dp else 16.dp),
                         colors = CardDefaults.cardColors(containerColor = if (isMine) MaterialTheme.colorScheme.primary.copy(0.2f) else MaterialTheme.colorScheme.surfaceContainer)) {
                         Column(modifier = Modifier.padding(8.dp)) {
                             if (!isMine && isFirstFromSender) { Text(message.displayName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 2.dp)) }
@@ -419,14 +423,7 @@ fun MessageBubble(
                                     }
                                     if (!hasText) { Spacer(Modifier.height(2.dp)); Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) { Text(timestampDisplay, color = Color.White, fontSize = 11.sp, modifier = Modifier.background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp)).padding(horizontal = 5.dp, vertical = 2.dp)) } }
                                 } else {
-                                    val rows = (imgCount + 1) / 2
-                                    Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.widthIn(max = 280.dp)) {
-                                        for (row in 0 until rows) {
-                                            Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.height(120.dp)) {
-                                                for (col in 0..1) { val idx = row * 2 + col; if (idx < imgCount) AsyncImage(model = message.images[idx], contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, idx) }) else Spacer(Modifier.weight(1f)) }
-                                            }
-                                        }
-                                    }
+                                    val rows = (imgCount + 1) / 2; Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.widthIn(max = 280.dp)) { for (row in 0 until rows) { Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.height(120.dp)) { for (col in 0..1) { val idx = row * 2 + col; if (idx < imgCount) AsyncImage(model = message.images[idx], contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, idx) }) else Spacer(Modifier.weight(1f)) } } } }
                                     if (!hasText) { Spacer(Modifier.height(2.dp)); Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) { Text(timestampDisplay, color = Color.White, fontSize = 11.sp, modifier = Modifier.background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp)).padding(horizontal = 5.dp, vertical = 2.dp)) } }
                                 }
                             }
@@ -447,17 +444,18 @@ fun MessageBubble(
         }
     }
 }
+
 @Composable
 fun MessageInput(
     inputText: String, selectedImages: List<String>, isMarkdown: Boolean,
     onTextChange: (String) -> Unit, onSendClick: () -> Unit, onAddImageClick: () -> Unit,
-    onRemoveImage: (Int) -> Unit, onToggleMarkdown: () -> Unit, innerPadding: PaddingValues
+    onRemoveImage: (Int) -> Unit, onToggleMarkdown: () -> Unit, innerPadding: PaddingValues,
+    hazeState: HazeState
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+        modifier = Modifier.fillMaxWidth().hazeEffect(state = hazeState) { style = HazeMaterials.ultraThin() },
+        color = Color.Transparent,
         shadowElevation = 0.dp,
-        tonalElevation = 2.dp,
         shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(8.dp).padding(bottom = innerPadding.calculateBottomPadding())) {
