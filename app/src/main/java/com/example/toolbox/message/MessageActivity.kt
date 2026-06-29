@@ -487,7 +487,10 @@ fun MessageInput(
                     contentColor = if (isMarkdown) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
                 ) { Icon(painter = painterResource(R.drawable.markdown), contentDescription = "Markdown模式", modifier = Modifier.size(20.dp)) }
                 Spacer(modifier = Modifier.width(5.dp))
-                OutlinedTextField(value = inputText, onValueChange = onTextChange, modifier = Modifier.weight(1f), placeholder = { Text("输入消息...") }, shape = RoundedCornerShape(20.dp), maxLines = 5, colors = TextFieldDefaults.outlinedTextFieldColors(
+                OutlinedTextField(value = inputText, onValueChange = onTextChange, modifier = Modifier.weight(1f), placeholder = { Text("输入消息...") }, shape = RoundedCornerShape(20.dp), maxLines = 5, colors = androidx.compose.material3.TextFieldDefaults.outlinedTextFieldColors(
+    focusedBorderColor = Color.Transparent,
+    unfocusedBorderColor = Color.Transparent
+)(
                     focusedBorderColor = Color.Transparent,
                     unfocusedBorderColor = Color.Transparent
                 ))
