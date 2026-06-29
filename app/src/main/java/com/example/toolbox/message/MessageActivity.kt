@@ -1,13 +1,12 @@
 @file:Suppress("AssignedValueIsNeverRead")
 
 package com.example.toolbox.message
-import androidx.compose.ui.draw.alpha
+
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.util.import androidx.compose.runtime.derivedStateOfLog
-
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -134,7 +133,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
-
 private suspend fun sendFriendRequest(token: String, friendId: Int): Boolean {
     val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
