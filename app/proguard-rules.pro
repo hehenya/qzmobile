@@ -20,6 +20,10 @@
 -dontwarn org.luaj.vm2.luajc.**
 -dontwarn com.google.re2j.**
 
+# 保留 Haze 毛玻璃库
+-keep class dev.chrisbanes.haze.** { *; }
+-dontwarn dev.chrisbanes.haze.**
+
 -keepattributes Signature
 -keepattributes *Annotation*
 
