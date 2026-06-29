@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -160,7 +161,7 @@ class MessageDetailActivity : ComponentActivity() {
                 val token = TokenManager.get(this)
                 val viewModel: MessageDetailViewModel = viewModel(factory = token?.let { MessageDetailViewModelFactory(it, chatType, finalChatId) })
                 val uiState by viewModel.uiState.collectAsState()
-                Scaffold(modifier = Modifier.fillMaxSize(), topBar = {
+                Scaffold(modifier = Modifier.fillMaxSize(), contentWindowInsets = WindowInsets(0.dp), topBar = {
                     TopAppBar(
                         colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
                         title = {
@@ -188,7 +189,9 @@ class MessageDetailActivity : ComponentActivity() {
                         navigationIcon = { FilledTonalIconButton(onClick = { finish() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回") } }
                     )
                 }) { innerPadding ->
-                    Box(modifier = Modifier.padding(top = innerPadding.calculateTopPadding())) { MessageDetailScreen(innerPadding, viewModel) }
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        MessageDetailScreen(PaddingValues(0.dp), viewModel)
+                    }
                 }
             }
         }
