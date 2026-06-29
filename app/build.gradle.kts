@@ -124,7 +124,7 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     //亚克力
-    implementation("dev.chrisbanes.haze:haze:0.7.0")
+    implementation("dev.chrisbanes.haze:haze:1.5.0")
 }
 
 configurations.all {
