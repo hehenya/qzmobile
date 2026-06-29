@@ -483,7 +483,7 @@ private suspend fun setChatBackground(token: String, chatType: Int, targetId: In
         val request = okhttp3.Request.Builder()
             .url("${ApiAddress}chat/set_background")
             .header("x-access-token", token)
-            .post(okhttp3.RequestBody.create(json, "application/json".toMediaType()))
+            .post(okhttp3.RequestBody.create("application/json".toMediaType(), json))
             .build()
         withContext(Dispatchers.IO) {
             client.newCall(request).execute().use { response ->
