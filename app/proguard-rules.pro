@@ -36,3 +36,5 @@
 
 -allowaccessmodification
 -mergeinterfacesaggressively
+-keep class androidx.compose.material3.TextFieldDefaults { *; }
+-keep class androidx.compose.material3.TextFieldDefaults$* { *; }
