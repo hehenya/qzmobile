@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
+import okhttp3.RequestBody.Companion.toRequestBody
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -482,7 +483,7 @@ private suspend fun setChatBackground(token: String, chatType: Int, targetId: In
         val request = okhttp3.Request.Builder()
             .url("${ApiAddress}chat/set_background")
             .header("x-access-token", token)
-            .post(json.toRequestBody("application/json".toMediaType()))
+            .post(okhttp3.RequestBody.create(json, "application/json".toMediaType()))
             .build()
         withContext(Dispatchers.IO) {
             client.newCall(request).execute().use { response ->
