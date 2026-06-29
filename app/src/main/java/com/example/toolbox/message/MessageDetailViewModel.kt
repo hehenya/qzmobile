@@ -37,6 +37,41 @@ class MessageDetailViewModel(
 
     private val _recallDialog = MutableStateFlow(RecallDialogState())
     val recallDialog: StateFlow<RecallDialogState> = _recallDialog.asStateFlow()
+    // 背景URL
+
+
+    // 背景URL
+    private val _backgroundUrl = MutableStateFlow<String?>(null)
+    val backgroundUrl: StateFlow<String?> = _backgroundUrl.asStateFlow()
+
+    fun loadChatBackground() {
+        viewModelScope.launch {
+            try {
+                val url = "${ApiAddress}chat/get_background"
+                val requestBody = org.json.JSONObject().apply {
+                    put("chat_type", chatType)
+                    put("target_id", chatId)
+                }.toString()
+                val request = Request.Builder()
+                    .url(url)
+                    .header("x-access-token", token)
+                    .post(requestBody.toRequestBody("application/json".toMediaType()))
+                    .build()
+
+                withContext(Dispatchers.IO) {
+                    client.newCall(request).execute().use { response ->
+                        val body = response.body?.string() ?: ""
+                        val json = org.json.JSONObject(body)
+                        if (json.optBoolean("success")) {
+                            val data = json.optJSONObject("data")
+                            val bgUrl = data?.optString("background_url", "") ?: ""
+                            _backgroundUrl.value = bgUrl.ifEmpty { null }
+                        }
+                    }
+                }
+            } catch (_: Exception) { }
+        }
+    }
 
     private val _editDialog = MutableStateFlow(EditDialogState())
     val editDialog: StateFlow<EditDialogState> = _editDialog.asStateFlow()
@@ -60,6 +95,7 @@ class MessageDetailViewModel(
         if (chatType == 2) {
             loadGroupInfo()
         }
+        loadChatBackground()
     }
 
     fun loadMessages(page: Int, isRefresh: Boolean) {

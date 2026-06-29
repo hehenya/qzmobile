@@ -257,21 +257,18 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
     val replyTo by viewModel.replyTo.collectAsState()
 
     // 浮动头像
-    var floatingAvatar by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(listState) {
-        snapshotFlow {
-            val vi = listState.layoutInfo.visibleItemsInfo
-            if (vi.isEmpty()) null
-            else {
-                val idx = vi.first().index
-                val msg = uiState.messages.getOrNull(idx)
-                if (msg != null && !msg.isMine && !msg.isRecalled && !msg.isSystem) {
-                    val next = uiState.messages.getOrNull(idx - 1)
-                    if (next != null && next.senderId == msg.senderId && !next.isRecalled) msg.displayAvatar else null
-                } else null
-            }
-        }.collect { floatingAvatar = it }
-    }
+    val floatingAvatar by remember { derivedStateOf {
+        val visible = listState.layoutInfo.visibleItemsInfo
+        if (visible.isEmpty() || uiState.messages.isEmpty()) null
+        else {
+            val idx = visible.first().index
+            val msg = uiState.messages.getOrNull(idx)
+            if (msg != null && !msg.isMine && !msg.isRecalled && !msg.isSystem) {
+                val next = uiState.messages.getOrNull(idx - 1)
+                if (next != null && next.senderId == msg.senderId && !next.isRecalled) msg.displayAvatar else null
+            } else null
+        }
+    } }
 
     LaunchedEffect(listState) {
         snapshotFlow {
@@ -314,8 +311,18 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
                 }
             }
         }
-
         Box(modifier = Modifier.weight(1f)) {
+            val backgroundUrl by viewModel.backgroundUrl.collectAsState()
+        
+            // 聊天背景
+            backgroundUrl?.takeIf { it.isNotEmpty() }?.let { bgUrl ->
+                AsyncImage(
+                    model = bgUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize().alpha(0.3f)
+                )
+            }
             PullToRefreshBox(isRefreshing = uiState.isRefreshing, onRefresh = { viewModel.refresh() }, modifier = Modifier.fillMaxSize()) {
                 LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), reverseLayout = true, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     items(uiState.messages.size) { index ->
@@ -596,10 +603,7 @@ fun MessageBubble(
                 }
             }
 
-            // 右侧头像 - 不显示自己的头像
-            if (isMine) {
-                Spacer(Modifier.width(44.dp))
-            }
+
         }
     }
 }     
