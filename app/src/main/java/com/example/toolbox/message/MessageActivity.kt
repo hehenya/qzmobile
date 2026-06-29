@@ -393,8 +393,13 @@ fun MessageBubble(
             Box(modifier = Modifier.weight(1f, fill = false)) {
                 Column(horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
                     // 消息气泡透明度 90%
-                    Card(shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = if (isMine) 16.dp else if (isLastFromSender) 16.dp else 4.dp,bottomEnd = if (isMine) if (isLastFromSender) 16.dp else 4.dp else 16.dp),
-                        colors = CardDefaults.cardColors(containerColor = if (isMine) MaterialTheme.colorScheme.primary.copy(0.2f) else MaterialTheme.colorScheme.surfaceContainer)) {
+                    Card(
+    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = if (isMine) 16.dp else if (isLastFromSender) 16.dp else 4.dp, bottomEnd = if (isMine) if (isLastFromSender) 16.dp else 4.dp else 16.dp),
+    colors = CardDefaults.cardColors(
+        containerColor = if (isMine) MaterialTheme.colorScheme.primary 
+                        else MaterialTheme.colorScheme.surfaceContainer
+    )
+) {
                         Column(modifier = Modifier.padding(8.dp)) {
                             if (!isMine && isFirstFromSender) { Text(message.displayName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 2.dp)) }
                             if (message.quoteMsgInfo != null) {
