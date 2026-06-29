@@ -120,10 +120,10 @@ import coil3.compose.AsyncImage
 import com.example.toolbox.data.displayAvatar
 import com.example.toolbox.data.displayName
 import com.example.toolbox.data.effectiveMsgId
-// Haze 2.0.0 API
+// Haze 1.6.9 API
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.haze
+import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -190,10 +190,10 @@ class MessageDetailActivity : ComponentActivity() {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     topBar = {
-                        // TG 风格 TopAppBar - 使用 Haze 2.0.0
+                        // TG 风格 TopAppBar - 使用 Haze 1.6.9
                         TopAppBar(
                             modifier = Modifier
-                                .haze(
+                                .hazeEffect(
                                     state = hazeState,
                                     style = HazeStyle(
                                         blurRadius = 30.dp,
@@ -1207,11 +1207,11 @@ fun MessageInput(
     innerPadding: PaddingValues,
     hazeState: HazeState
 ) {
-    // TG 风格输入框 - 使用 Haze 2.0.0
+    // TG 风格输入框 - 使用 Haze 1.6.9
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .haze(
+            .hazeEffect(
                 state = hazeState,
                 style = HazeStyle(
                     blurRadius = 20.dp,
