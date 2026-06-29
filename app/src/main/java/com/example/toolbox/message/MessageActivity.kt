@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -121,10 +120,10 @@ import coil3.compose.AsyncImage
 import com.example.toolbox.data.displayAvatar
 import com.example.toolbox.data.displayName
 import com.example.toolbox.data.effectiveMsgId
-// Haze 2.0.0 新 API
+// Haze 2.0.0 API
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.haze
-import dev.chrisbanes.haze.blurEffect
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -142,23 +141,31 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 private suspend fun sendFriendRequest(token: String, friendId: Int): Boolean {
-    val client = OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(10, TimeUnit.SECONDS).build()
+    val client = OkHttpClient.Builder()
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(10, TimeUnit.SECONDS)
+        .build()
     val jsonBody = JSONObject().put("friend_id", friendId).toString()
     val requestBody = jsonBody.toRequestBody("application/json; charset=utf-8".toMediaType())
-    val request = Request.Builder().url("${ApiAddress}friends/send_request").post(requestBody).addHeader("x-access-token", token).build()
+    val request = Request.Builder()
+        .url("${ApiAddress}friends/send_request")
+        .post(requestBody)
+        .addHeader("x-access-token", token)
+        .build()
     return withContext(Dispatchers.IO) {
-        try { 
-            client.newCall(request).execute().use { r -> 
-                if (!r.isSuccessful) false 
-                else { 
+        try {
+            client.newCall(request).execute().use { r ->
+                if (!r.isSuccessful) false
+                else {
                     val b = r.body.string()
-                    if (b.isBlank()) false 
-                    else (try { JSONObject(b) } catch (_: Exception) { return@withContext false }).optBoolean("success", false) 
-                } 
-            } 
-        } catch (e: Exception) { 
+                    if (b.isBlank()) false
+                    else (try { JSONObject(b) } catch (_: Exception) { return@withContext false })
+                        .optBoolean("success", false)
+                }
+            }
+        } catch (e: Exception) {
             Log.e("NetworkError", "请求失败", e)
-            false 
+            false
         }
     }
 }
@@ -174,26 +181,28 @@ class MessageDetailActivity : ComponentActivity() {
         setContent {
             ToolBoxTheme {
                 val token = TokenManager.get(this)
-                val viewModel: MessageDetailViewModel = viewModel(factory = token?.let { MessageDetailViewModelFactory(it, chatType, finalChatId) })
+                val viewModel: MessageDetailViewModel = viewModel(
+                    factory = token?.let { MessageDetailViewModelFactory(it, chatType, finalChatId) }
+                )
                 val uiState by viewModel.uiState.collectAsState()
                 val hazeState = remember { HazeState() }
-                
+
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     topBar = {
                         // TG 风格 TopAppBar - 使用 Haze 2.0.0
                         TopAppBar(
                             modifier = Modifier
-                                .haze(state = hazeState) {
-                                    blurEffect {
-                                        radius = 30.dp  // 高强度模糊，TG 风格
-                                    }
-                                }
-                                .background(
-                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.12f)
-                                ),
+                                .haze(
+                                    state = hazeState,
+                                    style = HazeStyle(
+                                        blurRadius = 30.dp,
+                                        tint = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.12f)
+                                    )
+                                )
+                                .background(color = Color.Transparent),
                             colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = Color.Transparent  // 容器透明，只显示模糊效果
+                                containerColor = Color.Transparent
                             ),
                             title = {
                                 if (chatType == 2 && uiState.groupInfo != null) {
@@ -204,7 +213,10 @@ class MessageDetailActivity : ComponentActivity() {
                                             .fillMaxWidth()
                                             .clickable {
                                                 startActivity(
-                                                    Intent(this@MessageDetailActivity, GroupInfoActivity::class.java).apply {
+                                                    Intent(
+                                                        this@MessageDetailActivity,
+                                                        GroupInfoActivity::class.java
+                                                    ).apply {
                                                         putExtra("group_id", chatId)
                                                         putExtra("is_joined", true)
                                                         putExtra("group_name", group.name)
@@ -225,8 +237,16 @@ class MessageDetailActivity : ComponentActivity() {
                                         )
                                         Spacer(Modifier.width(8.dp))
                                         Column {
-                                            Text(group.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                                            Text("${group.membersCount} 名成员", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Text(
+                                                group.name,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 16.sp
+                                            )
+                                            Text(
+                                                "${group.membersCount} 名成员",
+                                                fontSize = 12.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
                                         }
                                     }
                                 } else if (uiState.otherUser != null) {
@@ -237,7 +257,10 @@ class MessageDetailActivity : ComponentActivity() {
                                             .fillMaxWidth()
                                             .clickable {
                                                 startActivity(
-                                                    Intent(this@MessageDetailActivity, UserInfoActivity::class.java).apply {
+                                                    Intent(
+                                                        this@MessageDetailActivity,
+                                                        UserInfoActivity::class.java
+                                                    ).apply {
                                                         putExtra("userId", otherUser.id)
                                                     }
                                                 )
@@ -251,14 +274,21 @@ class MessageDetailActivity : ComponentActivity() {
                                         )
                                         Spacer(Modifier.width(8.dp))
                                         Column {
-                                            Text(otherUser.username, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                            Text(
+                                                otherUser.username,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 16.sp
+                                            )
                                         }
                                     }
                                 } else Text("聊天详情")
                             },
                             navigationIcon = {
                                 FilledTonalIconButton(onClick = { finish() }) {
-                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = "返回"
+                                    )
                                 }
                             }
                         )
@@ -291,14 +321,14 @@ fun MessageDetailScreen(
         viewModel.connectWebSocket()
         viewModel.toastMessage.collect { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
     }
-    
+
     val coroutineScope = rememberCoroutineScope()
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         viewModel.handleImageSelected(uri, context, coroutineScope)
     }
-    
+
     val recallDialog by viewModel.recallDialog.collectAsState()
     val editDialog by viewModel.editDialog.collectAsState()
     val listState = rememberLazyListState()
@@ -329,26 +359,26 @@ fun MessageDetailScreen(
             val vi = listState.layoutInfo.visibleItemsInfo
             if (vi.isNotEmpty()) vi.last().index >= listState.layoutInfo.totalItemsCount - 5 && uiState.hasMore && !uiState.isLoadingMore && !uiState.isRefreshing else false
         }
-        .distinctUntilChanged()
-        .filter { it }
-        .collect { viewModel.loadMore() }
+            .distinctUntilChanged()
+            .filter { it }
+            .collect { viewModel.loadMore() }
     }
-    
+
     LaunchedEffect(listState) {
         snapshotFlow {
             val vi = listState.layoutInfo.visibleItemsInfo
             if (vi.isNotEmpty()) vi.first().index == 0 else true
         }
-        .distinctUntilChanged()
-        .collect { atBottom ->
-            showScrollToBottom = !atBottom
-            if (atBottom) {
-                unreadCount = 0
-                if (uiState.messages.isNotEmpty()) firstMessageId = uiState.messages.first().effectiveMsgId
+            .distinctUntilChanged()
+            .collect { atBottom ->
+                showScrollToBottom = !atBottom
+                if (atBottom) {
+                    unreadCount = 0
+                    if (uiState.messages.isNotEmpty()) firstMessageId = uiState.messages.first().effectiveMsgId
+                }
             }
-        }
     }
-    
+
     LaunchedEffect(uiState.messages) {
         if (uiState.messages.isEmpty()) return@LaunchedEffect
         val cur = uiState.messages.first().effectiveMsgId
@@ -361,7 +391,7 @@ fun MessageDetailScreen(
         }
         firstMessageId = cur
     }
-    
+
     val scrollToBottom: () -> Unit = {
         coroutineScope.launch {
             listState.animateScrollToItem(0)
@@ -369,7 +399,7 @@ fun MessageDetailScreen(
             if (uiState.messages.isNotEmpty()) firstMessageId = uiState.messages.first().effectiveMsgId
         }
     }
-    
+
     if (showImageViewer) {
         MultiImageViewer(
             images = imageViewerUrls,
@@ -387,7 +417,9 @@ fun MessageDetailScreen(
                 tonalElevation = 2.dp
             ) {
                 Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
@@ -417,7 +449,7 @@ fun MessageDetailScreen(
                 }
             }
         }
-        
+
         Box(modifier = Modifier.weight(1f)) {
             val backgroundUrl by viewModel.backgroundUrl.collectAsState()
             backgroundUrl?.takeIf { it.isNotEmpty() }?.let { bgUrl ->
@@ -428,13 +460,12 @@ fun MessageDetailScreen(
                     modifier = Modifier.fillMaxSize().alpha(0.3f)
                 )
             }
-            
+
             PullToRefreshBox(
                 isRefreshing = uiState.isRefreshing,
                 onRefresh = { viewModel.refresh() },
                 modifier = Modifier.fillMaxSize()
             ) {
-                // hazeSource 保持不变
                 LazyColumn(
                     state = listState,
                     modifier = Modifier
@@ -447,12 +478,14 @@ fun MessageDetailScreen(
                         val message = uiState.messages[index]
                         val newerMessage = uiState.messages.getOrNull(index - 1)
                         val olderMessage = uiState.messages.getOrNull(index + 1)
-                        val showDate = index == uiState.messages.size - 1 || 
-                            getDateString(message.sendTime) != getDateString(olderMessage?.sendTime ?: 0L)
-                        
+                        val showDate = index == uiState.messages.size - 1 ||
+                                getDateString(message.sendTime) != getDateString(olderMessage?.sendTime ?: 0L)
+
                         if (showDate) {
                             Box(
-                                Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Surface(
@@ -468,7 +501,7 @@ fun MessageDetailScreen(
                                 }
                             }
                         }
-                        
+
                         MessageBubble(
                             message = message,
                             onRecall = { viewModel.showRecallDialog(message.effectiveMsgId) },
@@ -487,11 +520,13 @@ fun MessageDetailScreen(
                             chatType = uiState.chatType
                         )
                     }
-                    
+
                     if (uiState.isLoadingMore) {
                         item {
                             Box(
-                                Modifier.fillMaxWidth().padding(16.dp),
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 ContainedLoadingIndicator()
@@ -500,7 +535,7 @@ fun MessageDetailScreen(
                     }
                 }
             }
-            
+
             if (uiState.error != null && uiState.messages.isEmpty()) {
                 Text(
                     "错误: ${uiState.error}",
@@ -508,7 +543,7 @@ fun MessageDetailScreen(
                     modifier = Modifier.align(Alignment.Center)
                 )
             }
-            
+
             if (floatingAvatar != null) {
                 AsyncImage(
                     model = floatingAvatar,
@@ -521,15 +556,17 @@ fun MessageDetailScreen(
                         .clip(CircleShape)
                 )
             }
-            
+
             AnimatedScrollToBottomButton(
                 visible = showScrollToBottom,
                 unreadCount = unreadCount,
                 onClick = scrollToBottom,
-                modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp)
             )
         }
-        
+
         if (uiState.isChatExpired) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
@@ -537,13 +574,19 @@ fun MessageDetailScreen(
                 shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
             ) {
                 Row(
-                    Modifier.fillMaxWidth()
+                    Modifier
+                        .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 12.dp)
                         .padding(bottom = innerPadding.calculateBottomPadding()),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    Icon(Icons.Filled.Warning, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(
+                        Icons.Filled.Warning,
+                        null,
+                        Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Spacer(Modifier.width(6.dp))
                     Text(
                         "此对话已过期，无法发送消息",
@@ -561,7 +604,9 @@ fun MessageDetailScreen(
                         shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
                     ) {
                         Row(
-                            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box(
@@ -595,8 +640,7 @@ fun MessageDetailScreen(
                         }
                     }
                 }
-                
-                // MessageInput 使用 Haze 2.0.0
+
                 MessageInput(
                     inputText = uiState.inputText,
                     selectedImages = uiState.selectedImages,
@@ -630,7 +674,7 @@ fun MessageDetailScreen(
             }
         )
     }
-    
+
     if (editDialog.isOpen && editDialog.message != null) {
         EditMessageDialog(
             state = editDialog,
@@ -648,9 +692,9 @@ fun getDateString(timestamp: Long): String {
     val today = java.util.Calendar.getInstance()
     return when {
         cal.get(java.util.Calendar.YEAR) == today.get(java.util.Calendar.YEAR) &&
-        cal.get(java.util.Calendar.DAY_OF_YEAR) == today.get(java.util.Calendar.DAY_OF_YEAR) -> "今天"
+                cal.get(java.util.Calendar.DAY_OF_YEAR) == today.get(java.util.Calendar.DAY_OF_YEAR) -> "今天"
         cal.get(java.util.Calendar.YEAR) == today.get(java.util.Calendar.YEAR) &&
-        cal.get(java.util.Calendar.DAY_OF_YEAR) == today.get(java.util.Calendar.DAY_OF_YEAR) - 1 -> "昨天"
+                cal.get(java.util.Calendar.DAY_OF_YEAR) == today.get(java.util.Calendar.DAY_OF_YEAR) - 1 -> "昨天"
         else -> SimpleDateFormat("M月d日", Locale.getDefault()).format(Date(timestamp))
     }
 }
@@ -672,7 +716,7 @@ fun AnimatedScrollToBottomButton(
         animationSpec = tween(300, easing = FastOutSlowInEasing),
         label = "scale"
     )
-    
+
     Box(
         modifier = modifier
             .wrapContentSize()
@@ -730,12 +774,18 @@ fun MessageBubble(
     val isFirstFromSender = newerMessage == null || newerMessage.isRecalled || newerMessage.isSystem || newerMessage.senderId != message.senderId
     val isLastFromSender = olderMessage == null || olderMessage.isRecalled || olderMessage.isSystem || olderMessage.senderId != message.senderId
     val timestampDisplay = message.timestampDisplay ?: message.sendTimeDisplay ?: remember(message.sendTime) {
-        try { SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(message.sendTime)) } catch (_: Exception) { "" }
+        try {
+            SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(message.sendTime))
+        } catch (_: Exception) {
+            ""
+        }
     }
 
     if (isRecalledMessage) {
         Box(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             contentAlignment = Alignment.Center
         ) {
             Surface(
@@ -752,7 +802,9 @@ fun MessageBubble(
         }
     } else if (isSystemMessage) {
         Box(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             contentAlignment = Alignment.Center
         ) {
             Surface(
@@ -789,7 +841,7 @@ fun MessageBubble(
                     Spacer(Modifier.width(44.dp))
                 }
             }
-            
+
             Box(modifier = Modifier.weight(1f, fill = false)) {
                 Column(horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
                     Card(
@@ -800,8 +852,8 @@ fun MessageBubble(
                             bottomEnd = if (isMine) if (isLastFromSender) 16.dp else 4.dp else 16.dp
                         ),
                         colors = CardDefaults.cardColors(
-                            containerColor = if (isMine) MaterialTheme.colorScheme.primary.copy(0.2f) 
-                                          else MaterialTheme.colorScheme.surfaceContainer
+                            containerColor = if (isMine) MaterialTheme.colorScheme.primary.copy(0.2f)
+                            else MaterialTheme.colorScheme.surfaceContainer
                         )
                     ) {
                         Column(modifier = Modifier.padding(8.dp)) {
@@ -814,7 +866,7 @@ fun MessageBubble(
                                     modifier = Modifier.padding(bottom = 2.dp)
                                 )
                             }
-                            
+
                             if (message.quoteMsgInfo != null) {
                                 val ref = message.quoteMsgInfo
                                 Row(
@@ -859,20 +911,24 @@ fun MessageBubble(
                                     }
                                 }
                             }
-                            
+
                             if (message.content.isNotBlank()) {
                                 if (message.isMarkdown) {
                                     MarkdownRenderer.Render(content = message.content)
                                 } else {
-                                    Text(message.content, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                                    Text(
+                                        message.content,
+                                        fontSize = 14.sp,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
                                 }
                             }
-                            
+
                             if (message.images.isNotEmpty()) {
                                 Spacer(Modifier.height(4.dp))
                                 val hasText = message.content.isNotBlank()
                                 val imgCount = message.images.size
-                                
+
                                 if (imgCount == 1) {
                                     Box(
                                         modifier = Modifier
@@ -894,7 +950,10 @@ fun MessageBubble(
                                                 modifier = Modifier
                                                     .align(Alignment.BottomEnd)
                                                     .padding(6.dp)
-                                                    .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                                                    .background(
+                                                        Color.Black.copy(alpha = 0.4f),
+                                                        RoundedCornerShape(4.dp)
+                                                    )
                                                     .padding(horizontal = 5.dp, vertical = 2.dp)
                                             )
                                         }
@@ -902,7 +961,9 @@ fun MessageBubble(
                                 } else if (imgCount == 2) {
                                     Row(
                                         horizontalArrangement = Arrangement.spacedBy(2.dp),
-                                        modifier = Modifier.height(180.dp).widthIn(max = 280.dp)
+                                        modifier = Modifier
+                                            .height(180.dp)
+                                            .widthIn(max = 280.dp)
                                     ) {
                                         message.images.forEachIndexed { index, url ->
                                             AsyncImage(
@@ -919,13 +980,19 @@ fun MessageBubble(
                                     }
                                     if (!hasText) {
                                         Spacer(Modifier.height(2.dp))
-                                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) {
+                                        Box(
+                                            Modifier.fillMaxWidth(),
+                                            contentAlignment = Alignment.BottomEnd
+                                        ) {
                                             Text(
                                                 timestampDisplay,
                                                 color = Color.White,
                                                 fontSize = 11.sp,
                                                 modifier = Modifier
-                                                    .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                                                    .background(
+                                                        Color.Black.copy(alpha = 0.4f),
+                                                        RoundedCornerShape(4.dp)
+                                                    )
                                                     .padding(horizontal = 5.dp, vertical = 2.dp)
                                             )
                                         }
@@ -933,7 +1000,9 @@ fun MessageBubble(
                                 } else if (imgCount == 3) {
                                     Row(
                                         horizontalArrangement = Arrangement.spacedBy(2.dp),
-                                        modifier = Modifier.height(200.dp).widthIn(max = 280.dp)
+                                        modifier = Modifier
+                                            .height(200.dp)
+                                            .widthIn(max = 280.dp)
                                     ) {
                                         AsyncImage(
                                             model = message.images[0],
@@ -947,7 +1016,9 @@ fun MessageBubble(
                                         )
                                         Column(
                                             verticalArrangement = Arrangement.spacedBy(2.dp),
-                                            modifier = Modifier.weight(1f).fillMaxHeight()
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .fillMaxHeight()
                                         ) {
                                             AsyncImage(
                                                 model = message.images[1],
@@ -973,13 +1044,19 @@ fun MessageBubble(
                                     }
                                     if (!hasText) {
                                         Spacer(Modifier.height(2.dp))
-                                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) {
+                                        Box(
+                                            Modifier.fillMaxWidth(),
+                                            contentAlignment = Alignment.BottomEnd
+                                        ) {
                                             Text(
                                                 timestampDisplay,
                                                 color = Color.White,
                                                 fontSize = 11.sp,
                                                 modifier = Modifier
-                                                    .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                                                    .background(
+                                                        Color.Black.copy(alpha = 0.4f),
+                                                        RoundedCornerShape(4.dp)
+                                                    )
                                                     .padding(horizontal = 5.dp, vertical = 2.dp)
                                             )
                                         }
@@ -1017,21 +1094,31 @@ fun MessageBubble(
                                     }
                                     if (!hasText) {
                                         Spacer(Modifier.height(2.dp))
-                                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) {
+                                        Box(
+                                            Modifier.fillMaxWidth(),
+                                            contentAlignment = Alignment.BottomEnd
+                                        ) {
                                             Text(
                                                 timestampDisplay,
                                                 color = Color.White,
                                                 fontSize = 11.sp,
                                                 modifier = Modifier
-                                                    .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                                                    .background(
+                                                        Color.Black.copy(alpha = 0.4f),
+                                                        RoundedCornerShape(4.dp)
+                                                    )
                                                     .padding(horizontal = 5.dp, vertical = 2.dp)
                                             )
                                         }
                                     }
                                 }
                             }
-                            
-                            Row(modifier = Modifier.align(if (isMine) Alignment.End else Alignment.Start)) {
+
+                            Row(
+                                modifier = Modifier.align(
+                                    if (isMine) Alignment.End else Alignment.Start
+                                )
+                            ) {
                                 if (message.content.isNotBlank()) {
                                     Text(
                                         timestampDisplay,
@@ -1051,7 +1138,7 @@ fun MessageBubble(
                         }
                     }
                 }
-                
+
                 DropdownMenu(
                     expanded = showMenu,
                     onDismissRequest = { showMenu = false },
@@ -1061,7 +1148,12 @@ fun MessageBubble(
                         DropdownMenuItem(
                             text = { Text("复制") },
                             onClick = {
-                                clipboard.nativeClipboard.setPrimaryClip(ClipData.newPlainText("text", message.content))
+                                clipboard.nativeClipboard.setPrimaryClip(
+                                    ClipData.newPlainText(
+                                        "text",
+                                        message.content
+                                    )
+                                )
                                 showMenu = false
                                 Toast.makeText(context, "复制成功", Toast.LENGTH_SHORT).show()
                             },
@@ -1119,13 +1211,12 @@ fun MessageInput(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .haze(state = hazeState) {
-                blurEffect {
-                    radius = 20.dp  // 输入框模糊强度适中
-                }
-            }
-            .background(
-                color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.15f)
+            .haze(
+                state = hazeState,
+                style = HazeStyle(
+                    blurRadius = 20.dp,
+                    tint = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.15f)
+                )
             ),
         color = Color.Transparent,
         shadowElevation = 0.dp,
@@ -1144,7 +1235,9 @@ fun MessageInput(
         ) {
             if (selectedImages.isNotEmpty()) {
                 LazyRow(
-                    modifier = Modifier.fillMaxWidth().height(80.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(80.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     items(selectedImages.size) { index ->
@@ -1160,16 +1253,23 @@ fun MessageInput(
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
                                     .size(20.dp)
-                                    .background(color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f), shape = CircleShape)
+                                    .background(
+                                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                                        shape = CircleShape
+                                    )
                             ) {
-                                Icon(Icons.Default.Close, contentDescription = "移除", modifier = Modifier.size(12.dp))
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "移除",
+                                    modifier = Modifier.size(12.dp)
+                                )
                             }
                         }
                     }
                 }
                 Spacer(modifier = Modifier.height(4.dp))
             }
-            
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
@@ -1178,9 +1278,13 @@ fun MessageInput(
                     onClick = onAddImageClick,
                     modifier = Modifier.size(40.dp)
                 ) {
-                    Icon(Icons.Default.Image, contentDescription = "添加图片", tint = MaterialTheme.colorScheme.onSurface)
+                    Icon(
+                        Icons.Default.Image,
+                        contentDescription = "添加图片",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
                 }
-                
+
                 IconButton(
                     onClick = onToggleMarkdown,
                     modifier = Modifier.size(40.dp),
@@ -1195,9 +1299,9 @@ fun MessageInput(
                         modifier = Modifier.size(20.dp)
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.width(5.dp))
-                
+
                 OutlinedTextField(
                     value = inputText,
                     onValueChange = onTextChange,
@@ -1206,9 +1310,9 @@ fun MessageInput(
                     shape = RoundedCornerShape(20.dp),
                     maxLines = 5
                 )
-                
+
                 Spacer(modifier = Modifier.width(5.dp))
-                
+
                 IconButton(
                     onClick = onSendClick,
                     modifier = Modifier.size(40.dp),
@@ -1256,8 +1360,8 @@ fun EditMessageDialog(
                                 imageVector = if (state.isMarkdown) Icons.Default.Check else Icons.Default.Close,
                                 contentDescription = null,
                                 modifier = Modifier.size(SwitchDefaults.IconSize),
-                                tint = if (state.isMarkdown) MaterialTheme.colorScheme.primary 
-                                       else MaterialTheme.colorScheme.surfaceContainerHighest
+                                tint = if (state.isMarkdown) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.surfaceContainerHighest
                             )
                         }
                     )
