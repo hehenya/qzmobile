@@ -327,8 +327,8 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
                         clipboard = clipboard, context = context, onReply = { viewModel.setReplyTo(message) },
                         isAdmin = uiState.isAdmin, newerMessage = newerMessage, olderMessage = olderMessage,
                         chatType = uiState.chatType)
-                        if (uiState.isLoadingMore) { item { Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { ContainedLoadingIndicator() } } }
                     }
+                    if (uiState.isLoadingMore) { item { Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { ContainedLoadingIndicator() } } }
                 }
             }
             if (uiState.error != null && uiState.messages.isEmpty()) Text("错误: ${uiState.error}", color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center))
