@@ -463,16 +463,89 @@ fun MessageBubble(
                                 if (message.isMarkdown) MarkdownRenderer.Render(content = message.content)
                                 else Text(message.content, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
                             }
-                            if (message.images.isNotEmpty()) {
-                                Spacer(Modifier.height(2.dp))
-                                message.images.forEachIndexed { index, imageUrl ->
-                                    AsyncImage(model = imageUrl, contentDescription = null, contentScale = ContentScale.FillWidth,
-                                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, index) })
-                                    if (index < message.images.size - 1) Spacer(Modifier.height(2.dp))
-                                }
-                            }
+                                                        // TG风格图片显示
+                                                        if (message.images.isNotEmpty()) {
+                                                            Spacer(Modifier.height(4.dp))
+                                                            val hasText = message.content.isNotBlank()
+                                                            val imgCount = message.images.size
+                                                            
+                                                            if (imgCount == 1) {
+                                                                // 单张图片
+                                                                Box(modifier = Modifier.widthIn(max = 280.dp).clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, 0) }) {
+                                                                    AsyncImage(
+                                                                        model = message.images[0],
+                                                                        contentDescription = null,
+                                                                        contentScale = ContentScale.FillWidth,
+                                                                        modifier = Modifier.fillMaxWidth()
+                                                                    )
+                                                                    // 时间标注在图片右下角 - 仅当没有文字时
+                                                                    if (!hasText) {
+                                                                        Surface(
+                                                                            color = Color.Black.copy(alpha = 0.5f),
+                                                                            shape = RoundedCornerShape(4.dp),
+                                                                            modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp)
+                                                                        ) {
+                                                                            Text(
+                                                                                timestampDisplay,
+                                                                                color = Color.White,
+                                                                                fontSize = 11.sp,
+                                                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                                            )
+                                                                        }
+                                                                    }
+                                                                }
+                                                            } else if (imgCount == 2) {
+                                                                // 两张图片 - 并排
+                                                                Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.height(180.dp).widthIn(max = 280.dp)) {
+                                                                    message.images.forEachIndexed { index, url ->
+                                                                        AsyncImage(
+                                                                            model = url,
+                                                                            contentDescription = null,
+                                                                            contentScale = ContentScale.Crop,
+                                                                            modifier = Modifier
+                                                                                .weight(1f)
+                                                                                .fillMaxHeight()
+                                                                                .clip(RoundedCornerShape(8.dp))
+                                                                                .clickable { onImageClick(message.images, index) }
+                                                                        )
+                                                                    }
+                                                                }
+                                                            } else if (imgCount == 3) {
+                                                                // 三张图片 - 左边大图，右边两张小图
+                                                                Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.height(200.dp).widthIn(max = 280.dp)) {
+                                                                    AsyncImage(model = message.images[0], contentDescription = null, contentScale = ContentScale.Crop,
+                                                                        modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, 0) })
+                                                                    Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f).fillMaxHeight()) {
+                                                                        AsyncImage(model = message.images[1], contentDescription = null, contentScale = ContentScale.Crop,
+                                                                            modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, 1) })
+                                                                        AsyncImage(model = message.images[2], contentDescription = null, contentScale = ContentScale.Crop,
+                                                                            modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, 2) })
+                                                                    }
+                                                                }
+                                                            } else {
+                                                                // 四张及以上 - 2x2 网格
+                                                                val rows = (imgCount + 1) / 2
+                                                                Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.widthIn(max = 280.dp)) {
+                                                                    for (row in 0 until rows) {
+                                                                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.height(120.dp)) {
+                                                                            for (col in 0..1) {
+                                                                                val idx = row * 2 + col
+                                                                                if (idx < imgCount) {
+                                                                                    AsyncImage(model = message.images[idx], contentDescription = null, contentScale = ContentScale.Crop,
+                                                                                        modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, idx) })
+                                                                                } else {
+                                                                                    Spacer(Modifier.weight(1f))
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
                             Row(modifier = Modifier.align(if (isMine) Alignment.End else Alignment.Start)) {
-                                Text(timestampDisplay, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                if (message.content.isNotBlank()) {
+                                    Text(timestampDisplay, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
                                 if (message.editTime != null) Text("已编辑", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp))
                             }
                         }
