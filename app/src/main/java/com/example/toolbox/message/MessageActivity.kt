@@ -162,7 +162,7 @@ class MessageDetailActivity : ComponentActivity() {
                 val uiState by viewModel.uiState.collectAsState()
                 Scaffold(modifier = Modifier.fillMaxSize(), topBar = {
                     TopAppBar(
-                        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)),
+                        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
                         title = {
                             if (chatType == 2 && uiState.groupInfo != null) {
                                 val group = uiState.groupInfo!!
@@ -249,7 +249,8 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
         }
         Box(modifier = Modifier.weight(1f)) {
             val backgroundUrl by viewModel.backgroundUrl.collectAsState()
-            backgroundUrl?.takeIf { it.isNotEmpty() }?.let { bgUrl -> AsyncImage(model = bgUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().alpha(0.3f)) }
+            // 背景全透明显示
+            backgroundUrl?.takeIf { it.isNotEmpty() }?.let { bgUrl -> AsyncImage(model = bgUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
             PullToRefreshBox(isRefreshing = uiState.isRefreshing, onRefresh = { viewModel.refresh() }, modifier = Modifier.fillMaxSize()) {
                 LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), reverseLayout = true, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     items(uiState.messages.size) { index ->
@@ -289,7 +290,7 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
         } else {
             Column {
                 replyTo?.let { repliedMessage ->
-                    Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)) {
+                    Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f), shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)) {
                         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                             Box(Modifier.width(3.dp).height(32.dp).background(MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp)))
                             Spacer(Modifier.width(8.dp))
@@ -385,8 +386,9 @@ fun MessageBubble(
 
             Box(modifier = Modifier.weight(1f, fill = false)) {
                 Column(horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
+                    // 消息气泡透明度 90%
                     Card(shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = if (isMine) 16.dp else if (isLastFromSender) 16.dp else 4.dp,bottomEnd = if (isMine) if (isLastFromSender) 16.dp else 4.dp else 16.dp),
-                        colors = CardDefaults.cardColors(containerColor = if (isMine) MaterialTheme.colorScheme.primary.copy(0.2f) else MaterialTheme.colorScheme.surfaceContainer)) {
+                        colors = CardDefaults.cardColors(containerColor = if (isMine) MaterialTheme.colorScheme.primary.copy(alpha = 0.9f) else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.9f))) {
                         Column(modifier = Modifier.padding(8.dp)) {
                             if (!isMine && isFirstFromSender) { Text(message.displayName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 2.dp)) }
                             if (message.quoteMsgInfo != null) {
@@ -453,12 +455,12 @@ fun MessageInput(
     onTextChange: (String) -> Unit, onSendClick: () -> Unit, onAddImageClick: () -> Unit,
     onRemoveImage: (Int) -> Unit, onToggleMarkdown: () -> Unit, innerPadding: PaddingValues
 ) {
+    // 输入框悬空 + 不透明 95%
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
-        shadowElevation = 0.dp,
-        tonalElevation = 2.dp,
-        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+        shadowElevation = 8.dp,
+        shape = RoundedCornerShape(24.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(8.dp).padding(bottom = innerPadding.calculateBottomPadding())) {
             if (selectedImages.isNotEmpty()) {
