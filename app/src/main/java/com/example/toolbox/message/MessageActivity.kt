@@ -162,7 +162,7 @@ class MessageDetailActivity : ComponentActivity() {
                 val uiState by viewModel.uiState.collectAsState()
                 Scaffold(modifier = Modifier.fillMaxSize(), topBar = {
                     TopAppBar(
-                        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)),
+                        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)),
                         title = {
                             if (chatType == 2 && uiState.groupInfo != null) {
                                 val group = uiState.groupInfo!!
@@ -327,7 +327,7 @@ fun getDateString(timestamp: Long): String {
     return when {
         cal.get(java.util.Calendar.YEAR) == today.get(java.util.Calendar.YEAR) && cal.get(java.util.Calendar.DAY_OF_YEAR) == today.get(java.util.Calendar.DAY_OF_YEAR) -> "今天"
         cal.get(java.util.Calendar.YEAR) == today.get(java.util.Calendar.YEAR) && cal.get(java.util.Calendar.DAY_OF_YEAR) == today.get(java.util.Calendar.DAY_OF_YEAR) - 1 -> "昨天"
-        else -> SimpleDateFormat("yyyy年MM月dd日", Locale.getDefault()).format(Date(timestamp))
+        else -> SimpleDateFormat("M月d日", Locale.getDefault()).format(Date(timestamp)) 
     }
 }
 
@@ -355,6 +355,7 @@ fun MessageBubble(
     val isRecalledMessage = message.msgDeleteTime != null
     val isSystemMessage = message.isSystem
     val isFirstFromSender = newerMessage == null || newerMessage.isRecalled || newerMessage.isSystem || newerMessage.senderId != message.senderId
+    val isLastFromSender = olderMessage == null || olderMessage.isRecalled || olderMessage.isSystem || olderMessage.senderId != message.senderId
     val timestampDisplay = message.timestampDisplay ?: message.sendTimeDisplay ?: remember(message.sendTime) { try { SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(message.sendTime)) } catch (_: Exception) { "" } }
 
     if (isRecalledMessage) {
@@ -384,7 +385,7 @@ fun MessageBubble(
 
             Box(modifier = Modifier.weight(1f, fill = false)) {
                 Column(horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
-                    Card(shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = if (isMine) 16.dp else 4.dp, bottomEnd = if (isMine) 4.dp else 16.dp),
+                    Card(shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = if (isMine) 16.dp else if (isLastFromSender) 16.dp else 4.dp,bottomEnd = if (isMine) if (isLastFromSender) 16.dp else 4.dp else 16.dp),
                         colors = CardDefaults.cardColors(containerColor = if (isMine) MaterialTheme.colorScheme.primary.copy(0.2f) else MaterialTheme.colorScheme.surfaceContainer)) {
                         Column(modifier = Modifier.padding(8.dp)) {
                             if (!isMine && isFirstFromSender) { Text(message.displayName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 2.dp)) }
@@ -454,9 +455,10 @@ fun MessageInput(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
         shadowElevation = 0.dp,
-        shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
+        tonalElevation = 2.dp,
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(8.dp).padding(bottom = innerPadding.calculateBottomPadding())) {
             if (selectedImages.isNotEmpty()) {
