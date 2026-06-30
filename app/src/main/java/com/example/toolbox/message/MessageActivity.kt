@@ -15,7 +15,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -47,6 +46,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Edit
@@ -464,7 +464,9 @@ fun MessageInput(
     var showAttachmentMenu by remember { mutableStateOf(false) }
     Surface(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp).border(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f), RoundedCornerShape(20.dp)),
-        color = Color.Transparent, shadowElevation = 4.dp, shape = RoundedCornerShape(20.dp)
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+        shadowElevation = 4.dp,
+        shape = RoundedCornerShape(20.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp).padding(bottom = innerPadding.calculateBottomPadding())) {
             if (isUploading) { UploadProgressBar(progress = uploadProgress, onCancel = onCancelUpload) }
@@ -488,7 +490,17 @@ fun MessageInput(
                     }
                 }
                 Spacer(Modifier.width(5.dp))
-                TextField(value = inputText, onValueChange = onTextChange, modifier = Modifier.weight(1f).background(Color.Transparent, RoundedCornerShape(20.dp)), placeholder = { Text("输入消息...") }, shape = RoundedCornerShape(20.dp), maxLines = 5, colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent))
+                TextField(
+                    value = inputText, onValueChange = onTextChange,
+                    modifier = Modifier.weight(1f).background(Color.Transparent, RoundedCornerShape(20.dp)),
+                    placeholder = { Text("输入消息...") }, shape = RoundedCornerShape(20.dp), maxLines = 5,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    )
+                )
                 Spacer(Modifier.width(5.dp))
                 Box(contentAlignment = Alignment.Center) {
                     IconButton(onClick = onSendClick, modifier = Modifier.size(40.dp), enabled = inputText.isNotBlank() || selectedImages.isNotEmpty()) { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "发送") }
