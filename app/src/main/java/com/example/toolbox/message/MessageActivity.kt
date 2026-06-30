@@ -558,7 +558,7 @@ fun MessageBubble(
                                             color = Color.White,
                                             fontSize = 11.sp,
                                             modifier = Modifier
-                                                .align(Alignment.BottomEnd)
+                                                .align(Alignment.BottomEnd)   // 已在 Box 中，合法
                                                 .padding(6.dp)
                                                 .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
                                                 .padding(horizontal = 5.dp, vertical = 2.dp)
@@ -697,49 +697,50 @@ fun MessageBubble(
                         }
                     }
                 }
-                // 菜单
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false },
-                    modifier = Modifier.align(if (isMine) Alignment.TopStart else Alignment.TopEnd)
-                ) {
-                    if (msg.content.isNotBlank()) {
-                        DropdownMenuItem(
-                            text = { Text("复制") },
-                            onClick = {
-                                clipboard.nativeClipboard.setPrimaryClip(ClipData.newPlainText("text", msg.content))
-                                showMenu = false
-                                Toast.makeText(context, "复制成功", Toast.LENGTH_SHORT).show()
-                            },
-                            leadingIcon = { Icon(Icons.Default.ContentCopy, null, Modifier.size(18.dp)) }
-                        )
-                    }
+            } // Column end
+
+            // 菜单（必须放在 Box 中）
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false },
+                modifier = Modifier.align(if (isMine) Alignment.TopStart else Alignment.TopEnd)
+            ) {
+                if (msg.content.isNotBlank()) {
                     DropdownMenuItem(
-                        text = { Text("引用") },
-                        onClick = { showMenu = false; onReply() },
-                        leadingIcon = { Icon(Icons.Default.FormatQuote, null, Modifier.size(18.dp)) }
+                        text = { Text("复制") },
+                        onClick = {
+                            clipboard.nativeClipboard.setPrimaryClip(ClipData.newPlainText("text", msg.content))
+                            showMenu = false
+                            Toast.makeText(context, "复制成功", Toast.LENGTH_SHORT).show()
+                        },
+                        leadingIcon = { Icon(Icons.Default.ContentCopy, null, Modifier.size(18.dp)) }
                     )
-                    if (isMine || isAdmin) {
-                        DropdownMenuItem(
-                            text = { Text("撤回") },
-                            onClick = { showMenu = false; onRecall() },
-                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.Undo, null, Modifier.size(18.dp)) }
-                        )
-                    }
-                    if (isMine && msg.content.isNotBlank()) {
-                        DropdownMenuItem(
-                            text = { Text("编辑") },
-                            onClick = { showMenu = false; onEdit() },
-                            leadingIcon = { Icon(Icons.Default.Edit, null, Modifier.size(18.dp)) }
-                        )
-                    }
+                }
+                DropdownMenuItem(
+                    text = { Text("引用") },
+                    onClick = { showMenu = false; onReply() },
+                    leadingIcon = { Icon(Icons.Default.FormatQuote, null, Modifier.size(18.dp)) }
+                )
+                if (isMine || isAdmin) {
+                    DropdownMenuItem(
+                        text = { Text("撤回") },
+                        onClick = { showMenu = false; onRecall() },
+                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.Undo, null, Modifier.size(18.dp)) }
+                    )
+                }
+                if (isMine && msg.content.isNotBlank()) {
+                    DropdownMenuItem(
+                        text = { Text("编辑") },
+                        onClick = { showMenu = false; onEdit() },
+                        leadingIcon = { Icon(Icons.Default.Edit, null, Modifier.size(18.dp)) }
+                    )
                 }
             }
+        } // Box end
 
-            // 右侧占位
-            if (isMine) {
-                Spacer(Modifier.width(44.dp))
-            }
+        // 右侧占位（放在 Row 里，不在 Box 中）
+        if (isMine) {
+            Spacer(Modifier.width(44.dp))
         }
     }
 }
