@@ -142,55 +142,6 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-// ============================================================
-// 消息显示模型（用于 Telegram 风格分组）
-// ============================================================
-data class MessageUiModel(
-    val message: Message,
-    val showAvatar: Boolean,
-    val showName: Boolean,
-    val position: BubblePosition,
-    val dateHeader: String?
-)
-
-enum class BubblePosition {
-    SINGLE, TOP, MIDDLE, BOTTOM
-}
-
-fun buildUiMessages(messages: List<Message>): List<MessageUiModel> {
-    if (messages.isEmpty()) return emptyList()
-    val sorted = messages.sortedBy { it.sendTime }
-    return sorted.mapIndexed { index, msg ->
-        val prev = sorted.getOrNull(index - 1)
-        val next = sorted.getOrNull(index + 1)
-
-        val samePrev = prev?.senderId == msg.senderId
-        val sameNext = next?.senderId == msg.senderId
-
-        val position = when {
-            !samePrev && !sameNext -> BubblePosition.SINGLE
-            !samePrev && sameNext -> BubblePosition.TOP
-            samePrev && sameNext -> BubblePosition.MIDDLE
-            else -> BubblePosition.BOTTOM
-        }
-
-        val showAvatar = next == null || next.senderId != msg.senderId
-        val showName = showAvatar && !msg.isMine
-
-        val dateHeader = if (prev == null ||
-            getDateString(prev.sendTime) != getDateString(msg.sendTime)
-        ) getDateString(msg.sendTime) else null
-
-        MessageUiModel(
-            message = msg,
-            showAvatar = showAvatar,
-            showName = showName,
-            position = position,
-            dateHeader = dateHeader
-        )
-    }
-}
-
 private suspend fun sendFriendRequest(token: String, friendId: Int): Boolean {
     val client = OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(10, TimeUnit.SECONDS).build()
     val jsonBody = JSONObject().put("friend_id", friendId).toString()
@@ -278,6 +229,7 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
     var imageViewerInitialPage by remember { mutableIntStateOf(0) }
     val replyTo by viewModel.replyTo.collectAsState()
 
+    // 浮动头像（基于原始列表）
     val floatingAvatar by remember {
         derivedStateOf {
             val visibleItems = listState.layoutInfo.visibleItemsInfo
@@ -301,21 +253,14 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
     val scrollToBottom: () -> Unit = { coroutineScope.launch { listState.animateScrollToItem(0); unreadCount = 0; if (uiState.messages.isNotEmpty()) firstMessageId = uiState.messages.first().effectiveMsgId } }
     if (showImageViewer) MultiImageViewer(images = imageViewerUrls, initialPage = imageViewerInitialPage, isVisible = showImageViewer, onDismiss = { showImageViewer = false })
 
-    // 使用 Box 包裹所有内容，背景图作为底层
+    // 背景 Box
     Box(modifier = Modifier.fillMaxSize()) {
-        // 背景图（全透明显示，延伸至整个屏幕）
         val backgroundUrl by viewModel.backgroundUrl.collectAsState()
         backgroundUrl?.takeIf { it.isNotEmpty() }?.let { bgUrl ->
-            AsyncImage(
-                model = bgUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
+            AsyncImage(model = bgUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
         }
 
         Column(modifier = Modifier.fillMaxSize()) {
-            // 非好友提示条
             if (uiState.chatType == 1 && uiState.relationship != "friend") {
                 Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.errorContainer, tonalElevation = 2.dp) {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -326,28 +271,34 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
                 }
             }
 
-            // 消息区域
             Box(modifier = Modifier.weight(1f)) {
                 PullToRefreshBox(isRefreshing = uiState.isRefreshing, onRefresh = { viewModel.refresh() }, modifier = Modifier.fillMaxSize()) {
-                    val uiMessages = buildUiMessages(uiState.messages)
                     LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), reverseLayout = true, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        items(items = uiMessages, key = { it.message.effectiveMsgId }) { item ->
+                        items(uiState.messages.size) { index ->
+                            val message = uiState.messages[index]
+                            val newerMessage = uiState.messages.getOrNull(index - 1)
+                            val olderMessage = uiState.messages.getOrNull(index + 1)
+
                             // 日期分隔符
-                            if (item.dateHeader != null) {
+                            val showDate = index == uiState.messages.size - 1 || getDateString(message.sendTime) != getDateString(olderMessage?.sendTime ?: 0L)
+                            if (showDate) {
                                 Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
                                     Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)) {
-                                        Text(item.dateHeader, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text(getDateString(message.sendTime), modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                 }
                             }
+
                             MessageBubble(
-                                item = item,
+                                message = message,
+                                newerMessage = newerMessage,
+                                olderMessage = olderMessage,
                                 context = context,
                                 clipboard = clipboard,
                                 onImageClick = { urls, idx -> imageViewerUrls = urls; imageViewerInitialPage = idx; showImageViewer = true },
-                                onReply = { viewModel.setReplyTo(item.message) },
-                                onRecall = { viewModel.showRecallDialog(item.message.effectiveMsgId) },
-                                onEdit = { viewModel.showEditDialog(item.message) },
+                                onReply = { viewModel.setReplyTo(message) },
+                                onRecall = { viewModel.showRecallDialog(message.effectiveMsgId) },
+                                onEdit = { viewModel.showEditDialog(message) },
                                 isAdmin = uiState.isAdmin
                             )
                         }
@@ -359,7 +310,6 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
                 AnimatedScrollToBottomButton(visible = showScrollToBottom, unreadCount = unreadCount, onClick = scrollToBottom, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp))
             }
 
-            // 底部过期提示 / 输入框
             if (uiState.isChatExpired) {
                 Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceVariant.copy(0.4f), shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)) {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp).padding(bottom = innerPadding.calculateBottomPadding()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
@@ -432,7 +382,9 @@ fun AnimatedScrollToBottomButton(visible: Boolean, unreadCount: Int, onClick: ()
 
 @Composable
 fun MessageBubble(
-    item: MessageUiModel,
+    message: Message,
+    newerMessage: Message?,
+    olderMessage: Message?,
     context: Context,
     clipboard: Clipboard,
     onImageClick: (List<String>, Int) -> Unit,
@@ -442,17 +394,20 @@ fun MessageBubble(
     isAdmin: Boolean
 ) {
     var showMenu by remember { mutableStateOf(false) }
-    val msg = item.message
+    val msg = message
     val isMine = msg.isMine || msg.direction == "right"
     val timestampDisplay = msg.timestampDisplay ?: msg.sendTimeDisplay ?: remember(msg.sendTime) {
         try { SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(msg.sendTime)) } catch (_: Exception) { "" }
     }
 
-    val shape = when (item.position) {
-        BubblePosition.SINGLE -> RoundedCornerShape(16.dp)
-        BubblePosition.TOP -> RoundedCornerShape(16.dp, 16.dp, 4.dp, 4.dp)
-        BubblePosition.MIDDLE -> RoundedCornerShape(4.dp)
-        BubblePosition.BOTTOM -> RoundedCornerShape(4.dp, 4.dp, 16.dp, 16.dp)
+    val isFirstFromSender = newerMessage == null || newerMessage.isRecalled || newerMessage.isSystem || newerMessage.senderId != msg.senderId
+    val isLastFromSender = olderMessage == null || olderMessage.isRecalled || olderMessage.isSystem || olderMessage.senderId != msg.senderId
+
+    val shape = when {
+        isFirstFromSender && isLastFromSender -> RoundedCornerShape(16.dp)
+        isFirstFromSender && !isLastFromSender -> RoundedCornerShape(16.dp, 16.dp, 4.dp, 4.dp)
+        !isFirstFromSender && !isLastFromSender -> RoundedCornerShape(4.dp)
+        else -> RoundedCornerShape(4.dp, 4.dp, 16.dp, 16.dp)
     }
 
     Row(
@@ -463,17 +418,9 @@ fun MessageBubble(
         horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start,
         verticalAlignment = Alignment.Bottom
     ) {
-        // 左侧头像/占位
         if (!isMine) {
-            if (item.showAvatar) {
-                AsyncImage(
-                    model = msg.displayAvatar,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                )
+            if (isFirstFromSender) {
+                AsyncImage(model = msg.displayAvatar, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(36.dp).clip(CircleShape))
                 Spacer(Modifier.width(8.dp))
             } else {
                 Spacer(Modifier.width(44.dp))
@@ -482,279 +429,78 @@ fun MessageBubble(
 
         Box(modifier = Modifier.weight(1f, fill = false)) {
             Column(horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
-                Card(
-                    shape = shape,
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (isMine) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.surfaceContainer
-                    )
-                ) {
+                Card(shape = shape, colors = CardDefaults.cardColors(containerColor = if (isMine) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainer)) {
                     Column(modifier = Modifier.padding(8.dp)) {
-                        // 发送者名称
-                        if (!isMine && item.showName) {
-                            Text(
-                                msg.displayName,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(bottom = 2.dp)
-                            )
+                        if (!isMine && isFirstFromSender) {
+                            Text(msg.displayName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 2.dp))
                         }
-                        // 引用部分
                         if (msg.quoteMsgInfo != null) {
                             val ref = msg.quoteMsgInfo
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(bottom = 2.dp)
-                            ) {
-                                Box(
-                                    Modifier
-                                        .width(3.dp)
-                                        .height(32.dp)
-                                        .background(Color.Blue, RoundedCornerShape(2.dp))
-                                )
-                                Spacer(Modifier.width(8.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 2.dp)) {
+                                Box(Modifier.width(3.dp).height(32.dp).background(Color.Blue, RoundedCornerShape(2.dp))); Spacer(Modifier.width(8.dp))
                                 Column {
-                                    Text(
-                                        ref.senderUsername,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                    if (ref.content.isNotBlank()) Text(
-                                        ref.content,
-                                        fontSize = 12.sp,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    if (ref.images.isNotEmpty()) AsyncImage(
-                                        model = ref.images.first(),
-                                        contentDescription = null,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(100.dp)
-                                            .clip(RoundedCornerShape(4.dp))
-                                            .padding(top = 4.dp)
-                                    )
+                                    Text(ref.senderUsername, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                    if (ref.content.isNotBlank()) Text(ref.content, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    if (ref.images.isNotEmpty()) AsyncImage(model = ref.images.first(), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(4.dp)).padding(top = 4.dp))
                                 }
                             }
                         }
-                        // 消息文字
                         if (msg.content.isNotBlank()) {
                             if (msg.isMarkdown) MarkdownRenderer.Render(content = msg.content)
-                            else Text(
-                                msg.content,
-                                fontSize = 14.sp,
-                                color = if (isMine) Color.White else Color.Black
-                            )
+                            else Text(msg.content, fontSize = 14.sp, color = if (isMine) Color.White else Color.Black)
                         }
-                        // 图片内容
                         if (msg.images.isNotEmpty()) {
-                            Spacer(Modifier.height(4.dp))
-                            val hasText = msg.content.isNotBlank()
-                            val imgCount = msg.images.size
+                            Spacer(Modifier.height(4.dp)); val hasText = msg.content.isNotBlank(); val imgCount = msg.images.size
                             if (imgCount == 1) {
-                                Box(
-                                    modifier = Modifier
-                                        .widthIn(max = 280.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .clickable { onImageClick(msg.images, 0) }
-                                ) {
-                                    AsyncImage(
-                                        model = msg.images[0],
-                                        contentDescription = null,
-                                        contentScale = ContentScale.FillWidth,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                    if (!hasText) {
-                                        Text(
-                                            timestampDisplay,
-                                            color = Color.White,
-                                            fontSize = 11.sp,
-                                            modifier = Modifier
-                                                .align(Alignment.BottomEnd)
-                                                .padding(6.dp)
-                                                .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
-                                                .padding(horizontal = 5.dp, vertical = 2.dp)
-                                        )
-                                    }
+                                Box(modifier = Modifier.widthIn(max = 280.dp).clip(RoundedCornerShape(8.dp)).clickable { onImageClick(msg.images, 0) }) {
+                                    AsyncImage(model = msg.images[0], contentDescription = null, contentScale = ContentScale.FillWidth, modifier = Modifier.fillMaxWidth())
+                                    if (!hasText) { Text(timestampDisplay, color = Color.White, fontSize = 11.sp, modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp).background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp)).padding(horizontal = 5.dp, vertical = 2.dp)) }
                                 }
                             } else {
                                 if (imgCount == 2) {
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy(2.dp),
-                                        modifier = Modifier
-                                            .height(180.dp)
-                                            .widthIn(max = 280.dp)
-                                    ) {
-                                        msg.images.forEachIndexed { index, url ->
-                                            AsyncImage(
-                                                model = url,
-                                                contentDescription = null,
-                                                contentScale = ContentScale.Crop,
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .fillMaxHeight()
-                                                    .clip(RoundedCornerShape(8.dp))
-                                                    .clickable { onImageClick(msg.images, index) }
-                                            )
-                                        }
+                                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.height(180.dp).widthIn(max = 280.dp)) {
+                                        msg.images.forEachIndexed { index, url -> AsyncImage(model = url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(msg.images, index) }) }
                                     }
                                 } else if (imgCount == 3) {
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy(2.dp),
-                                        modifier = Modifier
-                                            .height(200.dp)
-                                            .widthIn(max = 280.dp)
-                                    ) {
-                                        AsyncImage(
-                                            model = msg.images[0],
-                                            contentDescription = null,
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .fillMaxHeight()
-                                                .clip(RoundedCornerShape(8.dp))
-                                                .clickable { onImageClick(msg.images, 0) }
-                                        )
-                                        Column(
-                                            verticalArrangement = Arrangement.spacedBy(2.dp),
-                                            modifier = Modifier.weight(1f).fillMaxHeight()
-                                        ) {
-                                            AsyncImage(
-                                                model = msg.images[1],
-                                                contentDescription = null,
-                                                contentScale = ContentScale.Crop,
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .fillMaxWidth()
-                                                    .clip(RoundedCornerShape(8.dp))
-                                                    .clickable { onImageClick(msg.images, 1) }
-                                            )
-                                            AsyncImage(
-                                                model = msg.images[2],
-                                                contentDescription = null,
-                                                contentScale = ContentScale.Crop,
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .fillMaxWidth()
-                                                    .clip(RoundedCornerShape(8.dp))
-                                                    .clickable { onImageClick(msg.images, 2) }
-                                            )
+                                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.height(200.dp).widthIn(max = 280.dp)) {
+                                        AsyncImage(model = msg.images[0], contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(msg.images, 0) })
+                                        Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f).fillMaxHeight()) {
+                                            AsyncImage(model = msg.images[1], contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(msg.images, 1) })
+                                            AsyncImage(model = msg.images[2], contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(msg.images, 2) })
                                         }
                                     }
                                 } else {
                                     val rows = (imgCount + 1) / 2
-                                    Column(
-                                        verticalArrangement = Arrangement.spacedBy(2.dp),
-                                        modifier = Modifier.widthIn(max = 280.dp)
-                                    ) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.widthIn(max = 280.dp)) {
                                         for (row in 0 until rows) {
-                                            Row(
-                                                horizontalArrangement = Arrangement.spacedBy(2.dp),
-                                                modifier = Modifier.height(120.dp)
-                                            ) {
-                                                for (col in 0..1) {
-                                                    val idx = row * 2 + col
-                                                    if (idx < imgCount) AsyncImage(
-                                                        model = msg.images[idx],
-                                                        contentDescription = null,
-                                                        contentScale = ContentScale.Crop,
-                                                        modifier = Modifier
-                                                            .weight(1f)
-                                                            .fillMaxHeight()
-                                                            .clip(RoundedCornerShape(8.dp))
-                                                            .clickable { onImageClick(msg.images, idx) }
-                                                    )
-                                                    else Spacer(Modifier.weight(1f))
-                                                }
+                                            Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.height(120.dp)) {
+                                                for (col in 0..1) { val idx = row * 2 + col; if (idx < imgCount) AsyncImage(model = msg.images[idx], contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(msg.images, idx) }) else Spacer(Modifier.weight(1f)) }
                                             }
                                         }
                                     }
                                 }
                                 if (!hasText) {
                                     Spacer(Modifier.height(2.dp))
-                                    Box(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        contentAlignment = Alignment.BottomEnd
-                                    ) {
-                                        Text(
-                                            timestampDisplay,
-                                            color = Color.White,
-                                            fontSize = 11.sp,
-                                            modifier = Modifier
-                                                .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
-                                                .padding(horizontal = 5.dp, vertical = 2.dp)
-                                        )
+                                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) {
+                                        Text(timestampDisplay, color = Color.White, fontSize = 11.sp, modifier = Modifier.background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp)).padding(horizontal = 5.dp, vertical = 2.dp))
                                     }
                                 }
                             }
                         }
-                        // 时间戳和编辑信息
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start
-                        ) {
-                            if (msg.content.isNotBlank()) {
-                                Text(
-                                    timestampDisplay,
-                                    fontSize = 10.sp,
-                                    color = if (isMine) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            if (msg.editTime != null) Text(
-                                "已编辑",
-                                fontSize = 10.sp,
-                                color = if (isMine) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(start = 4.dp)
-                            )
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
+                            if (msg.content.isNotBlank()) { Text(timestampDisplay, fontSize = 10.sp, color = if (isMine) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant) }
+                            if (msg.editTime != null) Text("已编辑", fontSize = 10.sp, color = if (isMine) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp))
                         }
                     }
                 }
-            } // Column end
-
-            // 菜单（必须放在 Box 中）
-            DropdownMenu(
-                expanded = showMenu,
-                onDismissRequest = { showMenu = false },
-                modifier = Modifier.align(if (isMine) Alignment.TopStart else Alignment.TopEnd)
-            ) {
-                if (msg.content.isNotBlank()) {
-                    DropdownMenuItem(
-                        text = { Text("复制") },
-                        onClick = {
-                            clipboard.nativeClipboard.setPrimaryClip(ClipData.newPlainText("text", msg.content))
-                            showMenu = false
-                            Toast.makeText(context, "复制成功", Toast.LENGTH_SHORT).show()
-                        },
-                        leadingIcon = { Icon(Icons.Default.ContentCopy, null, Modifier.size(18.dp)) }
-                    )
-                }
-                DropdownMenuItem(
-                    text = { Text("引用") },
-                    onClick = { showMenu = false; onReply() },
-                    leadingIcon = { Icon(Icons.Default.FormatQuote, null, Modifier.size(18.dp)) }
-                )
-                if (isMine || isAdmin) {
-                    DropdownMenuItem(
-                        text = { Text("撤回") },
-                        onClick = { showMenu = false; onRecall() },
-                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.Undo, null, Modifier.size(18.dp)) }
-                    )
-                }
-                if (isMine && msg.content.isNotBlank()) {
-                    DropdownMenuItem(
-                        text = { Text("编辑") },
-                        onClick = { showMenu = false; onEdit() },
-                        leadingIcon = { Icon(Icons.Default.Edit, null, Modifier.size(18.dp)) }
-                    )
-                }
             }
-        } // Box end
-
-        // 右侧占位
+            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }, modifier = Modifier.align(if (isMine) Alignment.TopStart else Alignment.TopEnd)) {
+                if (msg.content.isNotBlank()) { DropdownMenuItem(text = { Text("复制") }, onClick = { clipboard.nativeClipboard.setPrimaryClip(ClipData.newPlainText("text", msg.content)); showMenu = false; Toast.makeText(context, "复制成功", Toast.LENGTH_SHORT).show() }, leadingIcon = { Icon(Icons.Default.ContentCopy, null, Modifier.size(18.dp)) }) }
+                DropdownMenuItem(text = { Text("引用") }, onClick = { showMenu = false; onReply() }, leadingIcon = { Icon(Icons.Default.FormatQuote, null, Modifier.size(18.dp)) })
+                if (isMine || isAdmin) { DropdownMenuItem(text = { Text("撤回") }, onClick = { showMenu = false; onRecall() }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.Undo, null, Modifier.size(18.dp)) }) }
+                if (isMine && msg.content.isNotBlank()) { DropdownMenuItem(text = { Text("编辑") }, onClick = { showMenu = false; onEdit() }, leadingIcon = { Icon(Icons.Default.Edit, null, Modifier.size(18.dp)) }) }
+            }
+        }
         if (isMine) {
             Spacer(Modifier.width(44.dp))
         }
