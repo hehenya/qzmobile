@@ -428,7 +428,9 @@ fun MessageBubble(
     var showMenu by remember { mutableStateOf(false) }
     val msg = item.message
     val isMine = msg.isMine || msg.direction == "right"
-    val timestampDisplay = msg.timestampDisplay ?: msg.sendTimeDisplay ?: remember(msg.sendTime) { try { SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(msg.sendTime)) } catch (_: Exception) { "" } }
+    val timestampDisplay = msg.timestampDisplay ?: msg.sendTimeDisplay ?: remember(msg.sendTime) {
+        try { SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(msg.sendTime)) } catch (_: Exception) { "" }
+    }
 
     val shape = when (item.position) {
         BubblePosition.SINGLE -> RoundedCornerShape(16.dp)
@@ -437,14 +439,25 @@ fun MessageBubble(
         BubblePosition.BOTTOM -> RoundedCornerShape(4.dp, 4.dp, 16.dp, 16.dp)
     }
 
-    Row(modifier = Modifier.fillMaxWidth().combinedClickable(onClick = {}, onLongClick = { showMenu = true }).padding(horizontal = 8.dp, vertical = 4.dp),
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(onClick = {}, onLongClick = { showMenu = true })
+            .padding(horizontal = 8.dp, vertical = 4.dp),
         horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start,
-        verticalAlignment = Alignment.Bottom) {
-
+        verticalAlignment = Alignment.Bottom
+    ) {
         // 左侧头像/占位
         if (!isMine) {
             if (item.showAvatar) {
-                AsyncImage(model = msg.displayAvatar, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(36.dp).clip(CircleShape))
+                AsyncImage(
+                    model = msg.displayAvatar,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                )
                 Spacer(Modifier.width(8.dp))
             } else {
                 Spacer(Modifier.width(44.dp))
@@ -453,86 +466,273 @@ fun MessageBubble(
 
         Box(modifier = Modifier.weight(1f, fill = false)) {
             Column(horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
-                Card(shape = shape, colors = CardDefaults.cardColors(containerColor = if (isMine) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainer)) {
+                Card(
+                    shape = shape,
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isMine) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.surfaceContainer
+                    )
+                ) {
                     Column(modifier = Modifier.padding(8.dp)) {
                         if (!isMine && item.showName) {
-                            Text(msg.displayName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 2.dp))
+                            Text(
+                                msg.displayName,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(bottom = 2.dp)
+                            )
                         }
                         // 引用部分
                         if (msg.quoteMsgInfo != null) {
                             val ref = msg.quoteMsgInfo
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 2.dp)) {
-                                Box(Modifier.width(3.dp).height(32.dp).background(Color.Blue, RoundedCornerShape(2.dp)))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(bottom = 2.dp)
+                            ) {
+                                Box(
+                                    Modifier
+                                        .width(3.dp)
+                                        .height(32.dp)
+                                        .background(Color.Blue, RoundedCornerShape(2.dp))
+                                )
                                 Spacer(Modifier.width(8.dp))
                                 Column {
-                                    Text(ref.senderUsername, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                                    if (ref.content.isNotBlank()) Text(ref.content, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    if (ref.images.isNotEmpty()) AsyncImage(model = ref.images.first(), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(4.dp)).padding(top = 4.dp))
+                                    Text(
+                                        ref.senderUsername,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    if (ref.content.isNotBlank()) Text(
+                                        ref.content,
+                                        fontSize = 12.sp,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    if (ref.images.isNotEmpty()) AsyncImage(
+                                        model = ref.images.first(),
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(100.dp)
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .padding(top = 4.dp)
+                                    )
                                 }
                             }
                         }
                         if (msg.content.isNotBlank()) {
                             if (msg.isMarkdown) MarkdownRenderer.Render(content = msg.content)
-                            else Text(msg.content, fontSize = 14.sp, color = if (isMine) Color.White else Color.Black)
+                            else Text(
+                                msg.content,
+                                fontSize = 14.sp,
+                                color = if (isMine) Color.White else Color.Black
+                            )
                         }
                         if (msg.images.isNotEmpty()) {
                             Spacer(Modifier.height(4.dp))
                             val hasText = msg.content.isNotBlank()
                             val imgCount = msg.images.size
                             if (imgCount == 1) {
-                                Box(modifier = Modifier.widthIn(max = 280.dp).clip(RoundedCornerShape(8.dp)).clickable { onImageClick(msg.images, 0) }) {
-                                    AsyncImage(model = msg.images[0], contentDescription = null, contentScale = ContentScale.FillWidth, modifier = Modifier.fillMaxWidth())
-                                    if (!hasText) { Text(timestampDisplay, color = Color.White, fontSize = 11.sp, modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp).background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp)).padding(horizontal = 5.dp, vertical = 2.dp)) }
+                                Box(
+                                    modifier = Modifier
+                                        .widthIn(max = 280.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable { onImageClick(msg.images, 0) }
+                                ) {
+                                    AsyncImage(
+                                        model = msg.images[0],
+                                        contentDescription = null,
+                                        contentScale = ContentScale.FillWidth,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    if (!hasText) {
+                                        Text(
+                                            timestampDisplay,
+                                            color = Color.White,
+                                            fontSize = 11.sp,
+                                            modifier = Modifier
+                                                .align(Alignment.BottomEnd)
+                                                .padding(6.dp)
+                                                .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                                                .padding(horizontal = 5.dp, vertical = 2.dp)
+                                        )
+                                    }
                                 }
                             } else {
                                 if (imgCount == 2) {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.height(180.dp).widthIn(max = 280.dp)) {
-                                        msg.images.forEachIndexed { index, url -> AsyncImage(model = url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(msg.images, index) }) }
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                        modifier = Modifier
+                                            .height(180.dp)
+                                            .widthIn(max = 280.dp)
+                                    ) {
+                                        msg.images.forEachIndexed { index, url ->
+                                            AsyncImage(
+                                                model = url,
+                                                contentDescription = null,
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .fillMaxHeight()
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .clickable { onImageClick(msg.images, index) }
+                                            )
+                                        }
                                     }
                                 } else if (imgCount == 3) {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.height(200.dp).widthIn(max = 280.dp)) {
-                                        AsyncImage(model = msg.images[0], contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(msg.images, 0) })
-                                        Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f).fillMaxHeight()) {
-                                            AsyncImage(model = msg.images[1], contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(msg.images, 1) })
-                                            AsyncImage(model = msg.images[2], contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(msg.images, 2) })
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                        modifier = Modifier
+                                            .height(200.dp)
+                                            .widthIn(max = 280.dp)
+                                    ) {
+                                        AsyncImage(
+                                            model = msg.images[0],
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .fillMaxHeight()
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .clickable { onImageClick(msg.images, 0) }
+                                        )
+                                        Column(
+                                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                                            modifier = Modifier.weight(1f).fillMaxHeight()
+                                        ) {
+                                            AsyncImage(
+                                                model = msg.images[1],
+                                                contentDescription = null,
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .fillMaxWidth()
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .clickable { onImageClick(msg.images, 1) }
+                                            )
+                                            AsyncImage(
+                                                model = msg.images[2],
+                                                contentDescription = null,
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .fillMaxWidth()
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .clickable { onImageClick(msg.images, 2) }
+                                            )
                                         }
                                     }
                                 } else {
                                     val rows = (imgCount + 1) / 2
-                                    Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.widthIn(max = 280.dp)) {
+                                    Column(
+                                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                                        modifier = Modifier.widthIn(max = 280.dp)
+                                    ) {
                                         for (row in 0 until rows) {
-                                            Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.height(120.dp)) {
-                                                for (col in 0..1) { val idx = row * 2 + col; if (idx < imgCount) AsyncImage(model = msg.images[idx], contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(msg.images, idx) }) else Spacer(Modifier.weight(1f)) }
+                                            Row(
+                                                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                                modifier = Modifier.height(120.dp)
+                                            ) {
+                                                for (col in 0..1) {
+                                                    val idx = row * 2 + col
+                                                    if (idx < imgCount) AsyncImage(
+                                                        model = msg.images[idx],
+                                                        contentDescription = null,
+                                                        contentScale = ContentScale.Crop,
+                                                        modifier = Modifier
+                                                            .weight(1f)
+                                                            .fillMaxHeight()
+                                                            .clip(RoundedCornerShape(8.dp))
+                                                            .clickable { onImageClick(msg.images, idx) }
+                                                    )
+                                                    else Spacer(Modifier.weight(1f))
+                                                }
                                             }
                                         }
                                     }
                                 }
-                                if (!hasText) { 
+                                if (!hasText) {
                                     Spacer(Modifier.height(2.dp))
-                                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) {
-                                        Text(timestampDisplay, color = Color.White, fontSize = 11.sp, modifier = Modifier.background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp)).padding(horizontal = 5.dp, vertical = 2.dp))
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        contentAlignment = Alignment.BottomEnd
+                                    ) {
+                                        Text(
+                                            timestampDisplay,
+                                            color = Color.White,
+                                            fontSize = 11.sp,
+                                            modifier = Modifier
+                                                .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                                                .padding(horizontal = 5.dp, vertical = 2.dp)
+                                        )
                                     }
                                 }
                             }
                         }
+                        // 时间戳和编辑信息
                         Row(modifier = Modifier.align(if (isMine) Alignment.End else Alignment.Start)) {
-                            if (msg.content.isNotBlank()) { Text(timestampDisplay, fontSize = 10.sp, color = if (isMine) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant) }
-                            if (msg.editTime != null) Text("已编辑", fontSize = 10.sp, color = if (isMine) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp))
+                            if (msg.content.isNotBlank()) {
+                                Text(
+                                    timestampDisplay,
+                                    fontSize = 10.sp,
+                                    color = if (isMine) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            if (msg.editTime != null) Text(
+                                "已编辑",
+                                fontSize = 10.sp,
+                                color = if (isMine) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 4.dp)
+                            )
                         }
                     }
                 }
-                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }, modifier = Modifier.align(if (isMine) Alignment.TopStart else Alignment.TopEnd)) {
-                    if (msg.content.isNotBlank()) { DropdownMenuItem(text = { Text("复制") }, onClick = { clipboard.nativeClipboard.setPrimaryClip(ClipData.newPlainText("text", msg.content)); showMenu = false; Toast.makeText(context, "复制成功", Toast.LENGTH_SHORT).show() }, leadingIcon = { Icon(Icons.Default.ContentCopy, null, Modifier.size(18.dp)) }) }
-                    DropdownMenuItem(text = { Text("引用") }, onClick = { showMenu = false; onReply() }, leadingIcon = { Icon(Icons.Default.FormatQuote, null, Modifier.size(18.dp)) })
-                    if (isMine || isAdmin) { DropdownMenuItem(text = { Text("撤回") }, onClick = { showMenu = false; onRecall() }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.Undo, null, Modifier.size(18.dp)) }) }
-                    if (isMine && msg.content.isNotBlank()) { DropdownMenuItem(text = { Text("编辑") }, onClick = { showMenu = false; onEdit() }, leadingIcon = { Icon(Icons.Default.Edit, null, Modifier.size(18.dp)) }) }
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false },
+                    modifier = Modifier.align(if (isMine) Alignment.TopStart else Alignment.TopEnd)
+                ) {
+                    if (msg.content.isNotBlank()) {
+                        DropdownMenuItem(
+                            text = { Text("复制") },
+                            onClick = {
+                                clipboard.nativeClipboard.setPrimaryClip(ClipData.newPlainText("text", msg.content))
+                                showMenu = false
+                                Toast.makeText(context, "复制成功", Toast.LENGTH_SHORT).show()
+                            },
+                            leadingIcon = { Icon(Icons.Default.ContentCopy, null, Modifier.size(18.dp)) }
+                        )
+                    }
+                    DropdownMenuItem(
+                        text = { Text("引用") },
+                        onClick = { showMenu = false; onReply() },
+                        leadingIcon = { Icon(Icons.Default.FormatQuote, null, Modifier.size(18.dp)) }
+                    )
+                    if (isMine || isAdmin) {
+                        DropdownMenuItem(
+                            text = { Text("撤回") },
+                            onClick = { showMenu = false; onRecall() },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.Undo, null, Modifier.size(18.dp)) }
+                        )
+                    }
+                    if (isMine && msg.content.isNotBlank()) {
+                        DropdownMenuItem(
+                            text = { Text("编辑") },
+                            onClick = { showMenu = false; onEdit() },
+                            leadingIcon = { Icon(Icons.Default.Edit, null, Modifier.size(18.dp)) }
+                        )
+                    }
                 }
             }
-        }
 
-        // 右侧占位
-        if (isMine) {
-            Spacer(Modifier.width(44.dp))
+            // 右侧占位
+            if (isMine) {
+                Spacer(Modifier.width(44.dp))
+            }
         }
     }
 }
