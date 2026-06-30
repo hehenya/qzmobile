@@ -313,21 +313,25 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
                 }
             },
             confirmButton = {
-                Button(onClick = {
-                    val bgUrl = previewBgUrl
-                    previewImageUri = null; previewBgUrl = null
-                    if (bgUrl != null && uiState.group != null) {
-                        scope.launch {
-                            val token = TokenManager.get(context) ?: ""
-                            setChatBackground(token, 2, uiState.group!!.id, bgUrl) { success ->
-                                Toast.makeText(context, if (success) "背景设置成功" else "背景设置失败", Toast.LENGTH_SHORT).show()
+                Button(
+                    onClick = {
+                        val bgUrl = previewBgUrl
+                        previewImageUri = null
+                        previewBgUrl = null
+                        if (bgUrl != null && uiState.group != null) {
+                            scope.launch {
+                                val token = TokenManager.get(context) ?: ""
+                                setChatBackground(token, 2, uiState.group!!.id, bgUrl) { success ->
+                                    Toast.makeText(context, if (success) "背景设置成功" else "背景设置失败", Toast.LENGTH_SHORT).show()
+                                }
                             }
                         }
-                    }
-                    isPickingBackground = false
-                },
-                enabled = previewBgUrl != null
-                }) { Text("确认设置") }
+                        isPickingBackground = false
+                    },
+                    enabled = previewBgUrl != null  
+                ) {
+                    Text("确认设置")
+                }
             },
             dismissButton = { TextButton(onClick = { previewImageUri = null; previewBgUrl = null; isPickingBackground = false }) { Text("取消") } }
         )

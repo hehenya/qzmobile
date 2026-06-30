@@ -116,6 +116,7 @@ class MainActivity : ComponentActivity() {
         }
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        DraftManager.init(applicationContext)
         setContent {
             ToolBoxTheme {
                 MyApplicationApp()
