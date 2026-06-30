@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import androidx.compose.foundation.border
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -17,22 +18,24 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
@@ -156,7 +159,6 @@ enum class BubblePosition {
 
 fun buildUiMessages(messages: List<Message>): List<MessageUiModel> {
     if (messages.isEmpty()) return emptyList()
-    // 注意：传入的消息列表是按 sendTime 降序（最新在前），需要先按时间升序处理
     val sorted = messages.sortedBy { it.sendTime }
     return sorted.mapIndexed { index, msg ->
         val prev = sorted.getOrNull(index - 1)
@@ -172,7 +174,6 @@ fun buildUiMessages(messages: List<Message>): List<MessageUiModel> {
             else -> BubblePosition.BOTTOM
         }
 
-        // 头像和名字只在该组的第一条（即 TOP 或 SINGLE，对应 next 不同发送者）显示
         val showAvatar = next == null || next.senderId != msg.senderId
         val showName = showAvatar && !msg.isMine
 
@@ -261,6 +262,10 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
     val uiState by viewModel.uiState.collectAsState()
     var firstMessageId by remember { mutableStateOf<String?>(null) }
 
+    // 直接从 ViewModel 收集上传状态
+    val isUploading by viewModel.isUploading.collectAsState()
+    val uploadProgress by viewModel.uploadProgress.collectAsState()
+
     LaunchedEffect(viewModel) { viewModel.connectWebSocket(); viewModel.toastMessage.collect { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() } }
     val coroutineScope = rememberCoroutineScope()
     val imagePicker = rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent()) { uri -> viewModel.handleImageSelected(uri, context, coroutineScope) }
@@ -274,7 +279,7 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
     var imageViewerInitialPage by remember { mutableIntStateOf(0) }
     val replyTo by viewModel.replyTo.collectAsState()
 
-    // 浮动头像（基于原始消息列表，因为分组后顺序不变）
+    // 浮动头像
     val floatingAvatar by remember {
         derivedStateOf {
             val visibleItems = listState.layoutInfo.visibleItemsInfo
@@ -316,7 +321,7 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
                 val uiMessages = buildUiMessages(uiState.messages)
                 LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), reverseLayout = true, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     items(items = uiMessages, key = { it.message.effectiveMsgId }) { item ->
-                        // 日期分隔符（仅在倒序列表中新一天的首条显示）
+                        // 日期分隔符
                         if (item.dateHeader != null) {
                             Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
                                 Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)) {
@@ -369,7 +374,7 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
                     onTextChange = { viewModel.updateInputText(it) }, onSendClick = { viewModel.sendMessage() },
                     onAddImageClick = { imagePicker.launch("image/*") }, onRemoveImage = { viewModel.removeImage(it) },
                     onToggleMarkdown = { viewModel.toggleMarkdown() }, innerPadding = innerPadding,
-                    isUploading = uiState.isUploading, uploadProgress = uiState.uploadProgress, onCancelUpload = { viewModel.cancelUpload() })
+                    isUploading = isUploading, uploadProgress = uploadProgress, onCancelUpload = { viewModel.cancelUpload() })
             }
         }
     }
@@ -471,7 +476,6 @@ fun MessageBubble(
                             else Text(msg.content, fontSize = 14.sp, color = if (isMine) Color.White else Color.Black)
                         }
                         if (msg.images.isNotEmpty()) {
-                            // 简单图片网格（保持原有布局风格）
                             Spacer(Modifier.height(4.dp))
                             val hasText = msg.content.isNotBlank()
                             val imgCount = msg.images.size
@@ -481,7 +485,6 @@ fun MessageBubble(
                                     if (!hasText) { Text(timestampDisplay, color = Color.White, fontSize = 11.sp, modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp).background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp)).padding(horizontal = 5.dp, vertical = 2.dp)) }
                                 }
                             } else {
-                                // 多图保持原布局
                                 if (imgCount == 2) {
                                     Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.height(180.dp).widthIn(max = 280.dp)) {
                                         msg.images.forEachIndexed { index, url -> AsyncImage(model = url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(msg.images, index) }) }
@@ -504,7 +507,12 @@ fun MessageBubble(
                                         }
                                     }
                                 }
-                                if (!hasText) { Spacer(Modifier.height(2.dp)); Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) { Text(timestampDisplay, color = Color.White, fontSize = 11.sp, modifier = Modifier.background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp)).padding(horizontal = 5.dp, vertical = 2.dp)) } }
+                                if (!hasText) { 
+                                    Spacer(Modifier.height(2.dp))
+                                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) {
+                                        Text(timestampDisplay, color = Color.White, fontSize = 11.sp, modifier = Modifier.background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp)).padding(horizontal = 5.dp, vertical = 2.dp))
+                                    }
+                                }
                             }
                         }
                         Row(modifier = Modifier.align(if (isMine) Alignment.End else Alignment.Start)) {
@@ -522,7 +530,7 @@ fun MessageBubble(
             }
         }
 
-        // 右侧占位，保证对齐
+        // 右侧占位
         if (isMine) {
             Spacer(Modifier.width(44.dp))
         }
