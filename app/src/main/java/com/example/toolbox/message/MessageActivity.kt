@@ -480,7 +480,10 @@ fun MessageBubble(
 fun MessageInput(
     inputText: String, selectedImages: List<String>, isMarkdown: Boolean,
     onTextChange: (String) -> Unit, onSendClick: () -> Unit, onAddImageClick: () -> Unit,
-    onRemoveImage: (Int) -> Unit, onToggleMarkdown: () -> Unit, innerPadding: PaddingValues
+    onRemoveImage: (Int) -> Unit, onToggleMarkdown: () -> Unit, innerPadding: PaddingValues,
+    isUploading: Boolean = false,
+    uploadProgress: Float = 0f,
+    onCancelUpload: () -> Unit = {}
 ) {
     var showAttachmentMenu by remember { mutableStateOf(false) }
 
@@ -488,14 +491,17 @@ fun MessageInput(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp)  // 减小垂直外边距
+            .padding(horizontal = 8.dp, vertical = 4.dp)
             .border(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f), RoundedCornerShape(20.dp)),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f), // 与顶栏相同透明度
-        shadowElevation = 1.dp,  // 更轻的阴影
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+        shadowElevation = 1.dp,
         shape = RoundedCornerShape(20.dp)
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(8.dp).padding(bottom = innerPadding.calculateBottomPadding())) {
-            if (selectedImages.isNotEmpty()) {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp).padding(bottom = innerPadding.calculateBottomPadding())) {
+            // 上传进度条显示
+            if (isUploading) {
+                UploadProgressBar(progress = uploadProgress, onCancel = onCancelUpload)
+            } else if (selectedImages.isNotEmpty()) {
                 LazyRow(modifier = Modifier.fillMaxWidth().height(80.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     items(selectedImages.size) { index ->
                         Box(modifier = Modifier.size(70.dp).clip(RoundedCornerShape(4.dp))) {
@@ -508,8 +514,8 @@ fun MessageInput(
                 }
                 Spacer(modifier = Modifier.height(4.dp))
             }
+
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                // 附件菜单按钮（合并发送图片和Markdown）
                 Box {
                     IconButton(onClick = { showAttachmentMenu = true }, modifier = Modifier.size(40.dp)) {
                         Icon(Icons.Default.MoreVert, contentDescription = "附件", tint = MaterialTheme.colorScheme.onSurface)
@@ -559,7 +565,6 @@ fun MessageInput(
                     )
                 )
                 Spacer(modifier = Modifier.width(5.dp))
-                // 发送按钮，叠加MD标记
                 Box(contentAlignment = Alignment.Center) {
                     IconButton(onClick = onSendClick, modifier = Modifier.size(40.dp), enabled = inputText.isNotBlank() || selectedImages.isNotEmpty()) {
                         Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "发送")
@@ -603,4 +608,43 @@ fun EditMessageDialog(
         confirmButton = { Button(onClick = onSave) { Text("保存") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
     )
+}
+@Composable
+fun UploadProgressBar(
+    progress: Float,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp, horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier.size(40.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.fillMaxSize(),
+                strokeWidth = 3.dp,
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            )
+            IconButton(
+                onClick = onCancel,
+                modifier = Modifier.size(24.dp)
+            ) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = "取消上传",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Text("正在上传图片...", style = MaterialTheme.typography.bodySmall)
+    }
 }

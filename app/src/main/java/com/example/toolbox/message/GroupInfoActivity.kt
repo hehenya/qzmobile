@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -126,6 +127,8 @@ class GroupInfoActivity : ComponentActivity() {
 @Composable
 fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
     val uiState by viewModel.uiState.collectAsState()
+    var isUploadingBg by remember { mutableStateOf(false) }
+    var bgProgress by remember { mutableFloatStateOf(0f) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var isPickingBackground by remember { mutableStateOf(false) }
@@ -153,9 +156,32 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
     ) { uri: Uri? ->
         if (uri != null) {
             if (isPickingBackground) {
+                // --- 背景上传（带进度） ---
                 previewImageUri = uri
-                uploadAndSetBg(uri)
+                isUploadingBg = true
+                scope.launch {
+                    try {
+                        val inputStream = context.contentResolver.openInputStream(uri) ?: return@launch
+                        val tempFile = java.io.File(context.cacheDir, "bg_${System.currentTimeMillis()}.jpg")
+                        FileOutputStream(tempFile).use { out -> inputStream.copyTo(out) }
+                        val token = TokenManager.get(context) ?: ""
+                        val imageUrl = uploadImage(tempFile.absolutePath, token, 3) { progress ->
+                            bgProgress = progress / 100f
+                        }
+                        isUploadingBg = false
+                        if (imageUrl != null) {
+                            previewBgUrl = imageUrl
+                        } else {
+                            Toast.makeText(context, "上传失败", Toast.LENGTH_SHORT).show()
+                        }
+                        tempFile.delete()
+                    } catch (e: Exception) {
+                        isUploadingBg = false
+                        Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
             } else {
+                // --- 头像上传（无进度） ---
                 scope.launch {
                     try {
                         val inputStream = context.contentResolver.openInputStream(uri) ?: return@launch
@@ -163,15 +189,20 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
                         FileOutputStream(tempFile).use { out -> inputStream.copyTo(out) }
                         val token = TokenManager.get(context) ?: ""
                         val imageUrl = uploadImage(tempFile.absolutePath, token, 3) {}
-                        if (imageUrl != null) { viewModel.updateEditingAvatarUrl(imageUrl); Toast.makeText(context, "头像上传成功", Toast.LENGTH_SHORT).show() }
-                        else { Toast.makeText(context, "上传失败", Toast.LENGTH_SHORT).show() }
+                        if (imageUrl != null) {
+                            viewModel.updateEditingAvatarUrl(imageUrl)
+                            Toast.makeText(context, "头像上传成功", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "上传失败", Toast.LENGTH_SHORT).show()
+                        }
                         tempFile.delete()
-                    } catch (e: Exception) { Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show() }
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         }
     }
-
     LaunchedEffect(viewModel) { viewModel.toastMessage.collect { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() } }
     LaunchedEffect(viewModel) { viewModel.joinSuccess.collect { onBack() } }
 
@@ -237,6 +268,16 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
             title = { Text("预览聊天背景") },
             text = {
                 Column {
+                    if (isUploadingBg) {
+                        // 显示上传进度
+                        Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                CircularProgressIndicator(progress = { bgProgress })
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("上传中...")
+                            }
+                        }
+                    } else {
                     Box(modifier = Modifier.fillMaxWidth().height(350.dp).clip(RoundedCornerShape(12.dp))) {
                         // 背景图
                         AsyncImage(model = previewImageUri, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
@@ -284,6 +325,8 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
                         }
                     }
                     isPickingBackground = false
+                },
+                enabled = previewBgUrl != null
                 }) { Text("确认设置") }
             },
             dismissButton = { TextButton(onClick = { previewImageUri = null; previewBgUrl = null; isPickingBackground = false }) { Text("取消") } }
