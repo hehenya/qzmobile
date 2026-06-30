@@ -474,6 +474,7 @@ fun MessageBubble(
                     )
                 ) {
                     Column(modifier = Modifier.padding(8.dp)) {
+                        // 发送者名称
                         if (!isMine && item.showName) {
                             Text(
                                 msg.displayName,
@@ -524,6 +525,7 @@ fun MessageBubble(
                                 }
                             }
                         }
+                        // 消息文字
                         if (msg.content.isNotBlank()) {
                             if (msg.isMarkdown) MarkdownRenderer.Render(content = msg.content)
                             else Text(
@@ -532,6 +534,7 @@ fun MessageBubble(
                                 color = if (isMine) Color.White else Color.Black
                             )
                         }
+                        // 图片内容
                         if (msg.images.isNotEmpty()) {
                             Spacer(Modifier.height(4.dp))
                             val hasText = msg.content.isNotBlank()
@@ -673,7 +676,7 @@ fun MessageBubble(
                                 }
                             }
                         }
-                        // 时间戳和编辑信息
+                        // 时间戳和编辑信息（放在Box中以便使用align）
                         Box(modifier = Modifier.fillMaxWidth()) {
                             Row(modifier = Modifier.align(if (isMine) Alignment.End else Alignment.Start)) {
                                 if (msg.content.isNotBlank()) {
@@ -693,6 +696,7 @@ fun MessageBubble(
                         }
                     }
                 }
+                // 菜单
                 DropdownMenu(
                     expanded = showMenu,
                     onDismissRequest = { showMenu = false },
