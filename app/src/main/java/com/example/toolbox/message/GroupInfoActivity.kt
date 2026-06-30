@@ -5,7 +5,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -50,8 +49,6 @@ import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -75,6 +72,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -135,22 +133,6 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
     var previewImageUri by remember { mutableStateOf<Uri?>(null) }
     var previewBgUrl by remember { mutableStateOf<String?>(null) }
 
-    fun uploadAndSetBg(uri: Uri) {
-        scope.launch {
-            try {
-                val inputStream = context.contentResolver.openInputStream(uri) ?: return@launch
-                val tempFile = java.io.File(context.cacheDir, "bg_${System.currentTimeMillis()}.jpg")
-                FileOutputStream(tempFile).use { out -> inputStream.copyTo(out) }
-                val token = TokenManager.get(context) ?: ""
-                val imageUrl = uploadImage(tempFile.absolutePath, token, 3) {}
-                if (imageUrl != null) {
-                    previewBgUrl = imageUrl
-                } else { Toast.makeText(context, "上传失败", Toast.LENGTH_SHORT).show() }
-                tempFile.delete()
-            } catch (e: Exception) { Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show() }
-        }
-    }
-
     val imagePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -203,6 +185,7 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
             }
         }
     }
+
     LaunchedEffect(viewModel) { viewModel.toastMessage.collect { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() } }
     LaunchedEffect(viewModel) { viewModel.joinSuccess.collect { onBack() } }
 
@@ -269,7 +252,6 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
             text = {
                 Column {
                     if (isUploadingBg) {
-                        // 显示上传进度
                         Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 CircularProgressIndicator(progress = { bgProgress })
@@ -278,46 +260,41 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
                             }
                         }
                     } else {
-                    Box(modifier = Modifier.fillMaxWidth().height(350.dp).clip(RoundedCornerShape(12.dp))) {
-                        // 背景图
-                        AsyncImage(model = previewImageUri, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                        // 叠加模拟消息
-                        Column(modifier = Modifier.fillMaxSize().padding(8.dp), verticalArrangement = Arrangement.Bottom) {
-                            // 对方消息
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
-                                Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(16.dp, 16.dp, 16.dp, 4.dp)) {
-                                    Text("这是一条模拟消息", modifier = Modifier.padding(8.dp), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
+                        Box(modifier = Modifier.fillMaxWidth().height(350.dp).clip(RoundedCornerShape(12.dp))) {
+                            AsyncImage(model = previewImageUri, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                            Column(modifier = Modifier.fillMaxSize().padding(8.dp), verticalArrangement = Arrangement.Bottom) {
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
+                                    Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(16.dp, 16.dp, 16.dp, 4.dp)) {
+                                        Text("这是一条模拟消息", modifier = Modifier.padding(8.dp), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
+                                    }
                                 }
-                            }
-                            Spacer(Modifier.height(6.dp))
-                            // 自己消息
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                                Surface(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), shape = RoundedCornerShape(16.dp, 16.dp, 4.dp, 16.dp)) {
-                                    Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(8.dp)) {
-                                        Text("好的，收到", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
-                                        Text(now, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Spacer(Modifier.height(6.dp))
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                                    Surface(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), shape = RoundedCornerShape(16.dp, 16.dp, 4.dp, 16.dp)) {
+                                        Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(8.dp)) {
+                                            Text("好的，收到", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
+                                            Text(now, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                    }
+                                }
+                                Spacer(Modifier.height(6.dp))
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
+                                    Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(16.dp, 16.dp, 16.dp, 4.dp)) {
+                                        Text("效果预览", modifier = Modifier.padding(8.dp), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
                                     }
                                 }
                             }
-                            Spacer(Modifier.height(6.dp))
-                            // 对方消息
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
-                                Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(16.dp, 16.dp, 16.dp, 4.dp)) {
-                                    Text("效果预览", modifier = Modifier.padding(8.dp), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
-                                }
-                            }
                         }
+                        Spacer(Modifier.height(8.dp))
+                        Text("以上为背景效果预览", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Spacer(Modifier.height(8.dp))
-                    Text("以上为背景效果预览", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
                         val bgUrl = previewBgUrl
-                        previewImageUri = null
-                        previewBgUrl = null
+                        previewImageUri = null; previewBgUrl = null
                         if (bgUrl != null && uiState.group != null) {
                             scope.launch {
                                 val token = TokenManager.get(context) ?: ""
@@ -328,10 +305,8 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
                         }
                         isPickingBackground = false
                     },
-                    enabled = previewBgUrl != null  
-                ) {
-                    Text("确认设置")
-                }
+                    enabled = previewBgUrl != null
+                ) { Text("确认设置") }
             },
             dismissButton = { TextButton(onClick = { previewImageUri = null; previewBgUrl = null; isPickingBackground = false }) { Text("取消") } }
         )
