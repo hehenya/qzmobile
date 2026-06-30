@@ -231,7 +231,9 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
     var imageViewerInitialPage by remember { mutableIntStateOf(0) }
     val replyTo by viewModel.replyTo.collectAsState()
 
+    // 浮动头像（仅群聊有效，私聊不显示）
     val floatingAvatar by remember { derivedStateOf {
+        if (uiState.chatType != 2) return@derivedStateOf null
         val visible = listState.layoutInfo.visibleItemsInfo
         if (visible.isEmpty() || uiState.messages.isEmpty()) null else {
             val lastVisible = visible.lastOrNull() ?: return@derivedStateOf null
@@ -267,10 +269,13 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
             Box(modifier = Modifier.weight(1f)) {
                 PullToRefreshBox(isRefreshing = uiState.isRefreshing, onRefresh = { viewModel.refresh() }, modifier = Modifier.fillMaxSize()) {
                     LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), reverseLayout = true, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        items(uiState.messages.size) { index ->
-                            val message = uiState.messages[index]
-                            val newerMessage = uiState.messages.getOrNull(index - 1)
-                            val olderMessage = uiState.messages.getOrNull(index + 1)
+                        items(
+                            items = uiState.messages,
+                            key = { it.effectiveMsgId }
+                        ) { message ->
+                            val index = uiState.messages.indexOf(message)
+                            val newerMessage = if (index > 0) uiState.messages[index - 1] else null
+                            val olderMessage = if (index < uiState.messages.size - 1) uiState.messages[index + 1] else null
 
                             val showDate = newerMessage == null || getDateString(message.sendTime) != getDateString(newerMessage.sendTime)
                             if (showDate) {
@@ -414,12 +419,13 @@ fun MessageBubble(
         Row(modifier = Modifier.fillMaxWidth().combinedClickable(onClick = {}, onLongClick = { showMenu = true }).padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.Bottom, horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
 
-            if (!isMine) {
+            // 左侧头像 - 仅群聊显示
+            if (!isMine && chatType == 2) {
                 if (isFirstFromSender) {
                     AsyncImage(model = message.displayAvatar, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(36.dp).clip(CircleShape))
                     Spacer(Modifier.width(8.dp))
                 } else {
-                    Spacer(Modifier.width(44.dp))
+                    Spacer(Modifier.width(44.dp)) // 占位保持对齐
                 }
             }
 
@@ -437,7 +443,7 @@ fun MessageBubble(
                         )
                     ) {
                         Column(modifier = Modifier.padding(8.dp)) {
-                            if (!isMine && isFirstFromSender) {
+                            if (!isMine && isFirstFromSender && chatType == 2) {
                                 Text(message.displayName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 2.dp))
                             }
                             if (message.quoteMsgInfo != null) {
@@ -489,7 +495,7 @@ fun MessageBubble(
                                     if (!hasText) { Spacer(Modifier.height(2.dp)); Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) { Text(timestampDisplay, color = Color.White, fontSize = 11.sp, modifier = Modifier.background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp)).padding(horizontal = 5.dp, vertical = 2.dp)) } }
                                 }
                             }
-                            // 链接预览（保留）
+                            // 链接预览
                             if (message.linkInfo != null && message.linkInfo.isNotEmpty()) {
                                 Spacer(Modifier.height(6.dp))
                                 message.linkInfo.forEach { info ->
@@ -513,7 +519,7 @@ fun MessageBubble(
                     if (isMine && message.content.isNotBlank()) { DropdownMenuItem(text = { Text("编辑") }, onClick = { showMenu = false; onEdit() }, leadingIcon = { Icon(Icons.Default.Edit, null, Modifier.size(18.dp)) }) }
                 }
             }
-            if (isMine) { Spacer(Modifier.width(44.dp)) }
+            // 右侧不再添加占位
         }
     }
 }
