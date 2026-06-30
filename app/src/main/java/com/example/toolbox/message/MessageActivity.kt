@@ -231,6 +231,7 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
     var imageViewerInitialPage by remember { mutableIntStateOf(0) }
     val replyTo by viewModel.replyTo.collectAsState()
 
+    // 浮动头像
     val floatingAvatar by remember { derivedStateOf {
         val visible = listState.layoutInfo.visibleItemsInfo
         if (visible.isEmpty() || uiState.messages.isEmpty()) null else {
@@ -269,8 +270,9 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
                     LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), reverseLayout = true, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         items(uiState.messages.size) { index ->
                             val message = uiState.messages[index]
-                            val newerMessage = uiState.messages.getOrNull(index - 1)
-                            val olderMessage = uiState.messages.getOrNull(index + 1)
+                            val newerMessage = uiState.messages.getOrNull(index - 1)   // 更新的消息（时间上）
+                            val olderMessage = uiState.messages.getOrNull(index + 1)   // 更旧的消息
+
                             val showDate = newerMessage == null || getDateString(message.sendTime) != getDateString(newerMessage.sendTime)
                             if (showDate) {
                                 Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
@@ -279,6 +281,7 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
                                     }
                                 }
                             }
+
                             MessageBubble(
                                 message = message,
                                 newerMessage = newerMessage,
@@ -386,19 +389,30 @@ fun MessageBubble(
     val msg = message
     val isMine = msg.isMine || msg.direction == "right"
     val timestampDisplay = msg.timestampDisplay ?: msg.sendTimeDisplay ?: remember(msg.sendTime) { try { SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(msg.sendTime)) } catch (_: Exception) { "" } }
+
     val isFirstFromSender = newerMessage == null || newerMessage.isRecalled || newerMessage.isSystem || newerMessage.senderId != msg.senderId
     val isLastFromSender = olderMessage == null || olderMessage.isRecalled || olderMessage.isSystem || olderMessage.senderId != msg.senderId
+
     val shape = when {
         isFirstFromSender && isLastFromSender -> RoundedCornerShape(16.dp)
         isFirstFromSender && !isLastFromSender -> RoundedCornerShape(16.dp, 16.dp, 4.dp, 4.dp)
         !isFirstFromSender && !isLastFromSender -> RoundedCornerShape(4.dp)
         else -> RoundedCornerShape(4.dp, 4.dp, 16.dp, 16.dp)
     }
-    Row(modifier = Modifier.fillMaxWidth().combinedClickable(onClick = {}, onLongClick = { showMenu = true }).padding(horizontal = 8.dp, vertical = 4.dp), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start, verticalAlignment = Alignment.Bottom) {
+
+    Row(modifier = Modifier.fillMaxWidth().combinedClickable(onClick = {}, onLongClick = { showMenu = true }).padding(horizontal = 8.dp, vertical = 4.dp),
+        horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start,
+        verticalAlignment = Alignment.Bottom
+    ) {
         if (!isMine) {
-            if (isFirstFromSender) { AsyncImage(model = msg.displayAvatar, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(36.dp).clip(CircleShape)); Spacer(Modifier.width(8.dp)) }
-            else { Spacer(Modifier.width(44.dp)) }
+            if (isFirstFromSender) {
+                AsyncImage(model = msg.displayAvatar, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(36.dp).clip(CircleShape))
+                Spacer(Modifier.width(8.dp))
+            } else {
+                Spacer(Modifier.width(44.dp))
+            }
         }
+
         Box(modifier = Modifier.weight(1f, fill = false)) {
             Column(horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
                 Card(shape = shape, colors = CardDefaults.cardColors(containerColor = if (isMine) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainer)) {
@@ -426,7 +440,6 @@ fun MessageBubble(
                                 if (!hasText) { Spacer(Modifier.height(2.dp)); Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) { Text(timestampDisplay, color = Color.White, fontSize = 11.sp, modifier = Modifier.background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp)).padding(horizontal = 5.dp, vertical = 2.dp)) } }
                             }
                         }
-                        // 链接预览
                         if (msg.linkInfo != null && msg.linkInfo.isNotEmpty()) {
                             Spacer(Modifier.height(6.dp))
                             msg.linkInfo.forEach { info ->
