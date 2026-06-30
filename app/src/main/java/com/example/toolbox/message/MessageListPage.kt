@@ -54,7 +54,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -65,6 +64,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -75,6 +75,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.rememberAsyncImagePainter
 import com.example.toolbox.MainViewModel
 import com.example.toolbox.TokenManager
+import com.example.toolbox.DraftManager
 import com.example.toolbox.data.Friend
 import com.example.toolbox.mine.notice.FriendRequestActivity
 import com.example.toolbox.mine.notice.snapshotFlow
@@ -475,6 +476,16 @@ fun CreateGroupDialog(
 @Composable
 fun FriendItem(friend: Friend) {
     val context = LocalContext.current
+    // 加载草稿
+    val chatType = if (friend.type == "group") 2 else 1
+    val chatId = friend.id.toIntOrNull() ?: 0
+    val draft = remember { DraftManager.getDraft(chatType, chatId) }
+    
+    val lastMsgText = if (draft != null) "[草稿] $draft" else (friend.lastMessage ?: "暂无消息")
+    val lastMsgColor = if (draft != null) Color.Red 
+        else if (friend.unreadCount > 0) MaterialTheme.colorScheme.primary 
+        else MaterialTheme.colorScheme.onSurfaceVariant
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -553,15 +564,11 @@ fun FriendItem(friend: Friend) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = friend.lastMessage ?: "暂无消息",
+                    text = lastMsgText,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (friend.unreadCount > 0) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
+                    color = lastMsgColor,
                     modifier = Modifier.weight(1f)
                 )
 

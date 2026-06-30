@@ -484,15 +484,15 @@ fun MessageInput(
 ) {
     var showAttachmentMenu by remember { mutableStateOf(false) }
 
-    // 输入框悬空 + 半透明，无边框薄阴影
+    // 输入框容器与顶栏统一透明度，更紧凑
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 8.dp)
-            .border(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(24.dp)),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-        shadowElevation = 2.dp,
-        shape = RoundedCornerShape(24.dp)
+            .padding(horizontal = 8.dp, vertical = 4.dp)  // 减小垂直外边距
+            .border(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f), RoundedCornerShape(20.dp)),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f), // 与顶栏相同透明度
+        shadowElevation = 1.dp,  // 更轻的阴影
+        shape = RoundedCornerShape(20.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(8.dp).padding(bottom = innerPadding.calculateBottomPadding())) {
             if (selectedImages.isNotEmpty()) {
