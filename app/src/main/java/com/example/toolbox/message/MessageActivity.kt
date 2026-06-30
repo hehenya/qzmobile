@@ -4,7 +4,6 @@ package com.example.toolbox.message
 
 import android.content.ClipData
 import android.content.Context
-import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.content.Intent
@@ -279,11 +278,18 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
                             }
                         }
                         
-                        MessageBubble(message = message, onRecall = { viewModel.showRecallDialog(message.effectiveMsgId) }, onEdit = { viewModel.showEditDialog(message) },
-                            onImageClick = { urls, idx -> imageViewerUrls = urls; imageViewerInitialPage = idx; showImageViewer = true },
-                            clipboard = clipboard, context = context, onReply = { viewModel.setReplyTo(message) },
-                            isAdmin = uiState.isAdmin, newerMessage = newerMessage, olderMessage = olderMessage, chatType = uiState.chatType)
-                    }
+                        MessageBubble(
+    message = message,
+    newerMessage = newerMessage,
+    olderMessage = olderMessage,
+    context = context,
+    clipboard = clipboard,
+    onImageClick = { urls, idx -> imageViewerUrls = urls; imageViewerInitialPage = idx; showImageViewer = true },
+    onReply = { viewModel.setReplyTo(message) },
+    onRecall = { viewModel.showRecallDialog(message.effectiveMsgId) },
+    onEdit = { viewModel.showEditDialog(message) },
+    isAdmin = uiState.isAdmin
+)
                     if (uiState.isLoadingMore) { item { Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { ContainedLoadingIndicator() } } }
                 }
             }
@@ -679,7 +685,7 @@ fun LinkPreviewCard(url: String, title: String, onClick: () -> Unit) {
         color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.7f)
     ) {
         Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Language, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+            Icon(Icons.Default.Public, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
             Column {
                 Text(title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
