@@ -262,7 +262,6 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
     val uiState by viewModel.uiState.collectAsState()
     var firstMessageId by remember { mutableStateOf<String?>(null) }
 
-    // 直接从 ViewModel 收集上传状态
     val isUploading by viewModel.isUploading.collectAsState()
     val uploadProgress by viewModel.uploadProgress.collectAsState()
 
@@ -279,7 +278,6 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
     var imageViewerInitialPage by remember { mutableIntStateOf(0) }
     val replyTo by viewModel.replyTo.collectAsState()
 
-    // 浮动头像
     val floatingAvatar by remember {
         derivedStateOf {
             val visibleItems = listState.layoutInfo.visibleItemsInfo
@@ -303,78 +301,96 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
     val scrollToBottom: () -> Unit = { coroutineScope.launch { listState.animateScrollToItem(0); unreadCount = 0; if (uiState.messages.isNotEmpty()) firstMessageId = uiState.messages.first().effectiveMsgId } }
     if (showImageViewer) MultiImageViewer(images = imageViewerUrls, initialPage = imageViewerInitialPage, isVisible = showImageViewer, onDismiss = { showImageViewer = false })
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        if (uiState.chatType == 1 && uiState.relationship != "friend") {
-            Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.errorContainer, tonalElevation = 2.dp) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("你们不是好友，此对话具有时限性", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.weight(1f))
-                    Spacer(Modifier.width(12.dp))
-                    Button(onClick = { token?.let { tv -> scope.launch { if (sendFriendRequest(tv, uiState.chatId)) Toast.makeText(context, "好友请求已发送", Toast.LENGTH_SHORT).show() else Toast.makeText(context, "发送失败", Toast.LENGTH_SHORT).show() } } }) { Icon(Icons.Default.PersonAdd, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("添加好友") }
+    // 使用 Box 包裹所有内容，背景图作为底层
+    Box(modifier = Modifier.fillMaxSize()) {
+        // 背景图（全透明显示，延伸至整个屏幕）
+        val backgroundUrl by viewModel.backgroundUrl.collectAsState()
+        backgroundUrl?.takeIf { it.isNotEmpty() }?.let { bgUrl ->
+            AsyncImage(
+                model = bgUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
+        Column(modifier = Modifier.fillMaxSize()) {
+            // 非好友提示条
+            if (uiState.chatType == 1 && uiState.relationship != "friend") {
+                Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.errorContainer, tonalElevation = 2.dp) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("你们不是好友，此对话具有时限性", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.weight(1f))
+                        Spacer(Modifier.width(12.dp))
+                        Button(onClick = { token?.let { tv -> scope.launch { if (sendFriendRequest(tv, uiState.chatId)) Toast.makeText(context, "好友请求已发送", Toast.LENGTH_SHORT).show() else Toast.makeText(context, "发送失败", Toast.LENGTH_SHORT).show() } } }) { Icon(Icons.Default.PersonAdd, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("添加好友") }
+                    }
                 }
             }
-        }
-        Box(modifier = Modifier.weight(1f)) {
-            val backgroundUrl by viewModel.backgroundUrl.collectAsState()
-            // 背景全透明显示
-            backgroundUrl?.takeIf { it.isNotEmpty() }?.let { bgUrl -> AsyncImage(model = bgUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
-            PullToRefreshBox(isRefreshing = uiState.isRefreshing, onRefresh = { viewModel.refresh() }, modifier = Modifier.fillMaxSize()) {
-                val uiMessages = buildUiMessages(uiState.messages)
-                LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), reverseLayout = true, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    items(items = uiMessages, key = { it.message.effectiveMsgId }) { item ->
-                        // 日期分隔符
-                        if (item.dateHeader != null) {
-                            Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
-                                Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)) {
-                                    Text(item.dateHeader, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+            // 消息区域
+            Box(modifier = Modifier.weight(1f)) {
+                PullToRefreshBox(isRefreshing = uiState.isRefreshing, onRefresh = { viewModel.refresh() }, modifier = Modifier.fillMaxSize()) {
+                    val uiMessages = buildUiMessages(uiState.messages)
+                    LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), reverseLayout = true, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        items(items = uiMessages, key = { it.message.effectiveMsgId }) { item ->
+                            // 日期分隔符
+                            if (item.dateHeader != null) {
+                                Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+                                    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)) {
+                                        Text(item.dateHeader, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
                                 }
                             }
+                            MessageBubble(
+                                item = item,
+                                context = context,
+                                clipboard = clipboard,
+                                onImageClick = { urls, idx -> imageViewerUrls = urls; imageViewerInitialPage = idx; showImageViewer = true },
+                                onReply = { viewModel.setReplyTo(item.message) },
+                                onRecall = { viewModel.showRecallDialog(item.message.effectiveMsgId) },
+                                onEdit = { viewModel.showEditDialog(item.message) },
+                                isAdmin = uiState.isAdmin
+                            )
                         }
-                        MessageBubble(
-                            item = item,
-                            context = context,
-                            clipboard = clipboard,
-                            onImageClick = { urls, idx -> imageViewerUrls = urls; imageViewerInitialPage = idx; showImageViewer = true },
-                            onReply = { viewModel.setReplyTo(item.message) },
-                            onRecall = { viewModel.showRecallDialog(item.message.effectiveMsgId) },
-                            onEdit = { viewModel.showEditDialog(item.message) },
-                            isAdmin = uiState.isAdmin
-                        )
+                        if (uiState.isLoadingMore) { item { Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { ContainedLoadingIndicator() } } }
                     }
-                    if (uiState.isLoadingMore) { item { Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { ContainedLoadingIndicator() } } }
                 }
+                if (uiState.error != null && uiState.messages.isEmpty()) Text("错误: ${uiState.error}", color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center))
+                if (floatingAvatar != null) { AsyncImage(model = floatingAvatar, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = 8.dp).size(36.dp).clip(CircleShape)) }
+                AnimatedScrollToBottomButton(visible = showScrollToBottom, unreadCount = unreadCount, onClick = scrollToBottom, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp))
             }
-            if (uiState.error != null && uiState.messages.isEmpty()) Text("错误: ${uiState.error}", color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center))
-            if (floatingAvatar != null) { AsyncImage(model = floatingAvatar, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = 8.dp).size(36.dp).clip(CircleShape)) }
-            AnimatedScrollToBottomButton(visible = showScrollToBottom, unreadCount = unreadCount, onClick = scrollToBottom, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp))
-        }
-        if (uiState.isChatExpired) {
-            Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceVariant.copy(0.4f), shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp).padding(bottom = innerPadding.calculateBottomPadding()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                    Icon(Icons.Filled.Warning, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.width(6.dp))
-                    Text("此对话已过期，无法发送消息", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+            // 底部过期提示 / 输入框
+            if (uiState.isChatExpired) {
+                Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceVariant.copy(0.4f), shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp).padding(bottom = innerPadding.calculateBottomPadding()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                        Icon(Icons.Filled.Warning, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.width(6.dp))
+                        Text("此对话已过期，无法发送消息", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
-            }
-        } else {
-            Column {
-                replyTo?.let { repliedMessage ->
-                    Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f), shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)) {
-                        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.width(3.dp).height(32.dp).background(Color.Blue, RoundedCornerShape(2.dp)))
-                            Spacer(Modifier.width(8.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(repliedMessage.displayName, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                                Text(if(repliedMessage.content.isEmpty()) "消息" else repliedMessage.content, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                Column {
+                    replyTo?.let { repliedMessage ->
+                        Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f), shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)) {
+                            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Box(Modifier.width(3.dp).height(32.dp).background(Color.Blue, RoundedCornerShape(2.dp)))
+                                Spacer(Modifier.width(8.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(repliedMessage.displayName, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                    Text(if(repliedMessage.content.isEmpty()) "消息" else repliedMessage.content, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                IconButton(onClick = { viewModel.clearReplyTo() }, modifier = Modifier.size(24.dp)) { Icon(Icons.Default.Close, "取消引用", Modifier.size(16.dp)) }
                             }
-                            IconButton(onClick = { viewModel.clearReplyTo() }, modifier = Modifier.size(24.dp)) { Icon(Icons.Default.Close, "取消引用", Modifier.size(16.dp)) }
                         }
                     }
+                    MessageInput(
+                        inputText = uiState.inputText, selectedImages = uiState.selectedImages, isMarkdown = uiState.isMarkdown,
+                        onTextChange = { viewModel.updateInputText(it) }, onSendClick = { viewModel.sendMessage() },
+                        onAddImageClick = { imagePicker.launch("image/*") }, onRemoveImage = { viewModel.removeImage(it) },
+                        onToggleMarkdown = { viewModel.toggleMarkdown() }, innerPadding = innerPadding,
+                        isUploading = isUploading, uploadProgress = uploadProgress, onCancelUpload = { viewModel.cancelUpload() }
+                    )
                 }
-                MessageInput(inputText = uiState.inputText, selectedImages = uiState.selectedImages, isMarkdown = uiState.isMarkdown,
-                    onTextChange = { viewModel.updateInputText(it) }, onSendClick = { viewModel.sendMessage() },
-                    onAddImageClick = { imagePicker.launch("image/*") }, onRemoveImage = { viewModel.removeImage(it) },
-                    onToggleMarkdown = { viewModel.toggleMarkdown() }, innerPadding = innerPadding,
-                    isUploading = isUploading, uploadProgress = uploadProgress, onCancelUpload = { viewModel.cancelUpload() })
             }
         }
     }
@@ -558,7 +574,7 @@ fun MessageBubble(
                                             color = Color.White,
                                             fontSize = 11.sp,
                                             modifier = Modifier
-                                                .align(Alignment.BottomEnd)   // 已在 Box 中，合法
+                                                .align(Alignment.BottomEnd)
                                                 .padding(6.dp)
                                                 .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
                                                 .padding(horizontal = 5.dp, vertical = 2.dp)
@@ -738,7 +754,7 @@ fun MessageBubble(
             }
         } // Box end
 
-        // 右侧占位（放在 Row 里，不在 Box 中）
+        // 右侧占位
         if (isMine) {
             Spacer(Modifier.width(44.dp))
         }
