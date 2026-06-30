@@ -674,20 +674,22 @@ fun MessageBubble(
                             }
                         }
                         // 时间戳和编辑信息
-                        Row(modifier = Modifier.align(if (isMine) Alignment.End else Alignment.Start)) {
-                            if (msg.content.isNotBlank()) {
-                                Text(
-                                    timestampDisplay,
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            Row(modifier = Modifier.align(if (isMine) Alignment.End else Alignment.Start)) {
+                                if (msg.content.isNotBlank()) {
+                                    Text(
+                                        timestampDisplay,
+                                        fontSize = 10.sp,
+                                        color = if (isMine) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                if (msg.editTime != null) Text(
+                                    "已编辑",
                                     fontSize = 10.sp,
-                                    color = if (isMine) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = if (isMine) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(start = 4.dp)
                                 )
                             }
-                            if (msg.editTime != null) Text(
-                                "已编辑",
-                                fontSize = 10.sp,
-                                color = if (isMine) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(start = 4.dp)
-                            )
                         }
                     }
                 }
