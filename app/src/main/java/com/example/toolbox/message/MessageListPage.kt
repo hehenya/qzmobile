@@ -478,7 +478,7 @@ fun FriendItem(friend: Friend) {
     val context = LocalContext.current
     // 加载草稿
     val chatType = if (friend.type == "group") 2 else 1
-    val chatId = friend.id.toIntOrNull() ?: 0
+    val chatId = try { friend.id.toInt() } catch (_: Exception) { 0 }
     val draft = remember { DraftManager.getDraft(chatType, chatId) }
     
     val lastMsgText = if (draft != null) "[草稿] $draft" else (friend.lastMessage ?: "暂无消息")
