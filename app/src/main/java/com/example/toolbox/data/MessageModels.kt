@@ -2,6 +2,8 @@ package com.example.toolbox.data
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.json.JsonElement
+
 
 @Serializable
 data class MessageTag(
@@ -16,7 +18,7 @@ data class MessageSender(
     @SerialName("chat_type") val chatType: Int,
     val name: String,
     @SerialName("avatar_url") val avatarUrl: String,
-    val tag: List<MessageTag> = emptyList(),
+    val tag: JsonElement? = null,
     @SerialName("tag_old") val tagOld: String? = null
 )
 
@@ -124,7 +126,10 @@ data class GetMessagesResponse(
     @SerialName("is_friend") val isFriend: Boolean = true,
     val relationship: String = "friend",
     @SerialName("temp_chat_expired") val tempChatExpired: Boolean = false,
-    @SerialName("is_admin") val isAdmin: Boolean = false
+    @SerialName("is_admin") val isAdmin: Boolean = false,
+    @SerialName("is_muted") val isMuted: Boolean = false,
+    @SerialName("mute_end_time") val muteEndTime: String? = null,
+    @SerialName("my_role") val myRole: Int? = null
 )
 
 @Serializable
