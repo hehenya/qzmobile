@@ -57,6 +57,7 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -261,10 +262,12 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
                 LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), reverseLayout = true, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     items(uiState.messages.size) { index ->
                         val message = uiState.messages[index]
-                        val newerMessage = uiState.messages.getOrNull(index - 1)
-                        val olderMessage = uiState.messages.getOrNull(index + 1)
+                        val newerMessage = uiState.messages.getOrNull(index - 1)  // 索引更小，时间更新
+                        val olderMessage = uiState.messages.getOrNull(index + 1)  // 索引更大，时间更旧
                         
-                        val showDate = index == uiState.messages.size - 1 || getDateString(message.sendTime) != getDateString(olderMessage?.sendTime ?: 0L)
+                        // 修复日期位置：在每天第一条消息（最新消息）的上方显示日期
+                        val showDate = newerMessage == null || 
+                            getDateString(message.sendTime) != getDateString(newerMessage.sendTime)
                         if (showDate) {
                             Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
                                 Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)) {
@@ -381,35 +384,45 @@ fun MessageBubble(
         Row(modifier = Modifier.fillMaxWidth().combinedClickable(onClick = {}, onLongClick = { showMenu = true }).padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.Bottom, horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
             
+            // 左侧头像：只有对方消息且是第一条时显示
             if (!isMine) {
                 if (isFirstFromSender) {
                     AsyncImage(model = message.displayAvatar, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(36.dp).clip(CircleShape))
                     Spacer(Modifier.width(8.dp))
                 } else {
-                    Spacer(Modifier.width(44.dp))
+                    Spacer(Modifier.width(44.dp)) // 占位保持对齐
                 }
             }
 
             Box(modifier = Modifier.weight(1f, fill = false)) {
                 Column(horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
-                    // 消息气泡透明度 90%
                     Card(
-    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = if (isMine) 16.dp else if (isLastFromSender) 16.dp else 4.dp, bottomEnd = if (isMine) if (isLastFromSender) 16.dp else 4.dp else 16.dp),
-    colors = CardDefaults.cardColors(
-        containerColor = if (isMine) MaterialTheme.colorScheme.primary 
-                        else MaterialTheme.colorScheme.surfaceContainer
-    )
-) {
+                        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = if (isMine) 16.dp else if (isLastFromSender) 16.dp else 4.dp, bottomEnd = if (isMine) if (isLastFromSender) 16.dp else 4.dp else 16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isMine) MaterialTheme.colorScheme.primary 
+                                            else MaterialTheme.colorScheme.surfaceContainer
+                        )
+                    ) {
                         Column(modifier = Modifier.padding(8.dp)) {
-                            if (!isMine && isFirstFromSender) { Text(message.displayName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 2.dp)) }
+                            if (!isMine && isFirstFromSender) { 
+                                Text(message.displayName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 2.dp)) 
+                            }
                             if (message.quoteMsgInfo != null) {
                                 val ref = message.quoteMsgInfo
                                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 2.dp)) {
                                     Box(Modifier.width(3.dp).height(32.dp).background(MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp))); Spacer(Modifier.width(8.dp))
-                                    Column { Text(ref.senderUsername, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary); if (ref.content.isNotBlank()) Text(ref.content, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant); if (ref.images.isNotEmpty()) AsyncImage(model = ref.images.first(), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(4.dp)).padding(top = 4.dp)) }
+                                    Column { 
+                                        Text(ref.senderUsername, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) 
+                                        if (ref.content.isNotBlank()) Text(ref.content, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant) 
+                                        if (ref.images.isNotEmpty()) AsyncImage(model = ref.images.first(), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(4.dp)).padding(top = 4.dp)) 
+                                    }
                                 }
                             }
-                            if (message.content.isNotBlank()) { if (message.isMarkdown) MarkdownRenderer.Render(content = message.content) else Text(message.content, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface) }
+                            if (message.content.isNotBlank()) { 
+                                if (message.isMarkdown) MarkdownRenderer.Render(content = message.content) 
+                                else Text(message.content, fontSize = 14.sp, 
+                                    color = if (isMine) Color.White else Color.Black) // 修复字体颜色
+                            }
                             if (message.images.isNotEmpty()) {
                                 Spacer(Modifier.height(4.dp)); val hasText = message.content.isNotBlank(); val imgCount = message.images.size
                                 if (imgCount == 1) {
@@ -444,8 +457,11 @@ fun MessageBubble(
                                 }
                             }
                             Row(modifier = Modifier.align(if (isMine) Alignment.End else Alignment.Start)) {
-                                if (message.content.isNotBlank()) { Text(timestampDisplay, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                                if (message.editTime != null) Text("已编辑", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp))
+                                if (message.content.isNotBlank()) { 
+                                    Text(timestampDisplay, fontSize = 10.sp, 
+                                        color = if (isMine) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant) 
+                                }
+                                if (message.editTime != null) Text("已编辑", fontSize = 10.sp, color = if (isMine) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp))
                             }
                         }
                     }
@@ -466,11 +482,16 @@ fun MessageInput(
     onTextChange: (String) -> Unit, onSendClick: () -> Unit, onAddImageClick: () -> Unit,
     onRemoveImage: (Int) -> Unit, onToggleMarkdown: () -> Unit, innerPadding: PaddingValues
 ) {
-    // 输入框悬空 + 不透明 95%
+    var showAttachmentMenu by remember { mutableStateOf(false) }
+
+    // 输入框悬空 + 半透明，无边框薄阴影
     Surface(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-        shadowElevation = 8.dp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 8.dp)
+            .border(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(24.dp)),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+        shadowElevation = 2.dp,
         shape = RoundedCornerShape(24.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(8.dp).padding(bottom = innerPadding.calculateBottomPadding())) {
@@ -488,11 +509,40 @@ fun MessageInput(
                 Spacer(modifier = Modifier.height(4.dp))
             }
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                IconButton(onClick = onAddImageClick, modifier = Modifier.size(40.dp)) { Icon(Icons.Default.Image, contentDescription = "添加图片", tint = MaterialTheme.colorScheme.onSurface) }
-                IconButton(onClick = onToggleMarkdown, modifier = Modifier.size(40.dp), colors = IconButtonDefaults.iconButtonColors(
-                    containerColor = if (isMarkdown) MaterialTheme.colorScheme.primary else Color.Transparent,
-                    contentColor = if (isMarkdown) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
-                ) { Icon(painter = painterResource(R.drawable.markdown), contentDescription = "Markdown模式", modifier = Modifier.size(20.dp)) }
+                // 附件菜单按钮（合并发送图片和Markdown）
+                Box {
+                    IconButton(onClick = { showAttachmentMenu = true }, modifier = Modifier.size(40.dp)) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "附件", tint = MaterialTheme.colorScheme.onSurface)
+                    }
+                    DropdownMenu(
+                        expanded = showAttachmentMenu,
+                        onDismissRequest = { showAttachmentMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("发送图片") },
+                            onClick = {
+                                showAttachmentMenu = false
+                                onAddImageClick()
+                            },
+                            leadingIcon = { Icon(Icons.Default.Image, null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(if (isMarkdown) "Markdown 模式 (开)" else "Markdown 模式 (关)") },
+                            onClick = {
+                                showAttachmentMenu = false
+                                onToggleMarkdown()
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.markdown),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        )
+                    }
+                }
+
                 Spacer(modifier = Modifier.width(5.dp))
                 TextField(
                     value = inputText,
@@ -509,7 +559,21 @@ fun MessageInput(
                     )
                 )
                 Spacer(modifier = Modifier.width(5.dp))
-                IconButton(onClick = onSendClick, modifier = Modifier.size(40.dp), enabled = inputText.isNotBlank() || selectedImages.isNotEmpty()) { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "发送") }
+                // 发送按钮，叠加MD标记
+                Box(contentAlignment = Alignment.Center) {
+                    IconButton(onClick = onSendClick, modifier = Modifier.size(40.dp), enabled = inputText.isNotBlank() || selectedImages.isNotEmpty()) {
+                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "发送")
+                    }
+                    if (isMarkdown) {
+                        Text(
+                            "MD",
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.align(Alignment.TopEnd).padding(2.dp)
+                        )
+                    }
+                }
             }
         }
     }
