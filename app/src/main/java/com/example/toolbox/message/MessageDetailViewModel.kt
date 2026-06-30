@@ -121,6 +121,7 @@ class MessageDetailViewModel(
                 val request = Request.Builder()
                     .url(url)
                     .header("x-access-token", token)
+                    .addHeader("linkinfo", "true")
                     .post(body)
                     .build()
                 val result = withContext(Dispatchers.IO) {
@@ -390,7 +391,7 @@ class MessageDetailViewModel(
                 if (isCurrentChat) {
                     when (type) {
                         "new" -> addNewMessage(message)
-                        "edit" -> updateMessage(message)
+                        "edit" -> refresh()
                         "recall" -> removeMessage(message.msgId)
                     }
                 }

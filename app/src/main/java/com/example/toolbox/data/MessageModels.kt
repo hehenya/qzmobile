@@ -70,7 +70,9 @@ data class Message(
     @SerialName("edit_time_display") val editTimeDisplay: String? = null,
     @SerialName("msg_delete_time") val msgDeleteTime: Long? = null,
     @SerialName("msg_delete_time_formatted") val msgDeleteTimeFormatted: String? = null,
-    @SerialName("msg_delete_time_display") val msgDeleteTimeDisplay: String? = null
+    @SerialName("msg_delete_time_display") val msgDeleteTimeDisplay: String? = null,
+    @SerialName("link_info") val linkInfo: List<LinkInfo>? = null
+
 )
 
 val Message.displayName: String
@@ -403,4 +405,11 @@ data class UnmuteRequest(
 data class GenericResponse(
     val success: Boolean = false,
     val message: String? = null
+)
+@Serializable
+data class LinkInfo(
+    @SerialName("url") val url: String,
+    @SerialName("title") val title: String,
+    @SerialName("domain") val domain: String,
+    @SerialName("fetched_at") val fetchedAt: String
 )
