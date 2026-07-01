@@ -93,7 +93,11 @@ import com.example.toolbox.mine.ProfileScreen
 import com.example.toolbox.mine.UserBottomSheet
 import com.example.toolbox.music.MusicPlayerScreen
 import com.example.toolbox.resourceLib.ResourceLibScreen
+import com.example.toolbox.settings.UpdateDialog
 import com.example.toolbox.ui.theme.ToolBoxTheme
+import com.example.toolbox.utils.UpdateInfo
+import com.example.toolbox.utils.checkForUpdateWithDetails
+import com.example.toolbox.utils.getAppVersionInfo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -175,7 +179,7 @@ fun MyApplicationApp() {
     DisposableEffect(Unit) {
         prefs.registerOnSharedPreferenceChangeListener(tokenListener)
         onDispose {
-            prefs.unregisterSharedPreferenceChangeListener(tokenListener)
+            prefs.unregisterOnSharedPreferenceChangeListener(tokenListener)
         }
     }
 
@@ -249,7 +253,7 @@ fun MyApplicationApp() {
             currentNotification = null
         }
     }
-
+    
     if (showAutoUpdateDialog && autoUpdateInfo != null) {
         UpdateDialog(
             updateInfo = autoUpdateInfo!!,
@@ -711,7 +715,7 @@ fun InAppNotificationBanner(
                 ) {
                     // 头像
                     AsyncImage(
-                        model = notif.avatarUrl.ifEmpty { R.drawable.ic_default_avatar }, // 若无头像使用默认图标
+                        model = notif.avatarUrl,
                         contentDescription = "头像",
                         modifier = Modifier
                             .size(48.dp)
