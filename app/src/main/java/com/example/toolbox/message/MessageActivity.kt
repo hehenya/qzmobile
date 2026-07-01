@@ -53,6 +53,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Public
@@ -145,6 +146,9 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
+// 简单的日期分隔符数据类
+private data class DateSeparator(val text: String)
+
 // ---- 好友请求 ----
 private suspend fun sendFriendRequest(token: String, friendId: Int): Boolean {
     val client = OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(10, TimeUnit.SECONDS).build()
@@ -235,36 +239,58 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
     var imageViewerInitialPage by remember { mutableIntStateOf(0) }
     val replyTo by viewModel.replyTo.collectAsState()
 
-    // 浮动头像（仅群聊）
-    val floatingAvatar by remember { derivedStateOf {
-        if (uiState.chatType != 2) return@derivedStateOf null
-        val visibleItems = listState.layoutInfo.visibleItemsInfo
-        if (visibleItems.isEmpty() || uiState.messages.isEmpty()) return@derivedStateOf null
-        val topVisibleItem = visibleItems.minByOrNull { it.index } ?: return@derivedStateOf null
-        val firstVisibleIndex = topVisibleItem.index
-        val message = uiState.messages.getOrNull(firstVisibleIndex) ?: return@derivedStateOf null
-        if (message.isMine || message.isRecalled) return@derivedStateOf null
+    // 浮动头像（仅群聊）—— 参考项目稳定逻辑
+    val floatingAvatar by remember {
+        derivedStateOf {
+            if (uiState.chatType != 2) return@derivedStateOf null
+            val visibleItems = listState.layoutInfo.visibleItemsInfo
+            if (visibleItems.isEmpty() || uiState.messages.isEmpty()) return@derivedStateOf null
 
-        val itemHeightPx = topVisibleItem.size
-        val offsetPx = topVisibleItem.offset
-        val itemHeightDp = itemHeightPx / density.density
-        val visibleHeightPx = (itemHeightPx + offsetPx.coerceAtMost(0)).coerceAtLeast(0)
-        val visibleHeightDp = visibleHeightPx / density.density
-        val hasEnoughSpace = visibleHeightDp >= 44 && itemHeightDp >= 44
+            // 取视觉顶部的可见项（索引最大，即最旧的消息）
+            val topVisibleItem = visibleItems.maxByOrNull { it.index } ?: return@derivedStateOf null
+            val topMessage = uiState.messages.getOrNull(topVisibleItem.index) ?: return@derivedStateOf null
 
-        val newerMessage = if (firstVisibleIndex > 0) uiState.messages[firstVisibleIndex - 1] else null
-        val olderMessage = if (firstVisibleIndex < uiState.messages.size - 1) uiState.messages[firstVisibleIndex + 1] else null
-        val isLastFromSender = olderMessage == null || olderMessage.isRecalled || olderMessage.senderId != message.senderId
-        val hasOtherSameSender = (newerMessage != null && !newerMessage.isRecalled && newerMessage.senderId == message.senderId && !isLastFromSender) || (olderMessage != null && !olderMessage.isRecalled && olderMessage.senderId == message.senderId)
+            if (topMessage.isMine || topMessage.isRecalled) return@derivedStateOf null
 
-        if (hasEnoughSpace || (hasOtherSameSender && message.displayAvatar.isNotEmpty())) message.displayAvatar else null
-    } }
+            // 判断该消息是否是该发送者连续消息中的最后一条（在更旧方向上没有相同发送者）
+            val olderMessage = if (topVisibleItem.index < uiState.messages.size - 1)
+                uiState.messages[topVisibleItem.index + 1]
+            else
+                null
+
+            val isLastFromSender = olderMessage == null ||
+                    olderMessage.isRecalled ||
+                    olderMessage.senderId != topMessage.senderId
+
+            // 如果是最后一条，才显示浮动头像
+            if (isLastFromSender && topMessage.displayAvatar.isNotEmpty()) {
+                topMessage.displayAvatar
+            } else {
+                null
+            }
+        }
+    }
 
     LaunchedEffect(listState) { snapshotFlow { val vi = listState.layoutInfo.visibleItemsInfo; if (vi.isNotEmpty()) vi.last().index >= listState.layoutInfo.totalItemsCount - 5 && uiState.hasMore && !uiState.isLoadingMore && !uiState.isRefreshing else false }.distinctUntilChanged().filter { it }.collect { viewModel.loadMore() } }
     LaunchedEffect(listState) { snapshotFlow { val vi = listState.layoutInfo.visibleItemsInfo; if (vi.isNotEmpty()) vi.first().index == 0 else true }.distinctUntilChanged().collect { atBottom -> showScrollToBottom = !atBottom; if (atBottom) { unreadCount = 0; if (uiState.messages.isNotEmpty()) firstMessageId = uiState.messages.first().effectiveMsgId } } }
     LaunchedEffect(uiState.messages) { if (uiState.messages.isEmpty()) return@LaunchedEffect; val cur = uiState.messages.first().effectiveMsgId; if (firstMessageId != null && cur != firstMessageId) { if (showScrollToBottom) unreadCount += 1 else { listState.scrollToItem(0); unreadCount = 0 } }; firstMessageId = cur }
     val scrollToBottom: () -> Unit = { coroutineScope.launch { listState.animateScrollToItem(0); unreadCount = 0; if (uiState.messages.isNotEmpty()) firstMessageId = uiState.messages.first().effectiveMsgId } }
     if (showImageViewer) MultiImageViewer(images = imageViewerUrls, initialPage = imageViewerInitialPage, isVisible = showImageViewer, onDismiss = { showImageViewer = false })
+
+    // 构建包含日期分隔符的列表
+    val displayList = remember(uiState.messages) {
+        buildList {
+            var lastDate: String? = null
+            for (message in uiState.messages) {
+                val date = getDateString(message.sendTime)
+                if (date != lastDate) {
+                    add(DateSeparator(date))
+                    lastDate = date
+                }
+                add(message)
+            }
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         val backgroundUrl by viewModel.backgroundUrl.collectAsState()
@@ -283,28 +309,57 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
             Box(modifier = Modifier.weight(1f)) {
                 PullToRefreshBox(isRefreshing = uiState.isRefreshing, onRefresh = { viewModel.refresh() }, modifier = Modifier.fillMaxSize()) {
                     LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), reverseLayout = true, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        items(items = uiState.messages, key = { it.effectiveMsgId }) { message ->
-                            val index = uiState.messages.indexOf(message)
-                            val newerMessage = if (index > 0) uiState.messages[index - 1] else null
-                            val olderMessage = if (index < uiState.messages.size - 1) uiState.messages[index + 1] else null
-                            val showDate = newerMessage == null || getDateString(message.sendTime) != getDateString(newerMessage.sendTime)
-                            val dateString = if (showDate) getDateString(message.sendTime) else null
+                        items(
+                            items = displayList,
+                            key = { item ->
+                                when (item) {
+                                    is DateSeparator -> "date_${item.text}"
+                                    is Message -> item.effectiveMsgId
+                                    else -> error("Unknown item type")
+                                }
+                            }
+                        ) { item ->
+                            when (item) {
+                                is DateSeparator -> {
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Surface(
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                                        ) {
+                                            Text(
+                                                item.text,
+                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                                fontSize = 12.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                                is Message -> {
+                                    val msgIndex = uiState.messages.indexOf(item)
+                                    val newerMsg = if (msgIndex > 0) uiState.messages[msgIndex - 1] else null
+                                    val olderMsg = if (msgIndex < uiState.messages.size - 1) uiState.messages[msgIndex + 1] else null
 
-                            MessageBubble(
-                                context = context,
-                                clipboard = clipboard,
-                                message = message,
-                                onRecall = { viewModel.showRecallDialog(message.effectiveMsgId) },
-                                onEdit = { viewModel.showEditDialog(message) },
-                                onImageClick = { urls, idx -> imageViewerUrls = urls; imageViewerInitialPage = idx; showImageViewer = true },
-                                onReply = { viewModel.setReplyTo(message) },
-                                isAdmin = uiState.isAdmin,
-                                newerMessage = newerMessage,
-                                olderMessage = olderMessage,
-                                chatType = uiState.chatType,
-                                showDate = showDate,
-                                dateString = dateString
-                            )
+                                    MessageBubble(
+                                        context = context,
+                                        clipboard = clipboard,
+                                        message = item,
+                                        onRecall = { viewModel.showRecallDialog(item.effectiveMsgId) },
+                                        onEdit = { viewModel.showEditDialog(item) },
+                                        onImageClick = { urls, idx -> imageViewerUrls = urls; imageViewerInitialPage = idx; showImageViewer = true },
+                                        onReply = { viewModel.setReplyTo(item) },
+                                        isAdmin = uiState.isAdmin,
+                                        newerMessage = newerMsg,
+                                        olderMessage = olderMsg,
+                                        chatType = uiState.chatType,
+                                        showDate = false,
+                                        dateString = null
+                                    )
+                                }
+                            }
                         }
                         if (uiState.isLoadingMore) { item { Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { ContainedLoadingIndicator() } } }
                     }
@@ -425,14 +480,7 @@ fun MessageBubble(
         }
     } else {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
-            // 日期分隔符（固定在气泡上方）
-            if (showDate && dateString != null) {
-                Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
-                    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)) {
-                        Text(dateString, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
+            // 注意：日期分隔符已移至独立 item，此处不再绘制
 
             Row(modifier = Modifier.fillMaxWidth().combinedClickable(onClick = {}, onLongClick = { showMenu = true }).padding(horizontal = 0.dp, vertical = 0.dp),
                 verticalAlignment = Alignment.Bottom, horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
@@ -611,16 +659,84 @@ fun UploadProgressBar(progress: Float, onCancel: () -> Unit, modifier: Modifier 
     }
 }
 
+// ================== 美化后的链接预览卡片 ==================
 @Composable
 fun LinkPreviewCard(url: String, title: String, onClick: () -> Unit) {
-    Surface(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick), shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)) {   // 改为与引用条一致的表面变体
-        Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Public, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(8.dp))
-            Column {
-                Text(title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(url, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shadowElevation = 2.dp,
+        tonalElevation = 1.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // 网站图标区域
+            Surface(
+                modifier = Modifier.size(40.dp),
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Default.Language,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+
+            Spacer(Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                // 标题
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Spacer(Modifier.height(4.dp))
+
+                // 域名/URL 显示
+                Text(
+                    text = url,
+                    style = MaterialTheme.typography.labelSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(Modifier.height(6.dp))
+
+                // 细分割线
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(
+                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                        )
+                )
+
+                Spacer(Modifier.height(4.dp))
+
+                // 预览提示文字
+                Text(
+                    text = "链接预览",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Medium
+                )
             }
         }
     }
