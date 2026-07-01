@@ -586,18 +586,30 @@ fun FriendItem(friend: Friend) {
 }
 
 fun formatRelativeTime(timeStr: String): String {
+    if (timeStr.isBlank()) return ""
+    
     return try {
         val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-        val date = sdf.parse(timeStr) ?: return ""
-        val now = Date()
-        val diff = now.time - date.time
-        when {
-            diff < 60 * 1000 -> "刚刚"
-            diff < 60 * 60 * 1000 -> "${diff / (60 * 1000)}分钟前"
-            diff < 24 * 60 * 60 * 1000 -> SimpleDateFormat("HH:mm", Locale.getDefault()).format(date)
-            else -> SimpleDateFormat("MM-dd", Locale.getDefault()).format(date)
+        val date = sdf.parse(timeStr)
+        if (date != null) {
+            val now = Date()
+            val diff = now.time - date.time
+            when {
+                diff < 60 * 1000 -> "刚刚"
+                diff < 60 * 60 * 1000 -> "${diff / (60 * 1000)}分钟前"
+                diff < 24 * 60 * 60 * 1000 -> SimpleDateFormat("HH:mm", Locale.getDefault()).format(date)
+                else -> SimpleDateFormat("MM-dd", Locale.getDefault()).format(date)
+            }
+        } else {
+            // 解析失败，尝试显示时间部分
+            if (timeStr.length >= 16) timeStr.substring(11, 16)
+            else if (timeStr.length >= 5) timeStr.substring(0, 5)
+            else timeStr
         }
     } catch (_: Exception) {
-        timeStr.substring(11, 16) // 如果解析失败，至少显示时间部分
+        // 任何异常都安全处理
+        if (timeStr.length >= 16) timeStr.substring(11, 16)
+        else if (timeStr.length >= 5) timeStr.substring(0, 5)
+        else timeStr
     }
 }
