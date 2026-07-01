@@ -148,10 +148,22 @@ fun MyApplicationApp() {
     LaunchedEffect(Unit) {
         token?.let { mainViewModel.refreshUserInfo(it) }
     }
+    
     LaunchedEffect(Unit) {
-        // 调试：延迟2秒发测试通知
-        kotlinx.coroutines.delay(2000)
         Toast.makeText(context, "通知系统已启动", Toast.LENGTH_SHORT).show()
+        
+        // 先启动监听
+        launch {
+            NotificationManager.notifications.collect { notification ->
+                Toast.makeText(context, "收到通知: ${notification.title}", Toast.LENGTH_SHORT).show()
+                currentNotification = notification
+                delay(4000)
+                currentNotification = null
+            }
+        }
+        
+        // 延迟一下再发送测试通知，确保 collect 已经开始
+        delay(500)
         NotificationManager.show(
             InAppNotification(
                 title = "测试通知",
@@ -161,32 +173,7 @@ fun MyApplicationApp() {
                 avatarUrl = ""
             )
         )
-        
-        // 监听真实通知
-        NotificationManager.notifications.collect { notification ->
-            Toast.makeText(context, "收到通知: ${notification.title}", Toast.LENGTH_SHORT).show()
-            currentNotification = notification
-            kotlinx.coroutines.delay(4000)
-            currentNotification = null
-        }
     }
-    LaunchedEffect(Unit) {
-        val autoCheckEnabled = prefs.getBoolean("autoCheckUpdate", true)
-        if (autoCheckEnabled && context.getAppVersionInfo().commitHash != "dev") {
-            val updateChannel = prefs.getString("update_channel", "stable") ?: "stable"
-            val includePreRelease = updateChannel == "prerelease"
-            
-            val info = checkForUpdateWithDetails(
-                context = context,
-                includePreRelease = includePreRelease
-            )
-            if (info != null) {
-                autoUpdateInfo = info
-                showAutoUpdateDialog = true
-            }
-        }
-    }
-
     val tokenListener = remember {
         SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             if (key == "safeToken") {
@@ -267,13 +254,7 @@ fun MyApplicationApp() {
     // 全局通知横幅显示状态
     
 
-    LaunchedEffect(Unit) {
-        NotificationManager.notifications.collect { notification ->
-            currentNotification = notification
-            delay(4000)
-            currentNotification = null
-        }
-    }
+    
     
     if (showAutoUpdateDialog && autoUpdateInfo != null) {
         UpdateDialog(

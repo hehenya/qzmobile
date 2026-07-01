@@ -236,7 +236,8 @@ fun MessageScreen(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         items(uiState.friends, key = { it.id }) { friend ->
-                            FriendItem(friend = friend)
+                            FriendItem(friend = friend, viewModel = viewModel)
+                        
                         }
                         if (uiState.isLoadingMore) {
                             item {
@@ -474,7 +475,7 @@ fun CreateGroupDialog(
 }
 
 @Composable
-fun FriendItem(friend: Friend) {
+fun FriendItem(friend: Friend, viewModel: MessageViewModel) {
     val context = LocalContext.current
     // 加载草稿
     val chatType = if (friend.type == "group") 2 else 1
@@ -490,6 +491,13 @@ fun FriendItem(friend: Friend) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
+                val chatType = if (friend.type == "group") 2 else 1
+                val chatId = friend.id
+                
+                // 标记已读
+                viewModel.markAsRead(chatId, chatType)
+                viewModel.setCurrentChat(chatId, chatType)
+                
                 val intent = Intent(context, MessageDetailActivity::class.java)
                 if (friend.type == "group") {
                     intent.putExtra("chat_type", 2)

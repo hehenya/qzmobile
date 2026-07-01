@@ -28,7 +28,10 @@ data class MessageUiState(
     val isRefreshing: Boolean = false,
     val isLoadingMore: Boolean = false,
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    // 当前正在聊天的会话，用于判断是否增加未读数
+    val currentChatId: Int? = null,
+    val currentChatType: Int? = null
 )
 
 class MessageViewModel(
@@ -119,6 +122,31 @@ class MessageViewModel(
         }
     }
 
+    /**
+     * 设置当前正在查看的聊天（用于判断是否增加未读数）
+     */
+    fun setCurrentChat(chatId: Int?, chatType: Int?) {
+        _uiState.update { it.copy(currentChatId = chatId, currentChatType = chatType) }
+    }
+
+    /**
+     * 标记某个会话为已读
+     */
+    fun markAsRead(chatId: Int, chatType: Int) {
+        _uiState.update { current ->
+            current.copy(
+                friends = current.friends.map { friend ->
+                    val type = if (chatType == 2) "group" else "friend"
+                    if (friend.id == chatId && friend.type == type) {
+                        friend.copy(unreadCount = 0)
+                    } else {
+                        friend
+                    }
+                }
+            )
+        }
+    }
+
     fun connectWebSocket() {
         if (token.isNotBlank()) {
             val manager = ChatSocketManager.getInstance()
@@ -131,14 +159,25 @@ class MessageViewModel(
                     val newPrivateChats = mutableListOf<Friend>()
                     for (i in 0 until friendsArray.length()) {
                         val friendJson = friendsArray.getJSONObject(i)
+                        val friendId = friendJson.getInt("id")
+                        val currentChatId = _uiState.value.currentChatId
+                        val currentChatType = _uiState.value.currentChatType
+                        
+                        // 如果当前正在这个聊天中，强制清零未读数
+                        val unreadCount = if (currentChatId == friendId && currentChatType == 1) {
+                            0
+                        } else {
+                            friendJson.optInt("unread_count", 0)
+                        }
+                        
                         newPrivateChats.add(
                             Friend(
-                                id = friendJson.getInt("id"),
+                                id = friendId,
                                 username = friendJson.getString("username"),
                                 avatar = friendJson.optString("avatar", ""),
                                 lastMessage = friendJson.optString("last_message", null),
                                 lastMessageTime = friendJson.optString("last_message_time", null),
-                                unreadCount = friendJson.optInt("unread_count", 0),
+                                unreadCount = unreadCount,
                                 type = "friend",
                                 name = friendJson.getString("username"),
                                 title = friendJson.optString("title", ""),
@@ -163,14 +202,25 @@ class MessageViewModel(
                     val newGroupChats = mutableListOf<Friend>()
                     for (i in 0 until groupsArray.length()) {
                         val groupJson = groupsArray.getJSONObject(i)
+                        val groupId = groupJson.getInt("group_id")
+                        val currentChatId = _uiState.value.currentChatId
+                        val currentChatType = _uiState.value.currentChatType
+                        
+                        // 如果当前正在这个群聊中，强制清零未读数
+                        val unreadCount = if (currentChatId == groupId && currentChatType == 2) {
+                            0
+                        } else {
+                            groupJson.optInt("unread_count", 0)
+                        }
+                        
                         newGroupChats.add(
                             Friend(
-                                id = groupJson.getInt("group_id"),
+                                id = groupId,
                                 username = groupJson.optString("name", "群聊"),
                                 avatar = groupJson.optString("avatar", ""),
                                 lastMessage = groupJson.optString("last_message", null),
                                 lastMessageTime = groupJson.optString("last_message_time", null),
-                                unreadCount = groupJson.optInt("unread_count", 0),
+                                unreadCount = unreadCount,
                                 type = "group",
                                 name = groupJson.optString("name", "群聊"),
                                 title = "",
