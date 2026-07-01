@@ -28,6 +28,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CheckCircle
@@ -107,7 +110,18 @@ fun MessageScreen(
     val groupUiState by groupViewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+var refreshKey by remember { mutableLongStateOf(0L) }
 
+DisposableEffect(lifecycle) {
+    val observer = LifecycleEventObserver { _, event ->
+        if (event == Lifecycle.Event.ON_RESUME) {
+            refreshKey = System.currentTimeMillis()
+        }
+    }
+    lifecycle.addObserver(observer)
+    onDispose { lifecycle.removeObserver(observer) }
+}
     // 图片选择器
     var selectedAvatarPath by remember { mutableStateOf<String?>(null) }
     val imagePickerLauncher = rememberLauncherForActivityResult(
@@ -235,7 +249,7 @@ fun MessageScreen(
                         state = listState,
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(uiState.friends, key = { it.id }) { friend ->
+                        items(uiState.friends, key = { "${it.id}_${refreshKey}" }) { friend ->
                             FriendItem(friend = friend, viewModel = viewModel)
                         }
                         if (uiState.isLoadingMore) {
