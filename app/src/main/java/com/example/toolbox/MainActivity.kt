@@ -24,18 +24,28 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.ChatBubbleOutline
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Inbox
@@ -45,43 +55,23 @@ import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material.icons.outlined.Person
-import com.example.toolbox.utils.UpdateInfo
-import com.example.toolbox.utils.checkForUpdateWithDetails
-import com.example.toolbox.settings.UpdateDialog
-import com.example.toolbox.utils.getAppVersionInfo
-import androidx.compose.material3.DrawerState
-import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.rememberDrawerState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -89,6 +79,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import coil3.compose.AsyncImage
 import com.example.toolbox.function.yunhu.yhbotmaker.BotManagerScreen
 import com.example.toolbox.function.mouse.MouseSimulatorScreen
 import com.example.toolbox.functionPage.HomeScreen
@@ -96,6 +87,7 @@ import com.example.toolbox.guide.GuideActivity
 import com.example.toolbox.liFangCommunity.AuthManager
 import com.example.toolbox.liFangCommunity.CubeNetworkManager
 import com.example.toolbox.liFangCommunity.ProfileScreen_LF
+import com.example.toolbox.message.MessageDetailActivity
 import com.example.toolbox.message.MessageScreen
 import com.example.toolbox.mine.ProfileScreen
 import com.example.toolbox.mine.UserBottomSheet
@@ -103,6 +95,7 @@ import com.example.toolbox.music.MusicPlayerScreen
 import com.example.toolbox.resourceLib.ResourceLibScreen
 import com.example.toolbox.ui.theme.ToolBoxTheme
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -182,7 +175,7 @@ fun MyApplicationApp() {
     DisposableEffect(Unit) {
         prefs.registerOnSharedPreferenceChangeListener(tokenListener)
         onDispose {
-            prefs.unregisterOnSharedPreferenceChangeListener(tokenListener)
+            prefs.unregisterSharedPreferenceChangeListener(tokenListener)
         }
     }
 
@@ -245,6 +238,18 @@ fun MyApplicationApp() {
         }
     }
     
+    // 全局通知横幅显示状态
+    var currentNotification by remember { mutableStateOf<InAppNotification?>(null) }
+    val bannerVisible = currentNotification != null
+
+    LaunchedEffect(Unit) {
+        NotificationManager.notifications.collect { notification ->
+            currentNotification = notification
+            delay(4000)
+            currentNotification = null
+        }
+    }
+
     if (showAutoUpdateDialog && autoUpdateInfo != null) {
         UpdateDialog(
             updateInfo = autoUpdateInfo!!,
@@ -311,43 +316,87 @@ fun MyApplicationApp() {
             },
             gesturesEnabled = true,
             content = {
-                MainContent(
-                    nestedScrollConnection = nestedScrollConnection,
-                    navController = navController,
-                    mainViewModel = mainViewModel,
-                    musicPlayerViewModel = musicPlayerViewModel,
-                    drawerState = drawerState,
-                    scope = scope,
-                    isMainPage = isMainPage,
-                    isBottomBarVisible = isBottomBarVisible,
-                    visibleAppDestinations = visibleAppDestinations,
-                    selectedRoute = selectedRoute,
-                    showDialog = showDialog,
-                    userId = userId,
-                    userName = userName,
-                    userAvatar = userAvatar,
-                    onUserDialogDismiss = { mainViewModel.changeUserDialogStatus(false) }
-                )
+                Box(modifier = Modifier.fillMaxSize()) {
+                    MainContent(
+                        nestedScrollConnection = nestedScrollConnection,
+                        navController = navController,
+                        mainViewModel = mainViewModel,
+                        musicPlayerViewModel = musicPlayerViewModel,
+                        drawerState = drawerState,
+                        scope = scope,
+                        isMainPage = isMainPage,
+                        isBottomBarVisible = isBottomBarVisible,
+                        visibleAppDestinations = visibleAppDestinations,
+                        selectedRoute = selectedRoute,
+                        showDialog = showDialog,
+                        userId = userId,
+                        userName = userName,
+                        userAvatar = userAvatar,
+                        onUserDialogDismiss = { mainViewModel.changeUserDialogStatus(false) }
+                    )
+                    
+                    // 全局通知横幅
+                    InAppNotificationBanner(
+                        notification = currentNotification,
+                        visible = bannerVisible,
+                        onDismiss = { currentNotification = null },
+                        onClick = { notif ->
+                            currentNotification = null
+                            if (notif.chatId != null && notif.chatType != null) {
+                                val intent = Intent(context, MessageDetailActivity::class.java).apply {
+                                    putExtra("chat_type", notif.chatType)
+                                    putExtra("chat_id", notif.chatId)
+                                }
+                                context.startActivity(intent)
+                            }
+                        },
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    )
+                }
             },
         )
     } else {
-        MainContent(
-            nestedScrollConnection = nestedScrollConnection,
-            navController = navController,
-            mainViewModel = mainViewModel,
-            musicPlayerViewModel = musicPlayerViewModel,
-            drawerState = drawerState,
-            scope = scope,
-            isMainPage = isMainPage,
-            isBottomBarVisible = isBottomBarVisible,
-            visibleAppDestinations = visibleAppDestinations,
-            selectedRoute = selectedRoute,
-            showDialog = showDialog,
-            userId = userId,
-            userName = userName,
-            userAvatar = userAvatar,
-            onUserDialogDismiss = { mainViewModel.changeUserDialogStatus(false) }
-        )
+        Box(modifier = Modifier.fillMaxSize()) {
+            MainContent(
+                nestedScrollConnection = nestedScrollConnection,
+                navController = navController,
+                mainViewModel = mainViewModel,
+                musicPlayerViewModel = musicPlayerViewModel,
+                drawerState = drawerState,
+                scope = scope,
+                isMainPage = isMainPage,
+                isBottomBarVisible = isBottomBarVisible,
+                visibleAppDestinations = visibleAppDestinations,
+                selectedRoute = selectedRoute,
+                showDialog = showDialog,
+                userId = userId,
+                userName = userName,
+                userAvatar = userAvatar,
+                onUserDialogDismiss = { mainViewModel.changeUserDialogStatus(false) }
+            )
+            
+            // 全局通知横幅
+            InAppNotificationBanner(
+                notification = currentNotification,
+                visible = bannerVisible,
+                onDismiss = { currentNotification = null },
+                onClick = { notif ->
+                    currentNotification = null
+                    if (notif.chatId != null && notif.chatType != null) {
+                        val intent = Intent(context, MessageDetailActivity::class.java).apply {
+                            putExtra("chat_type", notif.chatType)
+                            putExtra("chat_id", notif.chatId)
+                        }
+                        context.startActivity(intent)
+                    }
+                },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            )
+        }
     }
 
     BackHandler(enabled = drawerState.isOpen) {
@@ -623,5 +672,91 @@ fun getStartDestination(context: Context): String {
         "音乐" -> TopLevelDestinations.MusicPlayer.route
         "模拟鼠标" -> TopLevelDestinations.MouseSimulator.route
         else -> AppDestinations.HOME.route
+    }
+}
+
+/**
+ * 应用内通知横幅组件，仿抖音风格：
+ * 左侧圆形头像，右侧上方标题（会话名/发送者），下方消息内容预览。
+ */
+@Composable
+fun InAppNotificationBanner(
+    notification: InAppNotification?,
+    visible: Boolean,
+    onDismiss: () -> Unit,
+    onClick: (InAppNotification) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    AnimatedVisibility(
+        visible = visible && notification != null,
+        enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+        exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+        modifier = modifier
+    ) {
+        notification?.let { notif ->
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onClick(notif) },
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
+                shadowElevation = 8.dp,
+                tonalElevation = 4.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(12.dp)
+                        .fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 头像
+                    AsyncImage(
+                        model = notif.avatarUrl.ifEmpty { R.drawable.ic_default_avatar }, // 若无头像使用默认图标
+                        contentDescription = "头像",
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    // 文字区域
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = notif.title,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = notif.message,
+                            fontSize = 13.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    // 关闭按钮
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Filled.Close,
+                            contentDescription = "关闭",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+        }
     }
 }
