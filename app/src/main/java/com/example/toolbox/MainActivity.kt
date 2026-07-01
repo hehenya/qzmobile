@@ -153,7 +153,6 @@ fun MyApplicationApp() {
     LaunchedEffect(Unit) {
         Toast.makeText(context, "通知系统已启动", Toast.LENGTH_SHORT).show()
         
-        // 先启动监听
         launch {
             NotificationManager.notifications.collect { notification ->
                 Toast.makeText(context, "收到通知: ${notification.title}", Toast.LENGTH_SHORT).show()
@@ -163,8 +162,7 @@ fun MyApplicationApp() {
             }
         }
         
-        // 延迟一下再发送测试通知，确保 collect 已经开始
-        delay(1000)
+        delay(2000)
         NotificationManager.show(
             InAppNotification(
                 title = "测试通知",

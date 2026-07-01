@@ -7,9 +7,9 @@ data class InAppNotification(
     val title: String,
     val message: String,
     val type: Type = Type.INFO,
-    val chatId: Int? = null,      // 可选，用于点击跳转
-    val chatType: Int? = null,    // 1=私聊，2=群聊
-    val avatarUrl: String = ""    // 发送者头像（群聊可用群头像）
+    val chatId: Int? = null,
+    val chatType: Int? = null,
+    val avatarUrl: String = ""
 ) {
     enum class Type { INFO, SUCCESS, WARNING, ERROR }
 }
