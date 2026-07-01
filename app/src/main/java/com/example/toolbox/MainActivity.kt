@@ -61,7 +61,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -151,28 +150,15 @@ fun MyApplicationApp() {
     }
     
     LaunchedEffect(Unit) {
-        Toast.makeText(context, "通知系统已启动", Toast.LENGTH_SHORT).show()
-        
         launch {
             NotificationManager.notifications.collect { notification ->
-                Toast.makeText(context, "收到通知: ${notification.title}", Toast.LENGTH_SHORT).show()
                 currentNotification = notification
                 delay(4000)
                 currentNotification = null
             }
         }
-        
-        delay(2000)
-        NotificationManager.show(
-            InAppNotification(
-                title = "测试通知",
-                message = "如果你看到这条消息，横幅组件正常",
-                chatId = null,
-                chatType = null,
-                avatarUrl = ""
-            )
-        )
     }
+
     val tokenListener = remember {
         SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             if (key == "safeToken") {
@@ -250,163 +236,136 @@ fun MyApplicationApp() {
         }
     }
     
-    // 全局通知横幅显示状态
-    
-
-    
-    
-    if (showAutoUpdateDialog && autoUpdateInfo != null) {
-        UpdateDialog(
-            updateInfo = autoUpdateInfo!!,
-            currentVersion = context.getAppVersionInfo().versionName,
-            onDismiss = { showAutoUpdateDialog = false },
-            onConfirm = {
-                val intent = Intent(Intent.ACTION_VIEW, autoUpdateInfo?.releaseUrl?.toUri())
-                context.startActivity(intent)
-                showAutoUpdateDialog = false
-            }
-        )
-    }
-    
-    if (showSidebar) {
-        ModalNavigationDrawer(
-            drawerState = drawerState,
-            drawerContent = {
-                ModalDrawerSheet(
-                    modifier = Modifier.fillMaxWidth(0.75f)
-                ) {
-                    Text(
-                        text = stringResource(R.string.app_name),
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    HorizontalDivider()
-
-                    LazyColumn(
-                        modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (showAutoUpdateDialog && autoUpdateInfo != null) {
+            UpdateDialog(
+                updateInfo = autoUpdateInfo!!,
+                currentVersion = context.getAppVersionInfo().versionName,
+                onDismiss = { showAutoUpdateDialog = false },
+                onConfirm = {
+                    val intent = Intent(Intent.ACTION_VIEW, autoUpdateInfo?.releaseUrl?.toUri())
+                    context.startActivity(intent)
+                    showAutoUpdateDialog = false
+                }
+            )
+        }
+        
+        if (showSidebar) {
+            ModalNavigationDrawer(
+                drawerState = drawerState,
+                drawerContent = {
+                    ModalDrawerSheet(
+                        modifier = Modifier.fillMaxWidth(0.75f)
                     ) {
-                        items(visibleAppDestinations) { item ->
-                            NavigationDrawerItem(
-                                label = { Text(item.label) },
-                                selected = item.route == selectedRoute,
-                                icon = { Icon(item.icon, contentDescription = null) },
-                                onClick = {
-                                    navController.navigateToTopLevel(item.route)
-                                    scope.launch { drawerState.close() }
-                                },
-                                modifier = Modifier.padding(horizontal = 12.dp)
-                            )
-                        }
+                        Text(
+                            text = stringResource(R.string.app_name),
+                            modifier = Modifier.padding(16.dp),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        HorizontalDivider()
 
-                        item {
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                        }
+                        LazyColumn(
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            items(visibleAppDestinations) { item ->
+                                NavigationDrawerItem(
+                                    label = { Text(item.label) },
+                                    selected = item.route == selectedRoute,
+                                    icon = { Icon(item.icon, contentDescription = null) },
+                                    onClick = {
+                                        navController.navigateToTopLevel(item.route)
+                                        scope.launch { drawerState.close() }
+                                    },
+                                    modifier = Modifier.padding(horizontal = 12.dp)
+                                )
+                            }
 
-                        items(TopLevelDestinations.entries) { item ->
-                            NavigationDrawerItem(
-                                label = { Text(item.label) },
-                                selected = item.route == selectedRoute,
-                                icon = { Icon(item.icon, contentDescription = null) },
-                                onClick = {
-                                    navController.navigateToTopLevel(item.route)
-                                    scope.launch { drawerState.close() }
-                                },
-                                modifier = Modifier.padding(horizontal = 12.dp)
-                            )
+                            item {
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                            }
+
+                            items(TopLevelDestinations.entries) { item ->
+                                NavigationDrawerItem(
+                                    label = { Text(item.label) },
+                                    selected = item.route == selectedRoute,
+                                    icon = { Icon(item.icon, contentDescription = null) },
+                                    onClick = {
+                                        navController.navigateToTopLevel(item.route)
+                                        scope.launch { drawerState.close() }
+                                    },
+                                    modifier = Modifier.padding(horizontal = 12.dp)
+                                )
+                            }
                         }
                     }
-                }
-            },
-            gesturesEnabled = true,
-            content = {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    MainContent(
-                        nestedScrollConnection = nestedScrollConnection,
-                        navController = navController,
-                        mainViewModel = mainViewModel,
-                        musicPlayerViewModel = musicPlayerViewModel,
-                        drawerState = drawerState,
-                        scope = scope,
-                        isMainPage = isMainPage,
-                        isBottomBarVisible = isBottomBarVisible,
-                        visibleAppDestinations = visibleAppDestinations,
-                        selectedRoute = selectedRoute,
-                        showDialog = showDialog,
-                        userId = userId,
-                        userName = userName,
-                        userAvatar = userAvatar,
-                        onUserDialogDismiss = { mainViewModel.changeUserDialogStatus(false) }
-                    )
-                    
-                    // 全局通知横幅
-                                        // 全局通知横幅
-                                        // 全局通知横幅
-InAppNotificationBanner(
-    notification = currentNotification,
-    visible = bannerVisible,
-    onDismiss = { currentNotification = null },
-    onClick = { notif ->
-        currentNotification = null
-        if (notif.chatId != null && notif.chatType != null) {
-            val intent = Intent(context, MessageDetailActivity::class.java).apply {
-                putExtra("chat_type", notif.chatType)
-                putExtra("chat_id", notif.chatId)
-            }
-            context.startActivity(intent)
-        }
-    },
-    modifier = Modifier
-        .zIndex(100f)
-        .align(Alignment.TopCenter)
-        .padding(horizontal = 12.dp, vertical = 8.dp)
-)
-                }
-            },
-        )
-    } else {
-        Box(modifier = Modifier.fillMaxSize()) {
-            MainContent(
-                nestedScrollConnection = nestedScrollConnection,
-                navController = navController,
-                mainViewModel = mainViewModel,
-                musicPlayerViewModel = musicPlayerViewModel,
-                drawerState = drawerState,
-                scope = scope,
-                isMainPage = isMainPage,
-                isBottomBarVisible = isBottomBarVisible,
-                visibleAppDestinations = visibleAppDestinations,
-                selectedRoute = selectedRoute,
-                showDialog = showDialog,
-                userId = userId,
-                userName = userName,
-                userAvatar = userAvatar,
-                onUserDialogDismiss = { mainViewModel.changeUserDialogStatus(false) }
-            )
-            
-            // 全局通知横幅
-                        // 全局通知横幅
-                        InAppNotificationBanner(
-                            notification = currentNotification,
-                            visible = bannerVisible,
-                            onDismiss = { currentNotification = null },
-                            onClick = { notif ->
-                                currentNotification = null
-                                if (notif.chatId != null && notif.chatType != null) {
-                                    val intent = Intent(context, MessageDetailActivity::class.java).apply {
-                                        putExtra("chat_type", notif.chatType)
-                                        putExtra("chat_id", notif.chatId)
-                                    }
-                                    context.startActivity(intent)
-                                }
-                            },
-                            modifier = Modifier
-                                .zIndex(100f)
-                                .align(Alignment.TopCenter)
-                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                },
+                gesturesEnabled = true,
+                content = {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        MainContent(
+                            nestedScrollConnection = nestedScrollConnection,
+                            navController = navController,
+                            mainViewModel = mainViewModel,
+                            musicPlayerViewModel = musicPlayerViewModel,
+                            drawerState = drawerState,
+                            scope = scope,
+                            isMainPage = isMainPage,
+                            isBottomBarVisible = isBottomBarVisible,
+                            visibleAppDestinations = visibleAppDestinations,
+                            selectedRoute = selectedRoute,
+                            showDialog = showDialog,
+                            userId = userId,
+                            userName = userName,
+                            userAvatar = userAvatar,
+                            onUserDialogDismiss = { mainViewModel.changeUserDialogStatus(false) }
                         )
+                    }
+                },
+            )
+        } else {
+            Box(modifier = Modifier.fillMaxSize()) {
+                MainContent(
+                    nestedScrollConnection = nestedScrollConnection,
+                    navController = navController,
+                    mainViewModel = mainViewModel,
+                    musicPlayerViewModel = musicPlayerViewModel,
+                    drawerState = drawerState,
+                    scope = scope,
+                    isMainPage = isMainPage,
+                    isBottomBarVisible = isBottomBarVisible,
+                    visibleAppDestinations = visibleAppDestinations,
+                    selectedRoute = selectedRoute,
+                    showDialog = showDialog,
+                    userId = userId,
+                    userName = userName,
+                    userAvatar = userAvatar,
+                    onUserDialogDismiss = { mainViewModel.changeUserDialogStatus(false) }
+                )
+            }
         }
+
+        // 全局通知横幅 - 放在最外层，覆盖所有页面
+        InAppNotificationBanner(
+            notification = currentNotification,
+            visible = bannerVisible,
+            onDismiss = { currentNotification = null },
+            onClick = { notif ->
+                currentNotification = null
+                if (notif.chatId != null && notif.chatType != null) {
+                    val intent = Intent(context, MessageDetailActivity::class.java).apply {
+                        putExtra("chat_type", notif.chatType)
+                        putExtra("chat_id", notif.chatId)
+                    }
+                    context.startActivity(intent)
+                }
+            },
+            modifier = Modifier
+                .zIndex(100f)
+                .align(Alignment.TopCenter)
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+        )
     }
 
     BackHandler(enabled = drawerState.isOpen) {
@@ -685,10 +644,6 @@ fun getStartDestination(context: Context): String {
     }
 }
 
-/**
- * 应用内通知横幅组件，仿抖音风格：
- * 左侧圆形头像，右侧上方标题（会话名/发送者），下方消息内容预览。
- */
 @Composable
 fun InAppNotificationBanner(
     notification: InAppNotification?,
@@ -719,7 +674,6 @@ fun InAppNotificationBanner(
                         .fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 头像
                     AsyncImage(
                         model = notif.avatarUrl,
                         contentDescription = "头像",
@@ -731,10 +685,7 @@ fun InAppNotificationBanner(
 
                     Spacer(modifier = Modifier.width(12.dp))
 
-                    // 文字区域
-                    Column(
-                        modifier = Modifier.weight(1f)
-                    ) {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = notif.title,
                             fontWeight = FontWeight.Bold,
@@ -753,7 +704,6 @@ fun InAppNotificationBanner(
                         )
                     }
 
-                    // 关闭按钮
                     IconButton(
                         onClick = onDismiss,
                         modifier = Modifier.size(32.dp)
