@@ -53,18 +53,40 @@ class WebSocketManager internal constructor() {
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private var scope: CoroutineScope? = null
-    
+
     private val _authState = MutableStateFlow(false)
     val authState: StateFlow<Boolean> = _authState.asStateFlow()
-    
+
+    // 原有的消息回调（用于聊天页面）
     private val observers = mutableListOf<(type: String, chatId: String, chatType: Int, message: Message) -> Unit>()
-    
+
     fun addObserver(observer: (type: String, chatId: String, chatType: Int, message: Message) -> Unit) {
         observers.add(observer)
     }
-    
+
     fun removeObserver(observer: (type: String, chatId: String, chatType: Int, message: Message) -> Unit) {
         observers.remove(observer)
+    }
+
+    // 好友列表更新回调
+    private var friendListUpdateListener: ((JSONObject) -> Unit)? = null
+
+    fun setOnFriendListUpdateListener(listener: (JSONObject) -> Unit) {
+        this.friendListUpdateListener = listener
+    }
+
+    // 群聊消息回调（用于会话列表更新）
+    private var groupMessageListener: ((JSONObject) -> Unit)? = null
+
+    fun setOnGroupMessageListener(listener: (JSONObject) -> Unit) {
+        this.groupMessageListener = listener
+    }
+
+    // 群聊列表更新回调
+    private var groupListUpdateListener: ((JSONObject) -> Unit)? = null
+
+    fun setOnGroupListUpdateListener(listener: (JSONObject) -> Unit) {
+        this.groupListUpdateListener = listener
     }
 
     fun connect(token: String) {
@@ -76,7 +98,7 @@ class WebSocketManager internal constructor() {
         if (currentToken != token || socket == null) {
             disconnect()
         }
-        
+
         this.currentToken = token
 
         if (heartbeatThread == null) {
@@ -127,24 +149,19 @@ class WebSocketManager internal constructor() {
                         val json = args[0] as JSONObject
                         val type = json.optString("type")
                         val dataObj = json.optJSONObject("data")
-                        Log.d("WS", "🔥 private_message 收到: type=$type, dataObj=$dataObj")
                         if (dataObj != null) {
                             val chatId = dataObj.optString("chat_id", "")
                             val chatType = dataObj.optInt("chat_type", 0)
                             val dataStr = dataObj.toString()
                             val message = AppJson.json.decodeFromString<Message>(dataStr)
-                            Log.d("WS", "🔥 解析完成: chatId=$chatId, chatType=$chatType, msgId=${message.msgId}")
                             mainHandler.post {
                                 observers.forEach { observer ->
                                     observer(type, chatId, chatType, message)
                                 }
                             }
-                        } else {
-                            Log.d("WS", "🔥 dataObj 为 null")
                         }
                     } catch (e: Exception) {
                         Log.e("WS", "解析私信消息失败: ${e.message}")
-                        e.printStackTrace()
                     }
                 }
             }
@@ -156,6 +173,11 @@ class WebSocketManager internal constructor() {
                         val type = json.optString("type")
                         val dataObj = json.optJSONObject("data")
                         if (dataObj != null) {
+                            // 传递给群聊消息监听器（用于更新会话列表）
+                            mainHandler.post {
+                                groupMessageListener?.invoke(dataObj)
+                            }
+                            // 同时也传递给原有的 observers（用于聊天页面）
                             val chatId = dataObj.optString("chat_id", "")
                             val chatType = dataObj.optInt("chat_type", 0)
                             val dataStr = dataObj.toString()
@@ -168,8 +190,33 @@ class WebSocketManager internal constructor() {
                         }
                     } catch (e: Exception) {
                         Log.e("WS", "解析群聊消息失败: ${e.message}")
-                        e.printStackTrace()
                     }
+                }
+            }
+
+            socket?.on("friend_list_update") { args ->
+                try {
+                    val data = args[0] as? JSONObject
+                    if (data != null) {
+                        mainHandler.post {
+                            friendListUpdateListener?.invoke(data)
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("WS", "解析 friend_list_update 失败: ${e.message}")
+                }
+            }
+
+            socket?.on("group_list_update") { args ->
+                try {
+                    val data = args[0] as? JSONObject
+                    if (data != null) {
+                        mainHandler.post {
+                            groupListUpdateListener?.invoke(data)
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("WS", "解析 group_list_update 失败: ${e.message}")
                 }
             }
 
