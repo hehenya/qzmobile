@@ -15,7 +15,7 @@ data class InAppNotification(
 }
 
 object NotificationManager {
-    private val _notifications = MutableSharedFlow<InAppNotification>()
+    private val _notifications = MutableSharedFlow<InAppNotification>(replay = 1)
     val notifications = _notifications.asSharedFlow()
 
     fun show(notification: InAppNotification) {

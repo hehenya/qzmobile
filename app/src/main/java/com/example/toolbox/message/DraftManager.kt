@@ -10,8 +10,12 @@ object DraftManager {
         prefs = context.getSharedPreferences("chat_drafts", Context.MODE_PRIVATE)
     }
 
-    fun saveDraft(chatType: Int, chatId: Int, text: String) {
-        prefs?.edit()?.putString("draft_${chatType}_$chatId", text)?.apply()
+    fun saveDraft(chatType: Int, chatId: Int, draft: String) {
+        prefs?.edit()?.apply {
+            putString("draft_${chatType}_${chatId}", draft)
+            putString("draft_${chatType}_${chatId}_time", System.currentTimeMillis().toString())
+            apply()
+        }
     }
 
     fun getDraft(chatType: Int, chatId: Int): String? {

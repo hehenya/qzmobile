@@ -164,7 +164,7 @@ fun MyApplicationApp() {
         }
         
         // 延迟一下再发送测试通知，确保 collect 已经开始
-        delay(500)
+        delay(1000)
         NotificationManager.show(
             InAppNotification(
                 title = "测试通知",

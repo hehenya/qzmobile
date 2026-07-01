@@ -479,7 +479,7 @@ fun FriendItem(friend: Friend, viewModel: MessageViewModel) {
     // 加载草稿
     val chatType = if (friend.type == "group") 2 else 1
     val chatId = friend.id
-    val draft = remember { DraftManager.getDraft(chatType, chatId) }
+    val draft = DraftManager.getDraft(chatType, chatId)
     
     val lastMsgText = if (draft != null) "[草稿] $draft" else (friend.lastMessage ?: "暂无消息")
     val lastMsgColor = if (draft != null) Color.Red 
