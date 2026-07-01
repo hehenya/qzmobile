@@ -141,7 +141,8 @@ fun MyApplicationApp() {
     
     var showAutoUpdateDialog by remember { mutableStateOf(false) }
     var autoUpdateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
-
+    var currentNotification by remember { mutableStateOf<InAppNotification?>(null) }
+    val bannerVisible = currentNotification != null
     var token by remember { mutableStateOf(TokenManager.get(context)) }
 
     LaunchedEffect(Unit) {
@@ -264,8 +265,7 @@ fun MyApplicationApp() {
     }
     
     // 全局通知横幅显示状态
-    var currentNotification by remember { mutableStateOf<InAppNotification?>(null) }
-    val bannerVisible = currentNotification != null
+    
 
     LaunchedEffect(Unit) {
         NotificationManager.notifications.collect { notification ->
