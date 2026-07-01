@@ -245,9 +245,9 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
         val message = uiState.messages.getOrNull(firstVisibleIndex) ?: return@derivedStateOf null
         if (message.isMine || message.isRecalled) return@derivedStateOf null
 
-        val itemHeightDp = with(density) { topVisibleItem.size.height.dp.value }
+        val itemHeightDp = with(density) { topVisibleItem.size.height.toDp() }.value
         val visibleHeightPx = (topVisibleItem.size.height + topVisibleItem.offset.y.coerceAtMost(0)).coerceAtLeast(0)
-        val visibleHeightDp = with(density) { visibleHeightPx.dp.value }
+        val visibleHeightDp = with(density) { visibleHeightPx.toDp() }.value
         val hasEnoughSpace = visibleHeightDp >= 44 && itemHeightDp >= 44
 
         val newerMessage = if (firstVisibleIndex > 0) uiState.messages[firstVisibleIndex - 1] else null
