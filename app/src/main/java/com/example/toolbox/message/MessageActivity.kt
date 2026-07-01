@@ -109,6 +109,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.Clipboard
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -244,8 +245,9 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
         val message = uiState.messages.getOrNull(firstVisibleIndex) ?: return@derivedStateOf null
         if (message.isMine || message.isRecalled) return@derivedStateOf null
 
-        val itemHeightDp = with(density) { topVisibleItem.size.toDp() }.value
-        val visibleHeightDp = with(density) { (topVisibleItem.size + topVisibleItem.offset.coerceAtMost(0)).toDp() }.value
+        val itemHeightDp = with(density) { topVisibleItem.size.height.dp.value }
+        val visibleHeightPx = (topVisibleItem.size.height + topVisibleItem.offset.y.coerceAtMost(0)).coerceAtLeast(0)
+        val visibleHeightDp = with(density) { visibleHeightPx.dp.value }
         val hasEnoughSpace = visibleHeightDp >= 44 && itemHeightDp >= 44
 
         val newerMessage = if (firstVisibleIndex > 0) uiState.messages[firstVisibleIndex - 1] else null
