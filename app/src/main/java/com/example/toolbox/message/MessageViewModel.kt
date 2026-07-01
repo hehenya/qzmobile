@@ -1,14 +1,13 @@
 package com.example.toolbox.message
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.toolbox.ApiAddress
 import com.example.toolbox.AppJson
-import com.example.toolbox.data.Friend
 import com.example.toolbox.data.FriendsResponse
-import com.example.toolbox.data.Pagination
+import com.example.toolbox.data.Message
+import com.example.toolbox.data.MessageUiState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,20 +18,6 @@ import kotlinx.coroutines.withContext
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.json.JSONObject
-
-data class MessageUiState(
-    val friends: List<Friend> = emptyList(),
-    val pagination: Pagination? = null,
-    val hasMore: Boolean = false,
-    val isRefreshing: Boolean = false,
-    val isLoadingMore: Boolean = false,
-    val isLoading: Boolean = false,
-    val error: String? = null,
-    // 当前正在聊天的会话，用于判断是否增加未读数
-    val currentChatId: Int? = null,
-    val currentChatType: Int? = null
-)
 
 class MessageViewModel(
     private val token: String
@@ -42,14 +27,88 @@ class MessageViewModel(
     val uiState: StateFlow<MessageUiState> = _uiState.asStateFlow()
 
     private val client = OkHttpClient()
+    private var isWebSocketUpdate = false
+
+    private val messageObserver: (type: String, chatId: String, chatType: Int, message: Message) -> Unit = { type, _, _, _ ->
+        when (type) {
+            "new", "edit", "recall" -> {
+                isWebSocketUpdate = true
+                silentRefresh()
+            }
+        }
+    }
 
     init {
         loadFriends(page = 1, isRefresh = true)
-        connectWebSocket()
+    }
+
+    /**
+     * 标记某个会话为已读（本地清零）
+     */
+    fun markAsRead(chatId: Int, chatType: Int) {
+        _uiState.update { current ->
+            current.copy(
+                friends = current.friends.map { friend ->
+                    val type = if (chatType == 2) "group" else "friend"
+                    if (friend.id == chatId && friend.type == type) {
+                        friend.copy(unreadCount = 0)
+                    } else {
+                        friend
+                    }
+                }
+            )
+        }
+    }
+
+    private fun silentRefresh() {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(error = null)
+            }
+
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    val requestBody = FormBody.Builder()
+                        .add("page", "1")
+                        .add("per_page", "20")
+                        .build()
+
+                    val request = Request.Builder()
+                        .url("${ApiAddress}chat/list")
+                        .post(requestBody)
+                        .header("x-access-token", token)
+                        .build()
+
+                    val response = client.newCall(request).execute()
+                    if (!response.isSuccessful) {
+                        return@withContext null
+                    }
+
+                    val responseBody = response.body.string()
+                    AppJson.json.decodeFromString<FriendsResponse>(responseBody)
+                }
+            }
+
+            result.onSuccess { friendsResponse ->
+                if (friendsResponse != null && friendsResponse.success) {
+                    _uiState.update { current ->
+                        current.copy(
+                            friends = friendsResponse.friends,
+                            pagination = friendsResponse.pagination,
+                            hasMore = friendsResponse.pagination.currentPage < friendsResponse.pagination.pages,
+                            error = null
+                        )
+                    }
+                }
+            }
+
+            isWebSocketUpdate = false
+        }
     }
 
     fun refresh() {
-        if (_uiState.value.isRefreshing) return
+        if (uiState.value.isRefreshing) return
+        isWebSocketUpdate = false
         loadFriends(page = 1, isRefresh = true)
     }
 
@@ -63,12 +122,12 @@ class MessageViewModel(
     private fun loadFriends(page: Int, isRefresh: Boolean) {
         viewModelScope.launch {
             _uiState.update {
-                if (isRefresh) it.copy(isRefreshing = true, isLoading = true, error = null)
+                if (isRefresh) it.copy(isRefreshing = true, error = null)
                 else it.copy(isLoadingMore = true, error = null)
             }
 
-            try {
-                val result = withContext(Dispatchers.IO) {
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
                     val requestBody = FormBody.Builder()
                         .add("page", page.toString())
                         .add("per_page", "20")
@@ -88,18 +147,19 @@ class MessageViewModel(
                     val responseBody = response.body.string()
                     AppJson.json.decodeFromString<FriendsResponse>(responseBody)
                 }
+            }
 
-                if (result != null && result.success) {
+            result.onSuccess { friendsResponse ->
+                if (friendsResponse != null && friendsResponse.success) {
                     _uiState.update { current ->
-                        val newFriends = if (isRefresh) result.friends
-                        else current.friends + result.friends
+                        val newFriends = if (isRefresh) friendsResponse.friends
+                        else current.friends + friendsResponse.friends
                         current.copy(
                             friends = newFriends,
-                            pagination = result.pagination,
-                            hasMore = result.pagination.currentPage < result.pagination.pages,
+                            pagination = friendsResponse.pagination,
+                            hasMore = friendsResponse.pagination.currentPage < friendsResponse.pagination.pages,
                             isRefreshing = false,
                             isLoadingMore = false,
-                            isLoading = false,
                             error = null
                         )
                     }
@@ -107,137 +167,35 @@ class MessageViewModel(
                     _uiState.update { it.copy(
                         isRefreshing = false,
                         isLoadingMore = false,
-                        isLoading = false,
                         error = "请求失败或数据为空"
                     ) }
                 }
-            } catch (e: Exception) {
+            }.onFailure { e ->
                 _uiState.update { it.copy(
                     isRefreshing = false,
                     isLoadingMore = false,
-                    isLoading = false,
                     error = e.message
                 ) }
             }
         }
     }
 
-    /**
-     * 设置当前正在查看的聊天（用于判断是否增加未读数）
-     */
-    fun setCurrentChat(chatId: Int?, chatType: Int?) {
-        _uiState.update { it.copy(currentChatId = chatId, currentChatType = chatType) }
-    }
-
-    /**
-     * 标记某个会话为已读
-     */
-    fun markAsRead(chatId: Int, chatType: Int) {
-        _uiState.update { current ->
-            current.copy(
-                friends = current.friends.map { friend ->
-                    val type = if (chatType == 2) "group" else "friend"
-                    if (friend.id == chatId && friend.type == type) {
-                        friend.copy(unreadCount = 0)
-                    } else {
-                        friend
-                    }
-                }
-            )
-        }
-    }
-
     fun connectWebSocket() {
         if (token.isNotBlank()) {
             val manager = ChatSocketManager.getInstance()
+            manager.addObserver(messageObserver)
             manager.connect(token)
-
-            // 好友列表更新
-            manager.setOnFriendListUpdateListener { data ->
-                try {
-                    val friendsArray = data.optJSONArray("friends") ?: return@setOnFriendListUpdateListener
-                    val newPrivateChats = mutableListOf<Friend>()
-                    for (i in 0 until friendsArray.length()) {
-                        val friendJson = friendsArray.getJSONObject(i)
-                        val friendId = friendJson.getInt("id")
-                        val currentChatId = _uiState.value.currentChatId
-                        val currentChatType = _uiState.value.currentChatType
-                        
-                        // 如果当前正在这个聊天中，强制清零未读数
-                        val unreadCount = if (currentChatId == friendId && currentChatType == 1) {
-                            0
-                        } else {
-                            friendJson.optInt("unread_count", 0)
-                        }
-                        
-                        newPrivateChats.add(
-                            Friend(
-                                id = friendId,
-                                username = friendJson.getString("username"),
-                                avatar = friendJson.optString("avatar", ""),
-                                lastMessage = friendJson.optString("last_message", null),
-                                lastMessageTime = friendJson.optString("last_message_time", null),
-                                unreadCount = unreadCount,
-                                type = "friend",
-                                name = friendJson.getString("username"),
-                                title = friendJson.optString("title", ""),
-                                titleStatus = friendJson.optInt("title_status", 0)
-                            )
-                        )
-                    }
-                    // 保留现有群聊，更新私聊
-                    _uiState.update { current ->
-                        val groupChats = current.friends.filter { it.type == "group" }
-                        current.copy(friends = groupChats + newPrivateChats)
-                    }
-                } catch (e: Exception) {
-                    Log.e("MessageViewModel", "解析 friend_list_update 失败", e)
-                }
-            }
-
-            // 群聊列表更新
-            manager.setOnGroupListUpdateListener { data ->
-                try {
-                    val groupsArray = data.optJSONArray("groups") ?: return@setOnGroupListUpdateListener
-                    val newGroupChats = mutableListOf<Friend>()
-                    for (i in 0 until groupsArray.length()) {
-                        val groupJson = groupsArray.getJSONObject(i)
-                        val groupId = groupJson.getInt("group_id")
-                        val currentChatId = _uiState.value.currentChatId
-                        val currentChatType = _uiState.value.currentChatType
-                        
-                        // 如果当前正在这个群聊中，强制清零未读数
-                        val unreadCount = if (currentChatId == groupId && currentChatType == 2) {
-                            0
-                        } else {
-                            groupJson.optInt("unread_count", 0)
-                        }
-                        
-                        newGroupChats.add(
-                            Friend(
-                                id = groupId,
-                                username = groupJson.optString("name", "群聊"),
-                                avatar = groupJson.optString("avatar", ""),
-                                lastMessage = groupJson.optString("last_message", null),
-                                lastMessageTime = groupJson.optString("last_message_time", null),
-                                unreadCount = unreadCount,
-                                type = "group",
-                                name = groupJson.optString("name", "群聊"),
-                                title = "",
-                                titleStatus = 0
-                            )
-                        )
-                    }
-                    // 保留现有私聊，更新群聊
-                    _uiState.update { current ->
-                        val privateChats = current.friends.filter { it.type == "friend" }
-                        current.copy(friends = privateChats + newGroupChats)
-                    }
-                } catch (e: Exception) {
-                    Log.e("MessageViewModel", "解析 group_list_update 失败", e)
-                }
-            }
         }
+    }
+
+    fun disconnectWebSocket() {
+        val manager = ChatSocketManager.getInstance()
+        manager.removeObserver(messageObserver)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        disconnectWebSocket()
     }
 }
 

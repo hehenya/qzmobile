@@ -22,4 +22,8 @@ object DraftManager {
     fun removeDraft(chatType: Int, chatId: Int) {
         prefs?.edit()?.remove("draft_${chatType}_$chatId")?.apply()
     }
+    fun getDraftTime(chatType: Int, chatId: Int): String {
+        val key = "draft_${chatType}_${chatId}_time"
+        return prefs?.getString(key, "") ?: ""
+    }
 }

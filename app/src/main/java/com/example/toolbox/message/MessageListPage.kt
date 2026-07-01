@@ -45,6 +45,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import com.example.toolbox.DraftManager
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -64,7 +66,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -75,7 +76,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.rememberAsyncImagePainter
 import com.example.toolbox.MainViewModel
 import com.example.toolbox.TokenManager
-import com.example.toolbox.DraftManager
 import com.example.toolbox.data.Friend
 import com.example.toolbox.mine.notice.FriendRequestActivity
 import com.example.toolbox.mine.notice.snapshotFlow
@@ -237,7 +237,6 @@ fun MessageScreen(
                     ) {
                         items(uiState.friends, key = { it.id }) { friend ->
                             FriendItem(friend = friend, viewModel = viewModel)
-                        
                         }
                         if (uiState.isLoadingMore) {
                             item {
@@ -479,7 +478,7 @@ fun FriendItem(friend: Friend, viewModel: MessageViewModel) {
     val context = LocalContext.current
     // 加载草稿
     val chatType = if (friend.type == "group") 2 else 1
-    val chatId = try { friend.id.toInt() } catch (_: Exception) { 0 }
+    val chatId = friend.id
     val draft = remember { DraftManager.getDraft(chatType, chatId) }
     
     val lastMsgText = if (draft != null) "[草稿] $draft" else (friend.lastMessage ?: "暂无消息")
@@ -491,12 +490,8 @@ fun FriendItem(friend: Friend, viewModel: MessageViewModel) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
-                val chatType = if (friend.type == "group") 2 else 1
-                val chatId = friend.id
-                
-                // 标记已读
-                viewModel.markAsRead(chatId, chatType)
-                viewModel.setCurrentChat(chatId, chatType)
+                // 本地清零未读数
+                viewModel.markAsRead(friend.id, chatType)
                 
                 val intent = Intent(context, MessageDetailActivity::class.java)
                 if (friend.type == "group") {
@@ -580,7 +575,15 @@ fun FriendItem(friend: Friend, viewModel: MessageViewModel) {
                     modifier = Modifier.weight(1f)
                 )
 
-                if (friend.lastMessageTime != null) {
+                // 有时间就显示：有草稿显示草稿时间，没草稿显示最后消息时间
+                if (draft != null) {
+                    Text(
+                        text = formatRelativeTime(DraftManager.getDraftTime(chatType, chatId)),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                } else if (friend.lastMessageTime != null) {
                     Text(
                         text = formatRelativeTime(friend.lastMessageTime),
                         fontSize = 12.sp,
@@ -609,13 +612,11 @@ fun formatRelativeTime(timeStr: String): String {
                 else -> SimpleDateFormat("MM-dd", Locale.getDefault()).format(date)
             }
         } else {
-            // 解析失败，尝试显示时间部分
             if (timeStr.length >= 16) timeStr.substring(11, 16)
             else if (timeStr.length >= 5) timeStr.substring(0, 5)
             else timeStr
         }
     } catch (_: Exception) {
-        // 任何异常都安全处理
         if (timeStr.length >= 16) timeStr.substring(11, 16)
         else if (timeStr.length >= 5) timeStr.substring(0, 5)
         else timeStr

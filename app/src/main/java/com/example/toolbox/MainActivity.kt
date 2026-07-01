@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.ui.zIndex
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -342,24 +343,26 @@ fun MyApplicationApp() {
                     )
                     
                     // 全局通知横幅
-                    InAppNotificationBanner(
-                        notification = currentNotification,
-                        visible = bannerVisible,
-                        onDismiss = { currentNotification = null },
-                        onClick = { notif ->
-                            currentNotification = null
-                            if (notif.chatId != null && notif.chatType != null) {
-                                val intent = Intent(context, MessageDetailActivity::class.java).apply {
-                                    putExtra("chat_type", notif.chatType)
-                                    putExtra("chat_id", notif.chatId)
-                                }
-                                context.startActivity(intent)
-                            }
-                        },
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
-                    )
+                                        // 全局通知横幅
+                                        InAppNotificationBanner(
+                                            notification = InAppNotification(title = "强制测试", message = "横幅可见", avatarUrl = ""),
+                                            visible = true,
+                                            onDismiss = { currentNotification = null },
+                                            onClick = { notif ->
+                                                currentNotification = null
+                                                if (notif.chatId != null && notif.chatType != null) {
+                                                    val intent = Intent(context, MessageDetailActivity::class.java).apply {
+                                                        putExtra("chat_type", notif.chatType)
+                                                        putExtra("chat_id", notif.chatId)
+                                                    }
+                                                    context.startActivity(intent)
+                                                }
+                                            },
+                                            modifier = Modifier
+                                                .zIndex(100f)
+                                                .align(Alignment.TopCenter)
+                                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                        )
                 }
             },
         )
@@ -384,24 +387,26 @@ fun MyApplicationApp() {
             )
             
             // 全局通知横幅
-            InAppNotificationBanner(
-                notification = currentNotification,
-                visible = bannerVisible,
-                onDismiss = { currentNotification = null },
-                onClick = { notif ->
-                    currentNotification = null
-                    if (notif.chatId != null && notif.chatType != null) {
-                        val intent = Intent(context, MessageDetailActivity::class.java).apply {
-                            putExtra("chat_type", notif.chatType)
-                            putExtra("chat_id", notif.chatId)
-                        }
-                        context.startActivity(intent)
-                    }
-                },
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
-            )
+                        // 全局通知横幅
+                        InAppNotificationBanner(
+                            notification = InAppNotification(title = "强制测试", message = "横幅可见", avatarUrl = ""),
+                            visible = true,
+                            onDismiss = { currentNotification = null },
+                            onClick = { notif ->
+                                currentNotification = null
+                                if (notif.chatId != null && notif.chatType != null) {
+                                    val intent = Intent(context, MessageDetailActivity::class.java).apply {
+                                        putExtra("chat_type", notif.chatType)
+                                        putExtra("chat_id", notif.chatId)
+                                    }
+                                    context.startActivity(intent)
+                                }
+                            },
+                            modifier = Modifier
+                                .zIndex(100f)
+                                .align(Alignment.TopCenter)
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                        )
         }
     }
 
