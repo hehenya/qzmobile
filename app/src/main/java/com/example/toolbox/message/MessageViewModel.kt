@@ -133,7 +133,7 @@ class MessageViewModel(
                         val friendJson = friendsArray.getJSONObject(i)
                         newPrivateChats.add(
                             Friend(
-                                id = friendJson.getInt("id").toString(),
+                                id = friendJson.getInt("id"),
                                 username = friendJson.getString("username"),
                                 avatar = friendJson.optString("avatar", ""),
                                 lastMessage = friendJson.optString("last_message", null),
@@ -165,7 +165,7 @@ class MessageViewModel(
                         val groupJson = groupsArray.getJSONObject(i)
                         newGroupChats.add(
                             Friend(
-                                id = groupJson.getInt("group_id").toString(),
+                                id = groupJson.getInt("group_id"),
                                 username = groupJson.optString("name", "群聊"),
                                 avatar = groupJson.optString("avatar", ""),
                                 lastMessage = groupJson.optString("last_message", null),
