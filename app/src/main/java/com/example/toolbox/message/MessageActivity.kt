@@ -478,13 +478,49 @@ fun MessageBubble(
                                 }
                                 if (message.quoteMsgInfo != null) {
                                     val ref = message.quoteMsgInfo
-                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 2.dp)) {
-                                        Box(Modifier.width(3.dp).height(32.dp).background(MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp)))
+                                    val quoteBarColor = if (isMine) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.primary
+                                    val quoteTextColor = if (isMine) Color.White.copy(alpha = 0.9f) else MaterialTheme.colorScheme.onSurfaceVariant
+                                    val quoteNameColor = if (isMine) Color.White else MaterialTheme.colorScheme.primary
+                                
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(bottom = 2.dp)
+                                    ) {
+                                        Box(
+                                            Modifier
+                                                .width(3.dp)
+                                                .height(32.dp)
+                                                .background(quoteBarColor, RoundedCornerShape(2.dp))
+                                        )
                                         Spacer(Modifier.width(8.dp))
                                         Column {
-                                            Text(ref.senderUsername, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                                            if (ref.content.isNotBlank()) Text(ref.content, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                            if (ref.images.isNotEmpty()) AsyncImage(model = ref.images.first(), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(4.dp)).padding(top = 4.dp))
+                                            Text(
+                                                text = ref.senderUsername,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = quoteNameColor
+                                            )
+                                            if (ref.content.isNotBlank()) {
+                                                Text(
+                                                    text = ref.content,
+                                                    fontSize = 12.sp,
+                                                    maxLines = 2,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                    color = quoteTextColor
+                                                )
+                                            }
+                                            if (ref.images.isNotEmpty()) {
+                                                AsyncImage(
+                                                    model = ref.images.first(),
+                                                    contentDescription = null,
+                                                    contentScale = ContentScale.Crop,
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .height(100.dp)
+                                                        .clip(RoundedCornerShape(4.dp))
+                                                        .padding(top = 4.dp)
+                                                )
+                                            }
                                         }
                                     }
                                 }
