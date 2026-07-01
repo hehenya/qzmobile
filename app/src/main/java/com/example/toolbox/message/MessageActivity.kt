@@ -38,8 +38,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.ui.unit.toDp
+import androidx.compose.foundation.lazy.itemss
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -246,9 +245,9 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
         val message = uiState.messages.getOrNull(firstVisibleIndex) ?: return@derivedStateOf null
         if (message.isMine || message.isRecalled) return@derivedStateOf null
 
-        val itemHeightDp = with(density) { topVisibleItem.size.height.toDp() }.value
+        val itemHeightDp = topVisibleItem.size.height / density.density
         val visibleHeightPx = (topVisibleItem.size.height + topVisibleItem.offset.y.coerceAtMost(0)).coerceAtLeast(0)
-        val visibleHeightDp = with(density) { visibleHeightPx.toDp() }.value
+        val visibleHeightDp = visibleHeightPx / density.density
         val hasEnoughSpace = visibleHeightDp >= 44 && itemHeightDp >= 44
 
         val newerMessage = if (firstVisibleIndex > 0) uiState.messages[firstVisibleIndex - 1] else null
