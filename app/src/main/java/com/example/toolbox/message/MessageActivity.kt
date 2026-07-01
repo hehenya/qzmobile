@@ -236,39 +236,55 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
     var imageViewerInitialPage by remember { mutableIntStateOf(0) }
     val replyTo by viewModel.replyTo.collectAsState()
 
-    // 浮动头像（仅群聊）—— 完全参照参考项目逻辑
-    val floatingAvatar by remember {
+    // ========== 浮动头像（仅群聊，已修复私聊误显示问题）==========
+    val floatingAvatarState by remember {
         derivedStateOf {
-            if (uiState.chatType != 2) return@derivedStateOf null
+            // ★ 关键修复：仅在群聊中显示浮动头像
+            if (uiState.chatType != 2) return@derivedStateOf Triple(false, "", false)
+
             val visibleItems = listState.layoutInfo.visibleItemsInfo
-            if (visibleItems.isEmpty() || uiState.messages.isEmpty()) return@derivedStateOf null
-
-            // 取视觉最下方的可见项（索引最小，对应最新消息）
-            val topVisibleItem = visibleItems.minByOrNull { it.index } ?: return@derivedStateOf null
-            val firstVisibleIndex = topVisibleItem.index
-            val message = uiState.messages.getOrNull(firstVisibleIndex) ?: return@derivedStateOf null
-            if (message.isMine || message.isRecalled) return@derivedStateOf null
-
-            // 像素转dp（参考项目使用 toDp 扩展，若 CI 不支持可换除法）
-            val itemHeightDp = with(density) { topVisibleItem.size.toDp() }.value
-            val visibleHeightPx = (topVisibleItem.size + topVisibleItem.offset.coerceAtMost(0)).coerceAtLeast(0)
-            val visibleHeightDp = with(density) { visibleHeightPx.toDp() }.value
-            val hasEnoughSpace = visibleHeightDp >= 44 && itemHeightDp >= 44
-
-            val currentIndex = uiState.messages.indexOf(message)
-            val newerMessage = if (currentIndex > 0) uiState.messages[currentIndex - 1] else null
-            val olderMessage = if (currentIndex < uiState.messages.size - 1) uiState.messages[currentIndex + 1] else null
-            val isLastFromSender = olderMessage == null || olderMessage.isRecalled || olderMessage.senderId != message.senderId
-            val hasOtherSameSender = (newerMessage != null && !newerMessage.isRecalled && newerMessage.senderId == message.senderId && !isLastFromSender) ||
-                    (olderMessage != null && !olderMessage.isRecalled && olderMessage.senderId == message.senderId)
-
-            if (hasEnoughSpace || (hasOtherSameSender && message.displayAvatar.isNotEmpty())) {
-                message.displayAvatar
+            if (visibleItems.isEmpty() || uiState.messages.isEmpty()) {
+                Triple(false, "", false)
             } else {
-                null
+                val topVisibleItem = visibleItems.minByOrNull { it.index }
+                if (topVisibleItem == null) {
+                    Triple(false, "", false)
+                } else {
+                    val firstVisibleIndex = topVisibleItem.index
+                    val message = uiState.messages.getOrNull(firstVisibleIndex)
+
+                    if (message == null || message.isRecalled) {
+                        Triple(false, "", false)
+                    } else {
+                        val itemHeightDp = with(density) { topVisibleItem.size.toDp() }.value
+                        val visibleHeightDp = with(density) {
+                            (topVisibleItem.size + topVisibleItem.offset.coerceAtMost(0)).toDp()
+                        }.value
+                        val hasEnoughSpace = visibleHeightDp >= 44 && itemHeightDp >= 44
+
+                        val currentIndex = uiState.messages.indexOfFirst { it.effectiveMsgId == message.effectiveMsgId }
+                        val newerMessage = if (currentIndex > 0) uiState.messages[currentIndex - 1] else null
+                        val olderMessage = if (currentIndex < uiState.messages.size - 1) uiState.messages[currentIndex + 1] else null
+                        val isLastFromSender = olderMessage == null || olderMessage.isRecalled || olderMessage.senderId != message.senderId
+                        val hasOtherSameSender = (newerMessage != null && !newerMessage.isRecalled && newerMessage.senderId == message.senderId && !isLastFromSender) ||
+                                (olderMessage != null && !olderMessage.isRecalled && olderMessage.senderId == message.senderId)
+
+                        if (hasEnoughSpace) {
+                            Triple(true, message.displayAvatar, message.isMine)
+                        } else if (hasOtherSameSender && message.displayAvatar.isNotEmpty()) {
+                            Triple(true, message.displayAvatar, message.isMine)
+                        } else {
+                            Triple(false, "", false)
+                        }
+                    }
+                }
             }
         }
     }
+
+    val showFloatingAvatar = floatingAvatarState.first
+    val floatingAvatarUrl = floatingAvatarState.second
+    val floatingAvatarIsMine = floatingAvatarState.third
 
     LaunchedEffect(listState) { snapshotFlow { val vi = listState.layoutInfo.visibleItemsInfo; if (vi.isNotEmpty()) vi.last().index >= listState.layoutInfo.totalItemsCount - 5 && uiState.hasMore && !uiState.isLoadingMore && !uiState.isRefreshing else false }.distinctUntilChanged().filter { it }.collect { viewModel.loadMore() } }
     LaunchedEffect(listState) { snapshotFlow { val vi = listState.layoutInfo.visibleItemsInfo; if (vi.isNotEmpty()) vi.first().index == 0 else true }.distinctUntilChanged().collect { atBottom -> showScrollToBottom = !atBottom; if (atBottom) { unreadCount = 0; if (uiState.messages.isNotEmpty()) firstMessageId = uiState.messages.first().effectiveMsgId } } }
@@ -298,7 +314,6 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
                             val newerMessage = if (index > 0) uiState.messages[index - 1] else null
                             val olderMessage = if (index < uiState.messages.size - 1) uiState.messages[index + 1] else null
 
-                            // 日期分隔判断：当前消息与下一条消息（时间上更新）日期不同时，为当前消息显示日期
                             val showDate = newerMessage == null || getDateString(message.sendTime) != getDateString(newerMessage.sendTime)
                             val dateString = if (showDate) getDateString(message.sendTime) else null
 
@@ -322,7 +337,20 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
                     }
                 }
                 if (uiState.error != null && uiState.messages.isEmpty()) Text("错误: ${uiState.error}", color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center))
-                if (floatingAvatar != null) { AsyncImage(model = floatingAvatar, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = 8.dp).size(36.dp).clip(CircleShape)) }
+
+                // 浮动头像显示（仅群聊）
+                if (showFloatingAvatar) {
+                    AsyncImage(
+                        model = floatingAvatarUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .align(if (floatingAvatarIsMine) Alignment.BottomEnd else Alignment.BottomStart)
+                            .padding(start = 16.dp, bottom = 8.dp, end = 16.dp)
+                            .size(36.dp)
+                            .clip(CircleShape)
+                    )
+                }
                 AnimatedScrollToBottomButton(visible = showScrollToBottom, unreadCount = unreadCount, onClick = scrollToBottom, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp))
             }
             if (uiState.isChatExpired) {
@@ -437,7 +465,7 @@ fun MessageBubble(
         }
     } else {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
-            // 日期分隔符（绘制在气泡上方）
+            // 日期分隔符
             if (showDate && dateString != null) {
                 Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
                     Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)) {
@@ -449,7 +477,6 @@ fun MessageBubble(
             Row(modifier = Modifier.fillMaxWidth().combinedClickable(onClick = {}, onLongClick = { showMenu = true }).padding(horizontal = 0.dp, vertical = 0.dp),
                 verticalAlignment = Alignment.Bottom, horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
 
-                // 左侧头像 - 仅群聊显示
                 if (!isMine && chatType == 2) {
                     if (isFirstFromSender) {
                         AsyncImage(model = message.displayAvatar, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(36.dp).clip(CircleShape))
@@ -676,7 +703,6 @@ fun LinkPreviewCard(url: String, title: String, onClick: () -> Unit) {
             modifier = Modifier.padding(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 网站图标区域
             Surface(
                 modifier = Modifier.size(40.dp),
                 shape = RoundedCornerShape(8.dp),
@@ -695,7 +721,6 @@ fun LinkPreviewCard(url: String, title: String, onClick: () -> Unit) {
             Spacer(Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                // 标题
                 Text(
                     text = title,
                     style = MaterialTheme.typography.bodyMedium,
@@ -704,10 +729,7 @@ fun LinkPreviewCard(url: String, title: String, onClick: () -> Unit) {
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-
                 Spacer(Modifier.height(4.dp))
-
-                // 域名/URL 显示
                 Text(
                     text = url,
                     style = MaterialTheme.typography.labelSmall,
@@ -715,10 +737,7 @@ fun LinkPreviewCard(url: String, title: String, onClick: () -> Unit) {
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-
                 Spacer(Modifier.height(6.dp))
-
-                // 细分割线
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -727,10 +746,7 @@ fun LinkPreviewCard(url: String, title: String, onClick: () -> Unit) {
                             MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                         )
                 )
-
                 Spacer(Modifier.height(4.dp))
-
-                // 预览提示文字
                 Text(
                     text = "链接预览",
                     style = MaterialTheme.typography.labelSmall,
