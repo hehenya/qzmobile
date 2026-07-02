@@ -153,6 +153,7 @@ class WebSocketManager internal constructor() {
                                     dataObj.optString("receiver_id", "")
                                 }
                             }
+                            
                             val chatType = dataObj.optInt("chat_type", 0)
                             val dataStr = dataObj.toString()
                             val message = AppJson.json.decodeFromString<Message>(dataStr)
@@ -197,13 +198,14 @@ class WebSocketManager internal constructor() {
                             val chatId = dataObj.optString("chat_id", "").ifEmpty {
                                 dataObj.optString("group_id", "")
                             }
+                            val chatType = dataObj.optInt("chat_type", 0)
                             val dataStr = dataObj.toString()
                             val message = AppJson.json.decodeFromString<Message>(dataStr)
                             mainHandler.post {
                                 observers.forEach { observer ->
                                     observer(type, chatId, chatType, message)
                                 }
-
+                               
                                 // 新消息通知（仅他人消息）
                                 if (type == "new" && !dataObj.optBoolean("is_mine", false)) {
                                     val senderName = dataObj.optString("sender_username", "未知用户")
