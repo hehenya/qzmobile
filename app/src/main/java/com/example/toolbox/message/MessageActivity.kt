@@ -882,3 +882,14 @@ fun EditMessageDialog(state: EditDialogState, onDismiss: () -> Unit, onContentCh
         }
     }, confirmButton = { Button(onClick = onSave) { Text("保存") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } })
 }
+// ---- 好友请求 ----
+private suspend fun sendFriendRequest(token: String, friendId: Int): Boolean {
+    val client = OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(10, TimeUnit.SECONDS).build()
+    val jsonBody = JSONObject().put("friend_id", friendId).toString()
+    val requestBody = jsonBody.toRequestBody("application/json; charset=utf-8".toMediaType())
+    val request = Request.Builder().url("${ApiAddress}friends/send_request").post(requestBody).addHeader("x-access-token", token).build()
+    return withContext(Dispatchers.IO) {
+        try { client.newCall(request).execute().use { r -> if (!r.isSuccessful) false else { val b = r.body.string(); if (b.isBlank()) false else (try { JSONObject(b) } catch (_: Exception) { return@withContext false }).optBoolean("success", false) } } }
+        catch (e: Exception) { Log.e("NetworkError", "请求失败", e); false }
+    }
+}
