@@ -440,7 +440,7 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
                             .align(if (floatingAvatarIsMine) Alignment.BottomEnd else Alignment.BottomStart)
-                            .padding(start = 16.dp, bottom = 8.dp, end = 16.dp)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
                             .size(36.dp)
                             .clip(CircleShape)
                     )
@@ -741,7 +741,6 @@ fun MessageInput(
     Surface(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp).border(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f), RoundedCornerShape(20.dp)),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-        shadowElevation = 1.dp,
         shape = RoundedCornerShape(20.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp).padding(bottom = innerPadding.calculateBottomPadding())) {
