@@ -583,7 +583,20 @@ fun MessageBubble(
             ) {
                 if (!isMine && chatType == 2) {
                     if (message.isFirstFromSender) {
-                        AsyncImage(model = message.displayAvatar, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(36.dp).clip(CircleShape))
+                        AsyncImage(
+    model = message.displayAvatar,
+    contentDescription = null,
+    contentScale = ContentScale.Crop,
+    modifier = Modifier
+        .size(36.dp)
+        .clip(CircleShape)
+        .clickable {
+            val intent = Intent(context, UserInfoActivity::class.java).apply {
+                putExtra("userId", message.senderId ?: return@clickable)
+            }
+            context.startActivity(intent)
+        }
+)
                         Spacer(Modifier.width(12.dp))
                     } else {
                         Spacer(Modifier.width(48.dp))
