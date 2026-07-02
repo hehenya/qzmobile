@@ -1,12 +1,9 @@
-@file:Suppress("AssignedValueIsNeverRead")
-
 package com.example.toolbox.message
 
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.util.Log
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -304,10 +301,9 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
     val selectionMode = uiState.selectionMode
     val selectedMessages = uiState.selectedMessages
 
-    // 菜单打开的消息 ID（参考项目效果：其他消息变暗）
     var showMenuMsgId by remember { mutableStateOf<String?>(null) }
 
-    // 浮动头像（仅群聊）—— 修复初始不显示问题
+    // 浮动头像（仅群聊）—— 参考项目逻辑
     val floatingAvatarState by remember {
         derivedStateOf {
             if (uiState.chatType != 2) return@derivedStateOf Triple(false, "", false)
@@ -397,7 +393,6 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
                 PullToRefreshBox(isRefreshing = uiState.isRefreshing, onRefresh = { viewModel.refresh() }, modifier = Modifier.fillMaxSize()) {
                     LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), reverseLayout = true, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         items(items = uiState.messages, key = { it.effectiveMsgId }) { message ->
-                            // 参考项目效果：菜单打开时，非当前消息降低透明度
                             val isMenuOpen = showMenuMsgId != null
                             val isCurrentMsg = message.effectiveMsgId == showMenuMsgId
                             val itemAlpha = if (isMenuOpen && !isCurrentMsg) 0.4f else 1f
@@ -419,7 +414,6 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
                                     isSelected = message.effectiveMsgId in selectedMessages,
                                     onLongPress = { viewModel.enterSelectionMode(message) },
                                     onClickInSelectionMode = { viewModel.toggleMessageSelection(message) },
-                                    // 传递菜单状态
                                     showMenu = showMenuMsgId == message.effectiveMsgId && !selectionMode,
                                     onShowMenuChanged = { msgId ->
                                         if (!selectionMode) {
@@ -447,7 +441,6 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
                 }
                 AnimatedScrollToBottomButton(visible = showScrollToBottom, unreadCount = unreadCount, onClick = scrollToBottom, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp))
             }
-            // 底部栏
             if (selectionMode) {
                 Row(
                     modifier = Modifier
@@ -890,6 +883,6 @@ private suspend fun sendFriendRequest(token: String, friendId: Int): Boolean {
     val request = Request.Builder().url("${ApiAddress}friends/send_request").post(requestBody).addHeader("x-access-token", token).build()
     return withContext(Dispatchers.IO) {
         try { client.newCall(request).execute().use { r -> if (!r.isSuccessful) false else { val b = r.body.string(); if (b.isBlank()) false else (try { JSONObject(b) } catch (_: Exception) { return@withContext false }).optBoolean("success", false) } } }
-        catch (e: Exception) { Log.e("NetworkError", "请求失败", e); false }
+        catch (e: Exception) { android.util.Log.e("NetworkError", "请求失败", e); false }
     }
 }

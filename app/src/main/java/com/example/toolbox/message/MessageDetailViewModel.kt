@@ -67,11 +67,10 @@ class MessageDetailViewModel(
         connectWebSocket()
         loadBackground()
         if (chatType == 2) {
-            loadGroupInfo()   // 群聊时加载群信息
+            loadGroupInfo()
         }
     }
 
-    // ============= WebSocket =============
     fun connectWebSocket() {
         val manager = ChatSocketManager.getInstance()
         manager.connect(token)
@@ -113,7 +112,6 @@ class MessageDetailViewModel(
         }
     }
 
-    // ============= 消息加载 =============
     private fun loadMessages() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
@@ -135,17 +133,16 @@ class MessageDetailViewModel(
                     client.newCall(request).execute()
                 }
                 val body = response.body?.string() ?: ""
-                Log.d("MESSAGES", "response: $body")
                 val result = AppJson.json.decodeFromString<GetMessagesResponse>(body)
                 if (result.status.code == 0) {
-                    msgIdCache.addAll(result.messages.map { it.effectiveMsgId })
-                    // 私聊背景可从消息接口直接获取
+                    val sortedMessages = result.messages.sortedByDescending { it.sendTime }
+                    msgIdCache.addAll(sortedMessages.map { it.effectiveMsgId })
                     if (chatType == 1 && result.chatBackgroundUrl.isNotEmpty()) {
                         _backgroundUrl.value = result.chatBackgroundUrl
                     }
                     _uiState.update { state ->
                         state.copy(
-                            messages = result.messages,
+                            messages = sortedMessages,
                             isLoading = false,
                             hasMore = (result.pagination?.pages ?: 1) > currentPage,
                             pagination = result.pagination,
@@ -161,7 +158,6 @@ class MessageDetailViewModel(
                     _uiState.update { it.copy(isLoading = false, error = result.status.msg) }
                 }
             } catch (e: Exception) {
-                Log.e("MESSAGES", "加载失败", e)
                 _uiState.update { it.copy(isLoading = false, error = e.message) }
             }
         }
@@ -192,7 +188,9 @@ class MessageDetailViewModel(
                 val body = response.body?.string() ?: ""
                 val result = AppJson.json.decodeFromString<GetMessagesResponse>(body)
                 if (result.status.code == 0) {
-                    val newMessages = result.messages.filter { it.effectiveMsgId !in msgIdCache }
+                    val newMessages = result.messages
+                        .filter { it.effectiveMsgId !in msgIdCache }
+                        .sortedByDescending { it.sendTime }
                     msgIdCache.addAll(newMessages.map { it.effectiveMsgId })
                     _uiState.update { state ->
                         state.copy(
@@ -218,7 +216,6 @@ class MessageDetailViewModel(
         loadMessages()
     }
 
-    // ============= 多选 =============
     fun enterSelectionMode(message: Message) {
         _uiState.update {
             it.copy(selectionMode = true, selectedMessages = setOf(message.effectiveMsgId))
@@ -281,7 +278,6 @@ class MessageDetailViewModel(
         }
     }
 
-    // ============= 编辑 =============
     fun showEditDialog(message: Message) {
         _editDialog.value = EditDialogState(isOpen = true, message = message, newContent = message.content, isMarkdown = message.isMarkdown)
     }
@@ -325,7 +321,6 @@ class MessageDetailViewModel(
         }
     }
 
-    // ============= 发送 =============
     fun sendMessage() {
         val state = _uiState.value
         val text = state.inputText.trim()
@@ -362,7 +357,6 @@ class MessageDetailViewModel(
         }
     }
 
-    // ============= 输入 =============
     fun updateInputText(text: String) {
         _uiState.update { it.copy(inputText = text) }
     }
@@ -389,7 +383,6 @@ class MessageDetailViewModel(
         _uploadProgress.value = 0f
     }
 
-    // ============= 撤回对话框 =============
     fun showRecallDialog(msgId: String) {
         _recallDialog.value = RecallDialogState(isOpen = true, messageId = msgId)
     }
@@ -406,7 +399,6 @@ class MessageDetailViewModel(
         }
     }
 
-    // ============= 引用 =============
     fun setReplyTo(message: Message) {
         _replyTo.value = message
     }
@@ -415,7 +407,6 @@ class MessageDetailViewModel(
         _replyTo.value = null
     }
 
-    // ============= 背景 =============
     private fun loadBackground() {
         viewModelScope.launch {
             try {
@@ -430,18 +421,14 @@ class MessageDetailViewModel(
                     .build()
                 val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
                 val body = response.body?.string() ?: ""
-                Log.d("BACKGROUND", "背景返回: $body")
                 val result = AppJson.json.decodeFromString<BackgroundResponse>(body)
                 if (result.success) {
                     _backgroundUrl.value = result.data?.backgroundUrl?.takeIf { it.isNotEmpty() }
                 }
-            } catch (e: Exception) {
-                Log.e("BACKGROUND", "背景加载失败", e)
-            }
+            } catch (_: Exception) { }
         }
     }
 
-    // ============= 群信息 =============
     private fun loadGroupInfo() {
         viewModelScope.launch {
             try {
@@ -458,13 +445,8 @@ class MessageDetailViewModel(
                 val result = AppJson.json.decodeFromString<GroupDetailResponse>(body)
                 if (result.success && result.group != null) {
                     _uiState.update { it.copy(groupInfo = result.group) }
-                    _toastMessage.emit("群信息加载成功")
-                } else {
-                    _toastMessage.emit("群信息加载失败: ${result.message ?: "未知错误"}")
                 }
-            } catch (e: Exception) {
-                _toastMessage.emit("群信息异常: ${e.message}")
-            }
+            } catch (_: Exception) { }
         }
     }
 
@@ -474,7 +456,6 @@ class MessageDetailViewModel(
     }
 }
 
-// ============= 辅助数据类 =============
 @Serializable
 data class BackgroundResponse(
     val success: Boolean,
@@ -488,6 +469,7 @@ data class BackgroundData(
     @SerialName("target_id") val targetId: Int,
     @SerialName("background_url") val backgroundUrl: String = ""
 )
+
 class MessageDetailViewModelFactory(
     private val token: String,
     private val chatType: Int,
