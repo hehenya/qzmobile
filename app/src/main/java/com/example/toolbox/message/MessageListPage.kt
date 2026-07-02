@@ -190,14 +190,14 @@ DisposableEffect(lifecycle) {
                 },
                 actions = {
                     if (token != "null") {
+                        IconButton(onClick = {
+                            context.startActivity(Intent(context, SearchActivity::class.java))
+                        }) {
+                            Icon(Icons.Default.Search, contentDescription = "搜索")
+                        }
                         Box {
                             IconButton(onClick = { groupViewModel.showDropdownMenu() }) {
                                 Icon(Icons.Default.Add, contentDescription = "添加")
-                            }
-                            IconButton(onClick = {
-                                context.startActivity(Intent(context, SearchActivity::class.java))
-                            }) {
-                                Icon(Icons.Default.Search, contentDescription = "搜索")
                             }
                             DropdownMenu(
                                 expanded = groupUiState.showDropdownMenu,
