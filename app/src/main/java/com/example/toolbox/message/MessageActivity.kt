@@ -282,20 +282,38 @@ class MessageDetailActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MessageDetailScreen(
     innerPadding: PaddingValues,
     viewModel: MessageDetailViewModel
 ) {
     val context = LocalContext.current
+    val uiState by viewModel.uiState.collectAsState()
+
+    Text(
+        text = "消息:${uiState.messages.size}",
+        color = Color.Red
+    )
+
     val scope = rememberCoroutineScope()
     val clipboard = LocalClipboard.current
-    val uiState by viewModel.uiState.collectAsState()
     var firstMessageId by remember { mutableStateOf<String?>(null) }
     val density = LocalDensity.current
     val isUploading by viewModel.isUploading.collectAsState()
     val uploadProgress by viewModel.uploadProgress.collectAsState()
+
+    LaunchedEffect(
+        uiState.messages.size,
+        uiState.groupInfo,
+        uiState.otherUser,
+        uiState.isLoading
+    ) {
+        Toast.makeText(
+            context,
+            "msg=${uiState.messages.size} group=${uiState.groupInfo != null} user=${uiState.otherUser != null} loading=${uiState.isLoading}",
+            Toast.LENGTH_SHORT
+        ).show()
+    }
 
     LaunchedEffect(viewModel) {
         viewModel.toastMessage.collect {
