@@ -43,12 +43,12 @@ data class SearchChatItem(
 
 @Serializable
 data class SearchPagination(
-    val currentPage: Int,
-    val perPage: Int,
+    @SerialName("current_page") val currentPage: Int,
+    @SerialName("per_page") val perPage: Int,
     val total: Int,
     val pages: Int,
-    val hasNext: Boolean,
-    val hasPrev: Boolean
+    @SerialName("has_next") val hasNext: Boolean,
+    @SerialName("has_prev") val hasPrev: Boolean
 )
 
 @Serializable

@@ -64,6 +64,9 @@ class MessageDetailViewModel(
         loadMessages()
         connectWebSocket()
         loadBackground()
+        if (chatType == 2) {
+            loadGroupInfo()
+        }
     }
 
     fun connectWebSocket() {
@@ -361,7 +364,6 @@ class MessageDetailViewModel(
     }
 
     fun handleImageSelected(uri: Uri?, context: Context, scope: kotlinx.coroutines.CoroutineScope) {
-        // 简化处理：直接添加 Uri 字符串（实际应上传后替换为 URL）
         uri?.let {
             _uiState.update { state -> state.copy(selectedImages = state.selectedImages + it.toString()) }
         }
@@ -379,7 +381,6 @@ class MessageDetailViewModel(
         _uploadProgress.value = 0f
     }
 
-    // 撤回对话框相关
     fun showRecallDialog(msgId: String) {
         _recallDialog.value = RecallDialogState(isOpen = true, messageId = msgId)
     }
@@ -388,7 +389,6 @@ class MessageDetailViewModel(
         _recallDialog.value = RecallDialogState(isOpen = false)
     }
 
-    // 公开的非挂起撤回方法，用于 UI 直接调用
     fun recallMessage() {
         val msgId = _recallDialog.value.messageId ?: return
         viewModelScope.launch {
@@ -416,6 +416,23 @@ class MessageDetailViewModel(
                 val body = response.body?.string()
                 val url = JSONObject(body ?: "").optString("url", null)
                 _backgroundUrl.value = url
+            } catch (_: Exception) { }
+        }
+    }
+
+    private fun loadGroupInfo() {
+        viewModelScope.launch {
+            try {
+                val request = Request.Builder()
+                    .url("${ApiAddress}group/info?group_id=$chatId")
+                    .header("x-access-token", token)
+                    .build()
+                val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
+                val body = response.body?.string() ?: ""
+                val result = AppJson.json.decodeFromString<GroupInfoResponse>(body)
+                if (result.success && result.group != null) {
+                    _uiState.update { it.copy(groupInfo = result.group) }
+                }
             } catch (_: Exception) { }
         }
     }
