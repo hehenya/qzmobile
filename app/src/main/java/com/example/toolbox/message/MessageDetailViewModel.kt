@@ -9,7 +9,6 @@ import androidx.lifecycle.viewModelScope
 import com.example.toolbox.ApiAddress
 import com.example.toolbox.AppJson
 import com.example.toolbox.data.*
-import com.example.toolbox.DraftManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -59,8 +58,6 @@ class MessageDetailViewModel(
     private val client = OkHttpClient()
     private var currentPage = 1
     private var hasMore = true
-
-    // 消息缓存，用于去重
     private val msgIdCache = mutableSetOf<String>()
 
     init {
@@ -145,10 +142,7 @@ class MessageDetailViewModel(
                             relationship = result.relationship,
                             isChatExpired = result.tempChatExpired,
                             otherUser = result.otherUser,
-                            groupInfo = if (chatType == 2) {
-                                // 群信息需要另外加载，这里暂不处理
-                                state.groupInfo
-                            } else null
+                            groupInfo = if (chatType == 2) state.groupInfo else null
                         )
                     }
                 } else {
@@ -211,7 +205,7 @@ class MessageDetailViewModel(
         loadMessages()
     }
 
-    // 多选模式
+    // ---------- 多选模式 ----------
     fun enterSelectionMode(message: Message) {
         _uiState.update {
             it.copy(
@@ -242,7 +236,7 @@ class MessageDetailViewModel(
             val toRecall = _uiState.value.messages.filter { it.effectiveMsgId in selected && !it.isRecalled && it.isMine }
             toRecall.forEach { message ->
                 try {
-                    recallMessage(message.effectiveMsgId)
+                    recallMessageInternal(message.effectiveMsgId)
                 } catch (e: Exception) {
                     _toastMessage.emit("撤回失败: ${e.message}")
                 }
@@ -251,7 +245,7 @@ class MessageDetailViewModel(
         }
     }
 
-    private suspend fun recallMessage(msgId: String) {
+    private suspend fun recallMessageInternal(msgId: String) {
         withContext(Dispatchers.IO) {
             val json = JSONObject().apply {
                 put("msg_id", msgId)
@@ -275,15 +269,6 @@ class MessageDetailViewModel(
                 throw Exception("撤回失败")
             }
         }
-    }
-
-    // 引用
-    fun setReplyTo(message: Message) {
-        _replyTo.value = message
-    }
-
-    fun clearReplyTo() {
-        _replyTo.value = null
     }
 
     // 编辑相关
@@ -348,7 +333,7 @@ class MessageDetailViewModel(
                     put("chat_type", chatType)
                     put("chat_id", chatId)
                     put("data", data)
-                    replyTo.value?.let { put("quote_msg_id", it.effectiveMsgId) }
+                    _replyTo.value?.let { put("quote_msg_id", it.effectiveMsgId) }
                 }
                 val request = Request.Builder()
                     .url("${ApiAddress}chat/send")
@@ -357,9 +342,9 @@ class MessageDetailViewModel(
                     .build()
                 withContext(Dispatchers.IO) { client.newCall(request).execute() }
                 _uiState.update {
-                    it.copy(inputText = "", selectedImages = emptyList(), isMarkdown = false, replyTo = null, isSending = false)
+                    it.copy(inputText = "", selectedImages = emptyList(), isMarkdown = false, isSending = false)
                 }
-                clearReplyTo()
+                _replyTo.value = null
             } catch (e: Exception) {
                 _uiState.update { it.copy(isSending = false) }
                 _toastMessage.emit("发送失败: ${e.message}")
@@ -375,13 +360,18 @@ class MessageDetailViewModel(
         _uiState.update { it.copy(isMarkdown = !it.isMarkdown) }
     }
 
-    fun handleImageSelected(uri: Uri, context: Context, scope: kotlinx.coroutines.CoroutineScope) {
-        // 简化处理，直接添加 Uri 字符串（实际应上传后替换为 URL）
-        _uiState.update { it.copy(selectedImages = it.selectedImages + uri.toString()) }
+    fun handleImageSelected(uri: Uri?, context: Context, scope: kotlinx.coroutines.CoroutineScope) {
+        // 简化处理：直接添加 Uri 字符串（实际应上传后替换为 URL）
+        uri?.let {
+            _uiState.update { state -> state.copy(selectedImages = state.selectedImages + it.toString()) }
+        }
     }
 
     fun removeImage(index: Int) {
-        _uiState.update { it.copy(selectedImages = it.selectedImages.toMutableList().also { it.removeAt(index) }) }
+        _uiState.update { state ->
+            val updated = state.selectedImages.toMutableList().apply { removeAt(index) }
+            state.copy(selectedImages = updated)
+        }
     }
 
     fun cancelUpload() {
@@ -389,12 +379,30 @@ class MessageDetailViewModel(
         _uploadProgress.value = 0f
     }
 
+    // 撤回对话框相关
     fun showRecallDialog(msgId: String) {
         _recallDialog.value = RecallDialogState(isOpen = true, messageId = msgId)
     }
 
     fun hideRecallDialog() {
         _recallDialog.value = RecallDialogState(isOpen = false)
+    }
+
+    // 公开的非挂起撤回方法，用于 UI 直接调用
+    fun recallMessage() {
+        val msgId = _recallDialog.value.messageId ?: return
+        viewModelScope.launch {
+            recallMessageInternal(msgId)
+            hideRecallDialog()
+        }
+    }
+
+    fun setReplyTo(message: Message) {
+        _replyTo.value = message
+    }
+
+    fun clearReplyTo() {
+        _replyTo.value = null
     }
 
     private fun loadBackground() {

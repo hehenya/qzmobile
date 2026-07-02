@@ -191,6 +191,8 @@ data class MessageDetailUiState(
     val isMarkdown: Boolean = false,
     val editingMessage: Message? = null,
     val isChatExpired: Boolean = false,
+    val isSending: Boolean = false,       // 新增
+    val replyTo: Message? = null,         // 新增
     val dailyMessagesLeft: Int = 0,
     val groupInfo: GroupInfo? = null,
     val otherUser: OtherUser? = null,

@@ -7,6 +7,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import com.example.toolbox.message.SearchActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -193,7 +194,11 @@ DisposableEffect(lifecycle) {
                             IconButton(onClick = { groupViewModel.showDropdownMenu() }) {
                                 Icon(Icons.Default.Add, contentDescription = "添加")
                             }
-                            
+                            IconButton(onClick = {
+                                context.startActivity(Intent(context, SearchActivity::class.java))
+                            }) {
+                                Icon(Icons.Default.Search, contentDescription = "搜索")
+                            }
                             DropdownMenu(
                                 expanded = groupUiState.showDropdownMenu,
                                 onDismissRequest = { groupViewModel.hideDropdownMenu() }
