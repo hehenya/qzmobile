@@ -255,12 +255,10 @@ class MessageDetailViewModel(
     private suspend fun recallMessageInternal(msgId: String) {
         withContext(Dispatchers.IO) {
             val json = JSONObject().apply {
-                put("msg_id", msgId)
-                put("chat_type", chatType)
-                put("chat_id", chatId)
+                put("message_id", msgId)
             }
             val request = Request.Builder()
-                .url("${ApiAddress}chat/recall")
+                .url("${ApiAddress}group/recall")
                 .post(json.toString().toRequestBody("application/json".toMediaType()))
                 .header("x-access-token", token)
                 .build()
@@ -273,7 +271,7 @@ class MessageDetailViewModel(
                     })
                 }
             } else {
-                throw Exception("撤回失败")
+                _toastMessage.emit("撤回失败，请重试")
             }
         }
     }
