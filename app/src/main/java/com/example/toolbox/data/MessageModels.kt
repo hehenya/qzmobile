@@ -24,11 +24,11 @@ data class MessageSender(
 
 @Serializable
 data class EditRecord(
-    @SerialName("editor_id") val editorId: Int,
-    @SerialName("editor_username") val editorUsername: String,
-    @SerialName("edit_time") val editTime: String,
-    @SerialName("old_content") val oldContent: String,
-    @SerialName("new_content") val newContent: String,
+    @SerialName("editor_id") val editorId: Int? = null,
+    @SerialName("editor_username") val editorUsername: String? = null,
+    @SerialName("edit_time") val editTime: String? = null,
+    @SerialName("old_content") val oldContent: String? = null,
+    @SerialName("new_content") val newContent: String? = null,
     @SerialName("old_images") val oldImages: List<String> = emptyList(),
     @SerialName("new_images") val newImages: List<String> = emptyList(),
     @SerialName("old_is_markdown") val oldIsMarkdown: Boolean = false,
