@@ -52,6 +52,10 @@ data class Message(
     @SerialName("is_sticker") val isSticker: Boolean = false,
     @SerialName("is_system") val isSystem: Boolean = false,
     val timestamp: String? = null,
+    val showDate: Boolean = false,
+    val dateIndicator: String? = null,
+    val isFirstFromSender: Boolean = false,
+    val isLastFromSender: Boolean = false,
     @SerialName("timestamp_display") val timestampDisplay: String? = null,
     @SerialName("send_time") val sendTime: Long = 0,
     @SerialName("send_time_formatted") val sendTimeFormatted: String? = null,
@@ -191,7 +195,9 @@ data class MessageDetailUiState(
     val groupInfo: GroupInfo? = null,
     val otherUser: OtherUser? = null,
     val isAdmin: Boolean = false,
-    val relationship: String = "friend"
+    val relationship: String = "friend",
+    val selectionMode: Boolean = false,
+    val selectedMessages: Set<String> = emptySet()
 )
 
 // 撤回确认弹窗状态
