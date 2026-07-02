@@ -114,15 +114,23 @@ class MessageDetailViewModel(
 
     private fun loadMessages() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    error = null
+                )
+            }
+    
             try {
-                val response = withContext(Dispatchers.IO) {
+                val result = withContext(Dispatchers.IO) {
+    
                     val json = JSONObject().apply {
                         put("chat_type", chatType)
                         put("chat_id", chatId)
                         put("page", currentPage)
                         put("per_page", 20)
                     }
+    
                     val request = Request.Builder()
                         .url("${ApiAddress}chat/messages")
                         .post(json.toString().toRequestBody("application/json".toMediaType()))
@@ -130,16 +138,40 @@ class MessageDetailViewModel(
                         .header("timeis", "true")
                         .header("linkinfo", "true")
                         .build()
-                    client.newCall(request).execute()
+    
+                    client.newCall(request).execute().use { response ->
+    
+                        Log.d("CHAT_LOAD", "HTTP=${response.code}")
+    
+                        if (!response.isSuccessful) {
+                            throw IOException("HTTP ${response.code}")
+                        }
+    
+                        val body = response.body?.string().orEmpty()
+    
+                        Log.d("CHAT_LOAD", "Body=${body.take(500)}")
+    
+                        AppJson.json.decodeFromString<GetMessagesResponse>(body)
+                    }
                 }
-                val body = response.body.string()
-                val result = AppJson.json.decodeFromString<GetMessagesResponse>(body)
+    
+                Log.d(
+                    "CHAT_LOAD",
+                    "status=${result.status.code}, msgCount=${result.messages.size}"
+                )
+    
                 if (result.status.code == 0) {
-                    val sortedMessages = result.messages.sortedByDescending { it.sendTime }
+    
+                    val sortedMessages =
+                        result.messages.sortedByDescending { it.sendTime }
+    
+                    msgIdCache.clear()
                     msgIdCache.addAll(sortedMessages.map { it.effectiveMsgId })
+    
                     if (chatType == 1 && result.chatBackgroundUrl.isNotEmpty()) {
                         _backgroundUrl.value = result.chatBackgroundUrl
                     }
+    
                     _uiState.update { state ->
                         state.copy(
                             messages = sortedMessages,
@@ -151,14 +183,32 @@ class MessageDetailViewModel(
                             relationship = result.relationship,
                             isChatExpired = result.tempChatExpired,
                             otherUser = result.otherUser,
-                            groupInfo = if (chatType == 2) state.groupInfo else null
+                            groupInfo = if (chatType == 2) state.groupInfo else null,
+                            error = null
                         )
                     }
+    
+                    Log.d(
+                        "CHAT_LOAD",
+                        "UI Updated. messages=${sortedMessages.size}"
+                    )
+    
                 } else {
+                    Log.e("CHAT_LOAD", "Server Error: ${result.status.msg}")
                     _uiState.update { it.copy(isLoading = false, error = result.status.msg) }
+                    _toastMessage.emit("消息加载失败: ${result.status.msg}")
                 }
+    
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message) }
+    
+                Log.e("CHAT_LOAD", "loadMessages Exception", e)
+    
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = e.stackTraceToString()
+                    )
+                }
             }
         }
     }
