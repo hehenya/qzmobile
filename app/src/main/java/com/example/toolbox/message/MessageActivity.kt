@@ -306,49 +306,49 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
     var showMenuMsgId by remember { mutableStateOf<String?>(null) }
 
     // 浮动头像（仅群聊）—— 修复初始不显示、不显示自己、系统消息干扰
-    val floatingAvatarState by remember {
-        derivedStateOf {
-            if (uiState.chatType != 2) return@derivedStateOf Triple(false, "", false)
-            val visibleItems = listState.layoutInfo.visibleItemsInfo
-            if (visibleItems.isEmpty() || uiState.messages.isEmpty()) {
+val floatingAvatarState by remember {
+    derivedStateOf {
+        if (uiState.chatType != 2) return@derivedStateOf Triple(false, "", false)
+        val visibleItems = listState.layoutInfo.visibleItemsInfo
+        if (visibleItems.isEmpty() || uiState.messages.isEmpty()) {
+            Triple(false, "", false)
+        } else {
+            val topVisibleItem = visibleItems.minByOrNull { it.index }
+            if (topVisibleItem == null) {
                 Triple(false, "", false)
             } else {
-                val topVisibleItem = visibleItems.minByOrNull { it.index }
-                if (topVisibleItem == null) {
+                val firstVisibleIndex = topVisibleItem.index
+                val message = uiState.messages.getOrNull(firstVisibleIndex)
+                if (message == null || message.isRecalled || message.isMine || message.isSystem) {
                     Triple(false, "", false)
                 } else {
-                    val firstVisibleIndex = topVisibleItem.index
-                    val message = uiState.messages.getOrNull(firstVisibleIndex)
-                    // 排除系统消息、撤回消息、自己的消息
-                    if (message == null || message.isRecalled || message.isMine || message.isSystem) {
-                        Triple(false, "", false)
+                    val itemHeightDp = with(density) { topVisibleItem.size.toDp() }.value
+                    val visibleHeightDp = with(density) {
+                        (topVisibleItem.size + topVisibleItem.offset.coerceAtMost(0)).toDp()
+                    }.value
+                    val hasEnoughSpace = visibleHeightDp >= 44 && itemHeightDp >= 44
+                    // 初始加载时也显示（解决不滑动不显示的问题）
+                    val isFirstLoad = firstMessageId == null && visibleHeightDp >= 44
+
+                    val currentIndex = uiState.messages.indexOfFirst { it.effectiveMsgId == message.effectiveMsgId }
+                    val newerMessage = if (currentIndex > 0) uiState.messages[currentIndex - 1] else null
+                    val olderMessage = if (currentIndex < uiState.messages.size - 1) uiState.messages[currentIndex + 1] else null
+                    val isLastFromSender = olderMessage == null || olderMessage.isRecalled || olderMessage.isSystem || olderMessage.senderId != message.senderId
+                    val hasOtherSameSender = (newerMessage != null && !newerMessage.isRecalled && !newerMessage.isSystem && newerMessage.senderId == message.senderId && !isLastFromSender) ||
+                            (olderMessage != null && !olderMessage.isRecalled && !olderMessage.isSystem && olderMessage.senderId == message.senderId)
+
+                    if (hasEnoughSpace || isFirstLoad) {
+                        Triple(true, message.displayAvatar, message.isMine)
+                    } else if (hasOtherSameSender && message.displayAvatar.isNotEmpty()) {
+                        Triple(true, message.displayAvatar, message.isMine)
                     } else {
-                        val itemHeightDp = with(density) { topVisibleItem.size.toDp() }.value
-                        val visibleHeightDp = with(density) {
-                            (topVisibleItem.size + topVisibleItem.offset.coerceAtMost(0)).toDp()
-                        }.value
-                        val hasEnoughSpace = visibleHeightDp >= 44 && itemHeightDp >= 44
-                        val isFirstLoad = firstMessageId == null && visibleHeightDp >= 44
-
-                        val currentIndex = uiState.messages.indexOfFirst { it.effectiveMsgId == message.effectiveMsgId }
-                        val newerMessage = if (currentIndex > 0) uiState.messages[currentIndex - 1] else null
-                        val olderMessage = if (currentIndex < uiState.messages.size - 1) uiState.messages[currentIndex + 1] else null
-                        val isLastFromSender = olderMessage == null || olderMessage.isRecalled || olderMessage.isSystem || olderMessage.senderId != message.senderId
-                        val hasOtherSameSender = (newerMessage != null && !newerMessage.isRecalled && !newerMessage.isSystem && newerMessage.senderId == message.senderId && !isLastFromSender) ||
-                                (olderMessage != null && !olderMessage.isRecalled && !olderMessage.isSystem && olderMessage.senderId == message.senderId)
-
-                        if (hasEnoughSpace || isFirstLoad) {
-                            Triple(true, message.displayAvatar, message.isMine)
-                        } else if (hasOtherSameSender && message.displayAvatar.isNotEmpty()) {
-                            Triple(true, message.displayAvatar, message.isMine)
-                        } else {
-                            Triple(false, "", false)
-                        }
+                        Triple(false, "", false)
                     }
                 }
             }
         }
     }
+}
 
     val showFloatingAvatar = floatingAvatarState.first
     val floatingAvatarUrl = floatingAvatarState.second
