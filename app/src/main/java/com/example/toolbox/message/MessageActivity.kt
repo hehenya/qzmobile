@@ -165,6 +165,11 @@ class MessageDetailActivity : ComponentActivity() {
                     factory = token?.let { MessageDetailViewModelFactory(it, chatType, finalChatId) }
                 )
                 val uiState by viewModel.uiState.collectAsState()
+
+                LaunchedEffect(uiState) {
+                    Toast.makeText(context, "消息数: ${uiState.messages.size}, 加载中: ${uiState.isLoading}", Toast.LENGTH_SHORT).show()
+                }
+
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     contentWindowInsets = WindowInsets(0.dp),
