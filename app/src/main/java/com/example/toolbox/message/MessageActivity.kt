@@ -279,7 +279,10 @@ class MessageDetailActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailViewModel) {
+fun MessageDetailScreen(
+    innerPadding: PaddingValues,
+    viewModel: MessageDetailViewModel
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val clipboard = LocalClipboard.current
@@ -289,8 +292,18 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
     val isUploading by viewModel.isUploading.collectAsState()
     val uploadProgress by viewModel.uploadProgress.collectAsState()
 
-    LaunchedEffect(viewModel) { viewModel.toastMessage.collect { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() } }
-    val imagePicker = rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent()) { uri -> viewModel.handleImageSelected(uri, context, scope) }
+    LaunchedEffect(viewModel) {
+        viewModel.toastMessage.collect {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val imagePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        viewModel.handleImageSelected(uri, context, scope)
+    }
+
     val recallDialog by viewModel.recallDialog.collectAsState()
     val editDialog by viewModel.editDialog.collectAsState()
     val listState = rememberLazyListState()
@@ -302,63 +315,159 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
     val replyTo by viewModel.replyTo.collectAsState()
     val selectionMode = uiState.selectionMode
     val selectedMessages = uiState.selectedMessages
-
     var showMenuMsgId by remember { mutableStateOf<String?>(null) }
 
-    // 浮动头像（仅群聊）—— 修复初始不显示、不显示自己、系统消息干扰
-val floatingAvatarState by remember {
-    derivedStateOf {
-        if (uiState.chatType != 2) return@derivedStateOf Triple(false, "", false)
-        val visibleItems = listState.layoutInfo.visibleItemsInfo
-        if (visibleItems.isEmpty() || uiState.messages.isEmpty()) {
-            Triple(false, "", false)
-        } else {
-            val topVisibleItem = visibleItems.minByOrNull { it.index }
-            if (topVisibleItem == null) {
+    val floatingAvatarState by remember {
+        derivedStateOf {
+            if (uiState.chatType != 2) return@derivedStateOf Triple(false, "", false)
+
+            val visibleItems = listState.layoutInfo.visibleItemsInfo
+            if (visibleItems.isEmpty() || uiState.messages.isEmpty()) {
                 Triple(false, "", false)
             } else {
-                val firstVisibleIndex = topVisibleItem.index
-                val message = uiState.messages.getOrNull(firstVisibleIndex)
-                if (message == null || message.isRecalled || message.isMine || message.isSystem) {
+                val topVisibleItem = visibleItems.minByOrNull { it.index }
+                if (topVisibleItem == null) {
                     Triple(false, "", false)
                 } else {
-                    val itemHeightDp = with(density) { topVisibleItem.size.toDp() }.value
-                    val visibleHeightDp = with(density) {
-                        (topVisibleItem.size + topVisibleItem.offset.coerceAtMost(0)).toDp()
-                    }.value
-                    val hasEnoughSpace = visibleHeightDp >= 44 && itemHeightDp >= 44
-                    // 初始加载时也显示（解决不滑动不显示的问题）
-                    val isFirstLoad = firstMessageId == null && visibleHeightDp >= 44
+                    val firstVisibleIndex = topVisibleItem.index
+                    val message = uiState.messages.getOrNull(firstVisibleIndex)
 
-                    val currentIndex = uiState.messages.indexOfFirst { it.effectiveMsgId == message.effectiveMsgId }
-                    val newerMessage = if (currentIndex > 0) uiState.messages[currentIndex - 1] else null
-                    val olderMessage = if (currentIndex < uiState.messages.size - 1) uiState.messages[currentIndex + 1] else null
-                    val isLastFromSender = olderMessage == null || olderMessage.isRecalled || olderMessage.isSystem || olderMessage.senderId != message.senderId
-                    val hasOtherSameSender = (newerMessage != null && !newerMessage.isRecalled && !newerMessage.isSystem && newerMessage.senderId == message.senderId && !isLastFromSender) ||
-                            (olderMessage != null && !olderMessage.isRecalled && !olderMessage.isSystem && olderMessage.senderId == message.senderId)
-
-                    if (hasEnoughSpace || isFirstLoad) {
-                        Triple(true, message.displayAvatar, message.isMine)
-                    } else if (hasOtherSameSender && message.displayAvatar.isNotEmpty()) {
-                        Triple(true, message.displayAvatar, message.isMine)
-                    } else {
+                    if (message == null || message.isRecalled || message.isMine || message.isSystem) {
                         Triple(false, "", false)
+                    } else {
+                        val itemHeightDp = with(density) { topVisibleItem.size.toDp() }.value
+                        val visibleHeightDp = with(density) {
+                            (topVisibleItem.size + topVisibleItem.offset.coerceAtMost(0)).toDp()
+                        }.value
+                        val hasEnoughSpace = visibleHeightDp >= 44 && itemHeightDp >= 44
+                        val isFirstLoad = firstMessageId == null && visibleHeightDp >= 44
+
+                        val currentIndex = uiState.messages.indexOfFirst {
+                            it.effectiveMsgId == message.effectiveMsgId
+                        }
+                        val newerMessage = if (currentIndex > 0) {
+                            uiState.messages[currentIndex - 1]
+                        } else {
+                            null
+                        }
+                        val olderMessage = if (currentIndex < uiState.messages.size - 1) {
+                            uiState.messages[currentIndex + 1]
+                        } else {
+                            null
+                        }
+                        val isLastFromSender = olderMessage == null ||
+                                olderMessage.isRecalled ||
+                                olderMessage.isSystem ||
+                                olderMessage.senderId != message.senderId
+                        val hasOtherSameSender = (newerMessage != null &&
+                                !newerMessage.isRecalled &&
+                                !newerMessage.isSystem &&
+                                newerMessage.senderId == message.senderId &&
+                                !isLastFromSender) ||
+                                (olderMessage != null &&
+                                        !olderMessage.isRecalled &&
+                                        !olderMessage.isSystem &&
+                                        olderMessage.senderId == message.senderId)
+
+                        if (hasEnoughSpace || isFirstLoad) {
+                            Triple(true, message.displayAvatar, message.isMine)
+                        } else if (hasOtherSameSender && message.displayAvatar.isNotEmpty()) {
+                            Triple(true, message.displayAvatar, message.isMine)
+                        } else {
+                            Triple(false, "", false)
+                        }
                     }
                 }
             }
         }
     }
-}
 
     val showFloatingAvatar = floatingAvatarState.first
     val floatingAvatarUrl = floatingAvatarState.second
     val floatingAvatarIsMine = floatingAvatarState.third
 
-    LaunchedEffect(listState) { snapshotFlow { val vi = listState.layoutInfo.visibleItemsInfo; if (vi.isNotEmpty()) vi.last().index >= listState.layoutInfo.totalItemsCount - 5 && uiState.hasMore && !uiState.isLoadingMore && !uiState.isRefreshing else false }.distinctUntilChanged().filter { it }.collect { viewModel.loadMore() } }
-    LaunchedEffect(listState) { snapshotFlow { val vi = listState.layoutInfo.visibleItemsInfo; if (vi.isNotEmpty()) vi.first().index == 0 else true }.distinctUntilChanged().collect { atBottom -> showScrollToBottom = !atBottom; if (atBottom) { unreadCount = 0; if (uiState.messages.isNotEmpty()) firstMessageId = uiState.messages.first().effectiveMsgId } } }
-    LaunchedEffect(uiState.messages) { if (uiState.messages.isEmpty()) return@LaunchedEffect; val cur = uiState.messages.first().effectiveMsgId; if (firstMessageId != null && cur != firstMessageId) { if (showScrollToBottom) unreadCount += 1 else { listState.scrollToItem(0); unreadCount = 0 } }; firstMessageId = cur }
-    val scrollToBottom: () -> Unit = { scope.launch { listState.animateScrollToItem(0); unreadCount = 0; if (uiState.messages.isNotEmpty()) firstMessageId = uiState.messages.first().effectiveMsgId } }
-    if (showImageViewer) MultiImageViewer(images = imageViewerUrls, initialPage = imageViewerInitialPage, isVisible = showImageViewer, onDismiss = { showImageViewer = false })
+    val topVisibleMessage by remember {
+        derivedStateOf {
+            val visibleItems = listState.layoutInfo.visibleItemsInfo
+            if (visibleItems.isNotEmpty()) {
+                val topIndex = visibleItems.minByOrNull { it.index }?.index
+                topIndex?.let { uiState.messages.getOrNull(it) }
+            } else {
+                null
+            }
+        }
+    }
+
+    val topVisibleMessageId = topVisibleMessage?.msgId
+
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            val vi = listState.layoutInfo.visibleItemsInfo
+            if (vi.isNotEmpty()) {
+                vi.last().index >= listState.layoutInfo.totalItemsCount - 5 &&
+                        uiState.hasMore &&
+                        !uiState.isLoadingMore &&
+                        !uiState.isRefreshing
+            } else {
+                false
+            }
+        }
+            .distinctUntilChanged()
+            .filter { it }
+            .collect {
+                viewModel.loadMore()
+            }
+    }
+
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            val vi = listState.layoutInfo.visibleItemsInfo
+            if (vi.isNotEmpty()) vi.first().index == 0 else true
+        }
+            .distinctUntilChanged()
+            .collect { atBottom ->
+                showScrollToBottom = !atBottom
+                if (atBottom) {
+                    unreadCount = 0
+                    if (uiState.messages.isNotEmpty()) {
+                        firstMessageId = uiState.messages.first().effectiveMsgId
+                    }
+                }
+            }
+    }
+
+    LaunchedEffect(uiState.messages) {
+        if (uiState.messages.isEmpty()) return@LaunchedEffect
+        val cur = uiState.messages.first().effectiveMsgId
+        if (firstMessageId != null && cur != firstMessageId) {
+            if (showScrollToBottom) {
+                unreadCount += 1
+            } else {
+                listState.scrollToItem(0)
+                unreadCount = 0
+            }
+        }
+        firstMessageId = cur
+    }
+
+    val scrollToBottom: () -> Unit = {
+        scope.launch {
+            listState.animateScrollToItem(0)
+            unreadCount = 0
+            if (uiState.messages.isNotEmpty()) {
+                firstMessageId = uiState.messages.first().effectiveMsgId
+            }
+        }
+    }
+
+    if (showImageViewer) {
+        MultiImageViewer(
+            images = imageViewerUrls,
+            initialPage = imageViewerInitialPage,
+            isVisible = showImageViewer,
+            onDismiss = { showImageViewer = false }
+        )
+    }
 
     BackHandler(enabled = selectionMode) {
         viewModel.exitSelectionMode()
@@ -366,25 +475,48 @@ val floatingAvatarState by remember {
 
     Box(modifier = Modifier.fillMaxSize()) {
         val backgroundUrl by viewModel.backgroundUrl.collectAsState()
-        backgroundUrl?.takeIf { it.isNotEmpty() }?.let { bgUrl -> AsyncImage(model = bgUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
+        backgroundUrl?.takeIf { it.isNotEmpty() }?.let { bgUrl ->
+            AsyncImage(
+                model = bgUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
 
         Column(modifier = Modifier.fillMaxSize()) {
             if (uiState.chatType == 1 && uiState.relationship != "friend") {
-                Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.errorContainer, tonalElevation = 2.dp) {
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("你们不是好友，此对话具有时限性", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.weight(1f))
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    tonalElevation = 2.dp
+                ) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "你们不是好友，此对话具有时限性",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.weight(1f)
+                        )
                         Spacer(Modifier.width(12.dp))
-                        Button(onClick = {
-                            scope.launch {
-                                val token = TokenManager.get(context) ?: return@launch
-                                val friendId = uiState.otherUser?.id ?: return@launch
-                                if (sendFriendRequest(token, friendId)) {
-                                    Toast.makeText(context, "好友请求已发送", Toast.LENGTH_SHORT).show()
-                                } else {
-                                    Toast.makeText(context, "发送失败", Toast.LENGTH_SHORT).show()
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    val token = TokenManager.get(context) ?: return@launch
+                                    val friendId = uiState.otherUser?.id ?: return@launch
+                                    if (sendFriendRequest(token, friendId)) {
+                                        Toast.makeText(context, "好友请求已发送", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "发送失败", Toast.LENGTH_SHORT).show()
+                                    }
                                 }
                             }
-                        }) {
+                        ) {
                             Icon(Icons.Default.PersonAdd, null, Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
                             Text("添加好友")
@@ -392,10 +524,52 @@ val floatingAvatarState by remember {
                     }
                 }
             }
+
             Box(modifier = Modifier.weight(1f)) {
-                PullToRefreshBox(isRefreshing = uiState.isRefreshing, onRefresh = { viewModel.refresh() }, modifier = Modifier.fillMaxSize()) {
-                    LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), reverseLayout = true, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        items(items = uiState.messages, key = { it.effectiveMsgId }) { message ->
+                PullToRefreshBox(
+                    isRefreshing = uiState.isRefreshing,
+                    onRefresh = { viewModel.refresh() },
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        reverseLayout = true,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        items(
+                            items = uiState.messages,
+                            key = { it.effectiveMsgId }
+                        ) { message ->
+                            val index = uiState.messages.indexOf(message)
+
+                            val newerMessage = uiState.messages.getOrNull(index - 1)
+                            val olderMessage = uiState.messages.getOrNull(index + 1)
+
+                            val isFirstFromSender =
+                                newerMessage == null || newerMessage.isRecalled || newerMessage.isSystem || newerMessage.senderId != message.senderId
+                            val isLastFromSender =
+                                olderMessage == null || olderMessage.isRecalled || olderMessage.isSystem || olderMessage.senderId != message.senderId
+                            val isOlderSameSender =
+                                olderMessage != null && !olderMessage.isRecalled && !olderMessage.isSystem && olderMessage.senderId == message.senderId
+                            val isNewerSameSender =
+                                newerMessage != null && !newerMessage.isRecalled && !newerMessage.isSystem && newerMessage.senderId == message.senderId
+
+                            val isTopVisibleItem = message.msgId == topVisibleMessageId
+
+                            val shouldShowItemAvatar = if (isTopVisibleItem) {
+                                !showFloatingAvatar && (isLastFromSender || isFirstFromSender)
+                            } else {
+                                isFirstFromSender
+                            }
+    
+                            val avatarAlignment =
+                                if (isTopVisibleItem && shouldShowItemAvatar) {
+                                    if (isLastFromSender) Alignment.Top else Alignment.Bottom
+                                } else {
+                                    Alignment.Bottom
+                                }    
+                        
                             val isMenuOpen = showMenuMsgId != null
                             val isCurrentMsg = message.effectiveMsgId == showMenuMsgId
                             val itemAlpha = if (isMenuOpen && !isCurrentMsg) 0.4f else 1f
@@ -407,9 +581,17 @@ val floatingAvatarState by remember {
                                     message = message,
                                     onRecall = { viewModel.showRecallDialog(message.effectiveMsgId) },
                                     onEdit = { viewModel.showEditDialog(message) },
-                                    onImageClick = { urls, idx -> imageViewerUrls = urls; imageViewerInitialPage = idx; showImageViewer = true },
+                                    onImageClick = { urls, idx ->
+                                        imageViewerUrls = urls
+                                        imageViewerInitialPage = idx
+                                        showImageViewer = true
+                                    },
                                     onReply = { viewModel.setReplyTo(message) },
                                     isAdmin = uiState.isAdmin,
+                                    showAvatar = shouldShowItemAvatar,
+                                    isOlderSameSender = isOlderSameSender,
+                                    isNewerSameSender = isNewerSameSender,
+                                    avatarAlignment = avatarAlignment,
                                     chatType = uiState.chatType,
                                     showDate = message.showDate,
                                     dateString = message.dateIndicator,
@@ -426,10 +608,30 @@ val floatingAvatarState by remember {
                                 )
                             }
                         }
-                        if (uiState.isLoadingMore) { item { Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { ContainedLoadingIndicator() } } }
+
+                        if (uiState.isLoadingMore) {
+                            item {
+                                Box(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    ContainedLoadingIndicator()
+                                }
+                            }
+                        }
                     }
                 }
-                if (uiState.error != null && uiState.messages.isEmpty()) Text("错误: ${uiState.error}", color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center))
+
+                if (uiState.error != null && uiState.messages.isEmpty()) {
+                    Text(
+                        "错误: ${uiState.error}",
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+
                 if (showFloatingAvatar) {
                     AsyncImage(
                         model = floatingAvatarUrl,
@@ -442,8 +644,17 @@ val floatingAvatarState by remember {
                             .clip(CircleShape)
                     )
                 }
-                AnimatedScrollToBottomButton(visible = showScrollToBottom, unreadCount = unreadCount, onClick = scrollToBottom, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp))
+
+                AnimatedScrollToBottomButton(
+                    visible = showScrollToBottom,
+                    unreadCount = unreadCount,
+                    onClick = scrollToBottom,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(16.dp)
+                )
             }
+
             if (selectionMode) {
                 Row(
                     modifier = Modifier
@@ -461,24 +672,65 @@ val floatingAvatarState by remember {
             } else {
                 Column {
                     replyTo?.let { repliedMessage ->
-                        Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f), shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)) {
-                            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Box(Modifier.width(3.dp).height(32.dp).background(MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp)))
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
+                            shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
+                        ) {
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    Modifier
+                                        .width(3.dp)
+                                        .height(32.dp)
+                                        .background(
+                                            MaterialTheme.colorScheme.primary,
+                                            RoundedCornerShape(2.dp)
+                                        )
+                                )
                                 Spacer(Modifier.width(8.dp))
                                 Column(Modifier.weight(1f)) {
-                                    Text(repliedMessage.displayName, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                                    Text(if (repliedMessage.content.isEmpty()) "消息" else repliedMessage.content, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(
+                                        repliedMessage.displayName,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        if (repliedMessage.content.isEmpty()) "消息" else repliedMessage.content,
+                                        fontSize = 12.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
-                                IconButton(onClick = { viewModel.clearReplyTo() }, modifier = Modifier.size(24.dp)) { Icon(Icons.Default.Close, "取消引用", Modifier.size(16.dp)) }
+                                IconButton(
+                                    onClick = { viewModel.clearReplyTo() },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(Icons.Default.Close, "取消引用", Modifier.size(16.dp))
+                                }
                             }
                         }
                     }
+
                     MessageInput(
-                        inputText = uiState.inputText, selectedImages = uiState.selectedImages, isMarkdown = uiState.isMarkdown,
-                        onTextChange = { viewModel.updateInputText(it) }, onSendClick = { viewModel.sendMessage() },
-                        onAddImageClick = { imagePicker.launch("image/*") }, onRemoveImage = { viewModel.removeImage(it) },
-                        onToggleMarkdown = { viewModel.toggleMarkdown() }, innerPadding = innerPadding,
-                        isUploading = isUploading, uploadProgress = uploadProgress, onCancelUpload = { viewModel.cancelUpload() }
+                        inputText = uiState.inputText,
+                        selectedImages = uiState.selectedImages,
+                        isMarkdown = uiState.isMarkdown,
+                        onTextChange = { viewModel.updateInputText(it) },
+                        onSendClick = { viewModel.sendMessage() },
+                        onAddImageClick = { imagePicker.launch("image/*") },
+                        onRemoveImage = { viewModel.removeImage(it) },
+                        onToggleMarkdown = { viewModel.toggleMarkdown() },
+                        innerPadding = innerPadding,
+                        isUploading = isUploading,
+                        uploadProgress = uploadProgress,
+                        onCancelUpload = { viewModel.cancelUpload() }
                     )
                 }
             }
@@ -486,13 +738,31 @@ val floatingAvatarState by remember {
     }
 
     if (recallDialog.isOpen) {
-        AlertDialog(onDismissRequest = { viewModel.hideRecallDialog() }, title = { Text("撤回消息") }, text = { Text("确定要撤回这条消息吗？") },
-            confirmButton = { TextButton(onClick = { viewModel.recallMessage() }) { Text("确定") } },
-            dismissButton = { TextButton(onClick = { viewModel.hideRecallDialog() }) { Text("取消") } })
+        AlertDialog(
+            onDismissRequest = { viewModel.hideRecallDialog() },
+            title = { Text("撤回消息") },
+            text = { Text("确定要撤回这条消息吗？") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.recallMessage() }) {
+                    Text("确定")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.hideRecallDialog() }) {
+                    Text("取消")
+                }
+            }
+        )
     }
+
     if (editDialog.isOpen && editDialog.message != null) {
-        EditMessageDialog(state = editDialog, onDismiss = { viewModel.hideEditDialog() }, onContentChange = { viewModel.updateEditContent(it) },
-            onSave = { viewModel.editMessage() }, onToggleMarkdown = { viewModel.toggleEditMarkdown() })
+        EditMessageDialog(
+            state = editDialog,
+            onDismiss = { viewModel.hideEditDialog() },
+            onContentChange = { viewModel.updateEditContent(it) },
+            onSave = { viewModel.editMessage() },
+            onToggleMarkdown = { viewModel.toggleEditMarkdown() }
+        )
     }
 }
 
@@ -519,6 +789,9 @@ fun MessageBubble(
     onImageClick: (List<String>, Int) -> Unit,
     onReply: () -> Unit,
     isAdmin: Boolean = false,
+    isOlderSameSender: Boolean = false,
+    isNewerSameSender: Boolean = false,
+    showAvatar: Boolean = true,
     chatType: Int = 1,
     showDate: Boolean = false,
     dateString: String? = null,
@@ -527,7 +800,8 @@ fun MessageBubble(
     onLongPress: (() -> Unit)? = null,
     onClickInSelectionMode: (() -> Unit)? = null,
     showMenu: Boolean = false,
-    onShowMenuChanged: ((String?) -> Unit)? = null
+    onShowMenuChanged: ((String?) -> Unit)? = null,
+    avatarAlignment: Alignment.Vertical = Alignment.Bottom
 ) {
     val isMine = message.isMine || message.direction == "right"
     val isRecalledMessage = message.msgDeleteTime != null
@@ -550,7 +824,7 @@ fun MessageBubble(
             }
         }
     } else {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
+        Column(modifier = Modifier.fillMaxWidth()) {
             if (showDate && dateString != null) {
                 Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
                     Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)) {
@@ -576,30 +850,35 @@ fun MessageBubble(
                             }
                         }
                     )
-                    .padding(horizontal = 0.dp, vertical = 0.dp)
+                    .padding(
+                        start = 8.dp,
+                        end = 8.dp,
+                        top = if (isOlderSameSender) 0.dp else 4.dp,
+                        bottom = if (isNewerSameSender) 0.dp else 4.dp
+                    )
                     .then(if (isSelected) Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(8.dp)) else Modifier),
-                verticalAlignment = Alignment.Bottom,
+                verticalAlignment = avatarAlignment,
                 horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start
             ) {
                 if (!isMine && chatType == 2) {
-                    if (message.isFirstFromSender) {
+                    if (showAvatar) {
                         AsyncImage(
-    model = message.displayAvatar,
-    contentDescription = null,
-    contentScale = ContentScale.Crop,
-    modifier = Modifier
-        .size(36.dp)
-        .clip(CircleShape)
-        .clickable {
-            val intent = Intent(context, UserInfoActivity::class.java).apply {
-                putExtra("userId", message.senderId ?: return@clickable)
-            }
-            context.startActivity(intent)
-        }
-)
-                        Spacer(Modifier.width(12.dp))
+                            model = message.displayAvatar,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .clickable {
+                                    val intent = Intent(context, UserInfoActivity::class.java).apply {
+                                        putExtra("userId", message.senderId ?: return@clickable)
+                                    }
+                                    context.startActivity(intent)
+                                }
+                        )
+                        Spacer(Modifier.width(8.dp))
                     } else {
-                        Spacer(Modifier.width(48.dp))
+                        Spacer(Modifier.width(44.dp))
                     }
                 }
 
@@ -608,6 +887,7 @@ fun MessageBubble(
                         Card(
                             shape = RoundedCornerShape(
                                 topStart = 16.dp, topEnd = 16.dp,
+                                topEnd = if (isMine) if (message.isLastFromSender) 16.dp else 4.dp else 16.dp,
                                 bottomStart = if (isMine) 16.dp else if (message.isLastFromSender) 16.dp else 4.dp,
                                 bottomEnd = if (isMine) if (message.isLastFromSender) 16.dp else 4.dp else 16.dp
                             ),
