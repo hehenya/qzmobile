@@ -886,7 +886,7 @@ fun MessageBubble(
                     Column(horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
                         Card(
                             shape = RoundedCornerShape(
-                                topStart = 16.dp, topEnd = 16.dp,
+                                topStart = 16.dp,
                                 topEnd = if (isMine) if (message.isLastFromSender) 16.dp else 4.dp else 16.dp,
                                 bottomStart = if (isMine) 16.dp else if (message.isLastFromSender) 16.dp else 4.dp,
                                 bottomEnd = if (isMine) if (message.isLastFromSender) 16.dp else 4.dp else 16.dp
