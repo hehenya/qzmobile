@@ -1,3 +1,5 @@
+@file:Suppress("AssignedValueIsNeverRead")
+
 package com.example.toolbox.message
 
 import android.content.ClipData
@@ -303,7 +305,7 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
 
     var showMenuMsgId by remember { mutableStateOf<String?>(null) }
 
-    // 浮动头像（仅群聊）—— 参考项目逻辑
+    // 浮动头像（仅群聊）—— 修复初始不显示、不显示自己、系统消息干扰
     val floatingAvatarState by remember {
         derivedStateOf {
             if (uiState.chatType != 2) return@derivedStateOf Triple(false, "", false)
@@ -317,7 +319,8 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
                 } else {
                     val firstVisibleIndex = topVisibleItem.index
                     val message = uiState.messages.getOrNull(firstVisibleIndex)
-                    if (message == null || message.isRecalled) {
+                    // 排除系统消息、撤回消息、自己的消息
+                    if (message == null || message.isRecalled || message.isMine || message.isSystem) {
                         Triple(false, "", false)
                     } else {
                         val itemHeightDp = with(density) { topVisibleItem.size.toDp() }.value
@@ -330,9 +333,9 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
                         val currentIndex = uiState.messages.indexOfFirst { it.effectiveMsgId == message.effectiveMsgId }
                         val newerMessage = if (currentIndex > 0) uiState.messages[currentIndex - 1] else null
                         val olderMessage = if (currentIndex < uiState.messages.size - 1) uiState.messages[currentIndex + 1] else null
-                        val isLastFromSender = olderMessage == null || olderMessage.isRecalled || olderMessage.senderId != message.senderId
-                        val hasOtherSameSender = (newerMessage != null && !newerMessage.isRecalled && newerMessage.senderId == message.senderId && !isLastFromSender) ||
-                                (olderMessage != null && !olderMessage.isRecalled && olderMessage.senderId == message.senderId)
+                        val isLastFromSender = olderMessage == null || olderMessage.isRecalled || olderMessage.isSystem || olderMessage.senderId != message.senderId
+                        val hasOtherSameSender = (newerMessage != null && !newerMessage.isRecalled && !newerMessage.isSystem && newerMessage.senderId == message.senderId && !isLastFromSender) ||
+                                (olderMessage != null && !olderMessage.isRecalled && !olderMessage.isSystem && olderMessage.senderId == message.senderId)
 
                         if (hasEnoughSpace || isFirstLoad) {
                             Triple(true, message.displayAvatar, message.isMine)
@@ -875,6 +878,7 @@ fun EditMessageDialog(state: EditDialogState, onDismiss: () -> Unit, onContentCh
         }
     }, confirmButton = { Button(onClick = onSave) { Text("保存") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } })
 }
+
 // ---- 好友请求 ----
 private suspend fun sendFriendRequest(token: String, friendId: Int): Boolean {
     val client = OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(10, TimeUnit.SECONDS).build()

@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.toolbox.ApiAddress
-import kotlinx.serialization.Serializable
 import com.example.toolbox.AppJson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,10 +12,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import kotlinx.serialization.SerialName
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 
@@ -34,12 +34,13 @@ data class SearchUiState(
 data class SearchChatItem(
     val type: String,
     val id: Int,
-    val name: String,
+    val name: String? = null,      // 群聊名称，私聊可能为 null
+    val username: String? = null,  // 私聊用户名，群聊可能为 null
     val avatar: String,
     val title: String? = null,
-    val lastMessage: String? = null,
-    val lastMessageTime: String? = null,
-    val unreadCount: Int = 0
+    @SerialName("last_message") val lastMessage: String? = null,
+    @SerialName("last_message_time") val lastMessageTime: String? = null,
+    @SerialName("unread_count") val unreadCount: Int = 0
 )
 
 @Serializable

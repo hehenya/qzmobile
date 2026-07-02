@@ -2,6 +2,7 @@ package com.example.toolbox.message
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -62,7 +63,6 @@ fun SearchScreen(token: String, onBack: () -> Unit) {
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
 
-    // 加载更多
     LaunchedEffect(listState) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
             .collect { lastVisibleIndex ->
@@ -133,10 +133,13 @@ fun SearchScreen(token: String, onBack: () -> Unit) {
                 LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
                     items(uiState.results, key = { "${it.type}_${it.id}" }) { chat ->
                         SearchResultItem(chat = chat, onClick = {
-                            // 跳转到聊天页
                             val intent = Intent(context, MessageDetailActivity::class.java)
                             intent.putExtra("chat_type", if (chat.type == "group") 2 else 1)
-                            intent.putExtra("chat_id", chat.id)
+                            if (chat.type == "group") {
+                                intent.putExtra("chat_id", chat.id)
+                            } else {
+                                intent.putExtra("user_id", chat.id)
+                            }
                             context.startActivity(intent)
                         })
                     }
@@ -162,7 +165,6 @@ fun SearchResultItem(chat: SearchChatItem, onClick: () -> Unit) {
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 头像
         Box {
             Image(
                 painter = rememberAsyncImagePainter(chat.avatar),
@@ -188,7 +190,7 @@ fun SearchResultItem(chat: SearchChatItem, onClick: () -> Unit) {
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = chat.name,
+                    text = chat.name ?: chat.username ?: "未知",
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
                 )
@@ -196,7 +198,7 @@ fun SearchResultItem(chat: SearchChatItem, onClick: () -> Unit) {
                     Spacer(modifier = Modifier.width(4.dp))
                     Icon(
                         modifier = Modifier.size(14.dp),
-                        imageVector = Icons.Default.Search, // 可以用其他认证图标
+                        imageVector = Icons.Default.Search,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )
@@ -227,7 +229,7 @@ fun SearchResultItem(chat: SearchChatItem, onClick: () -> Unit) {
 
                 if (chat.lastMessageTime != null) {
                     Text(
-                        text = chat.lastMessageTime, // 直接显示后端格式化时间，也可以进一步转换
+                        text = chat.lastMessageTime,
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 8.dp)
