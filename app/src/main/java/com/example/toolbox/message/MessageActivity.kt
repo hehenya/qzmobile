@@ -167,7 +167,7 @@ class MessageDetailActivity : ComponentActivity() {
                 val uiState by viewModel.uiState.collectAsState()
 
                 LaunchedEffect(uiState.messages.size) {
-                    Toast.makeText(context, "消息数: ${uiState.messages.size}, 加载中: ${uiState.isLoading}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MessageDetailActivity, "消息数: ${uiState.messages.size}, 加载中: ${uiState.isLoading}", Toast.LENGTH_SHORT).show()
                 }
 
                 Scaffold(
