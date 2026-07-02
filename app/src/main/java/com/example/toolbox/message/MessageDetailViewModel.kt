@@ -455,13 +455,15 @@ class MessageDetailViewModel(
                     .build()
                 val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
                 val body = response.body?.string() ?: ""
-                Log.d("GROUPINFO", "群信息返回: $body")
                 val result = AppJson.json.decodeFromString<GroupDetailResponse>(body)
                 if (result.success && result.group != null) {
                     _uiState.update { it.copy(groupInfo = result.group) }
+                    _toastMessage.emit("群信息加载成功")
+                } else {
+                    _toastMessage.emit("群信息加载失败: ${result.message ?: "未知错误"}")
                 }
             } catch (e: Exception) {
-                Log.e("GROUPINFO", "群信息加载失败", e)
+                _toastMessage.emit("群信息异常: ${e.message}")
             }
         }
     }
