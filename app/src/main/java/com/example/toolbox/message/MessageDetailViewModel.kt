@@ -21,6 +21,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -116,46 +117,63 @@ class MessageDetailViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                val response = withContext(Dispatchers.IO) {
-                    val json = JSONObject().apply {
-                        put("chat_type", chatType)
-                        put("chat_id", chatId)
-                        put("page", currentPage)
-                        put("per_page", 20)
-                    }
-                    val request = Request.Builder()
-                        .url("${ApiAddress}chat/messages")
-                        .post(json.toString().toRequestBody("application/json".toMediaType()))
-                        .header("x-access-token", token)
-                        .header("timeis", "true")
-                        .header("linkinfo", "true")
-                        .build()
-                    client.newCall(request).execute()
+                val url = "${ApiAddress}chat/messages"
+                val requestObj = buildJsonObject {
+                    put("chat_type", chatType)
+                    put("chat_id", chatId)
+                    put("page", page)
+                    put("per_page", 20)
                 }
-                val body = response.body?.string() ?: ""
-                val result = AppJson.json.decodeFromString<GetMessagesResponse>(body)
-                if (result.status.code == 0) {
-                    val sortedMessages = result.messages.sortedByDescending { it.sendTime }
-                    msgIdCache.addAll(sortedMessages.map { it.effectiveMsgId })
-                    if (chatType == 1 && result.chatBackgroundUrl.isNotEmpty()) {
-                        _backgroundUrl.value = result.chatBackgroundUrl
+                
+                val body = requestObj.toString().toRequestBody("application/json".toMediaType())
+
+                val request = Request.Builder()
+                    .url(url)
+                    .header("x-access-token", token)
+                    .post(body)
+                    .build()
+
+                val result = withContext(Dispatchers.IO) {
+                    try {
+                        val response = client.newCall(request).execute()
+                        if (response.isSuccessful) {
+                            val responseBody = response.body.string()
+                            json.decodeFromString<GetMessagesResponse>(responseBody)
+                        } else {
+                            null
+                        }
+                    } catch (e: Exception) {
+                        Log.e("MessageDetailVM", "loadMessages error", e)
+                        null
                     }
-                    _uiState.update { state ->
-                        state.copy(
-                            messages = sortedMessages,
-                            isLoading = false,
-                            hasMore = (result.pagination?.pages ?: 1) > currentPage,
-                            pagination = result.pagination,
+                }
+
+                if (result != null && result.status.code == 0) {
+                    val hasMore = result.pagination?.let { it.page < it.pages } ?: false
+                    
+                    _uiState.update { current ->
+                        val newMessages = if (isRefresh) {
+                            result.messages.sortedByDescending { it.sendTime }
+                        } else {
+                            (current.messages + result.messages.sortedByDescending { it.sendTime })
+                                .distinctBy { it.msgId }
+                        }
+                        current.copy(
+                            messages = newMessages,
                             canSend = result.canSend,
-                            isAdmin = result.isAdmin,
+                            pagination = result.pagination,
+                            hasMore = hasMore,
+                            otherUser = result.otherUser,
                             relationship = result.relationship,
                             isChatExpired = result.tempChatExpired,
-                            otherUser = result.otherUser,
-                            groupInfo = if (chatType == 2) state.groupInfo else null
+                            isAdmin = result.isAdmin,
+                            isRefreshing = false,
+                            isLoadingMore = false,
+                            error = null
                         )
                     }
                 } else {
-                    _uiState.update { it.copy(isLoading = false, error = result.status.msg) }
+                    _uiState.update { it.copy(isRefreshing = false, isLoadingMore = false, error = result?.status?.msg ?: "请求失败") }
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message) }
