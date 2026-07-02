@@ -486,3 +486,16 @@ data class BackgroundData(
     @SerialName("target_id") val targetId: Int,
     @SerialName("background_url") val backgroundUrl: String = ""
 )
+class MessageDetailViewModelFactory(
+    private val token: String,
+    private val chatType: Int,
+    private val chatId: Int
+) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(MessageDetailViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return MessageDetailViewModel(token, chatType, chatId) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
+    }
+}
