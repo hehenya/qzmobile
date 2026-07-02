@@ -303,7 +303,10 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
     val selectionMode = uiState.selectionMode
     val selectedMessages = uiState.selectedMessages
 
-    // 浮动头像（仅群聊）
+    // 菜单打开的消息 ID（参考项目效果：其他消息变暗）
+    var showMenuMsgId by remember { mutableStateOf<String?>(null) }
+
+    // 浮动头像（仅群聊）—— 修复初始不显示问题
     val floatingAvatarState by remember {
         derivedStateOf {
             if (uiState.chatType != 2) return@derivedStateOf Triple(false, "", false)
@@ -325,13 +328,16 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
                             (topVisibleItem.size + topVisibleItem.offset.coerceAtMost(0)).toDp()
                         }.value
                         val hasEnoughSpace = visibleHeightDp >= 44 && itemHeightDp >= 44
+                        val isFirstLoad = firstMessageId == null && visibleHeightDp >= 44
+
                         val currentIndex = uiState.messages.indexOfFirst { it.effectiveMsgId == message.effectiveMsgId }
                         val newerMessage = if (currentIndex > 0) uiState.messages[currentIndex - 1] else null
                         val olderMessage = if (currentIndex < uiState.messages.size - 1) uiState.messages[currentIndex + 1] else null
                         val isLastFromSender = olderMessage == null || olderMessage.isRecalled || olderMessage.senderId != message.senderId
                         val hasOtherSameSender = (newerMessage != null && !newerMessage.isRecalled && newerMessage.senderId == message.senderId && !isLastFromSender) ||
                                 (olderMessage != null && !olderMessage.isRecalled && olderMessage.senderId == message.senderId)
-                        if (hasEnoughSpace) {
+
+                        if (hasEnoughSpace || isFirstLoad) {
                             Triple(true, message.displayAvatar, message.isMine)
                         } else if (hasOtherSameSender && message.displayAvatar.isNotEmpty()) {
                             Triple(true, message.displayAvatar, message.isMine)
@@ -370,7 +376,13 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
                         Spacer(Modifier.width(12.dp))
                         Button(onClick = {
                             scope.launch {
-                                // 发送好友请求逻辑，省略
+                                val token = TokenManager.get(context) ?: return@launch
+                                val friendId = uiState.otherUser?.id ?: return@launch
+                                if (sendFriendRequest(token, friendId)) {
+                                    Toast.makeText(context, "好友请求已发送", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(context, "发送失败", Toast.LENGTH_SHORT).show()
+                                }
                             }
                         }) {
                             Icon(Icons.Default.PersonAdd, null, Modifier.size(18.dp))
@@ -384,23 +396,37 @@ fun MessageDetailScreen(innerPadding: PaddingValues, viewModel: MessageDetailVie
                 PullToRefreshBox(isRefreshing = uiState.isRefreshing, onRefresh = { viewModel.refresh() }, modifier = Modifier.fillMaxSize()) {
                     LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), reverseLayout = true, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         items(items = uiState.messages, key = { it.effectiveMsgId }) { message ->
-                            MessageBubble(
-                                context = context,
-                                clipboard = clipboard,
-                                message = message,
-                                onRecall = { viewModel.showRecallDialog(message.effectiveMsgId) },
-                                onEdit = { viewModel.showEditDialog(message) },
-                                onImageClick = { urls, idx -> imageViewerUrls = urls; imageViewerInitialPage = idx; showImageViewer = true },
-                                onReply = { viewModel.setReplyTo(message) },
-                                isAdmin = uiState.isAdmin,
-                                chatType = uiState.chatType,
-                                showDate = message.showDate,
-                                dateString = message.dateIndicator,
-                                isSelectionMode = selectionMode,
-                                isSelected = message.effectiveMsgId in selectedMessages,
-                                onLongPress = { viewModel.enterSelectionMode(message) },
-                                onClickInSelectionMode = { viewModel.toggleMessageSelection(message) }
-                            )
+                            // 参考项目效果：菜单打开时，非当前消息降低透明度
+                            val isMenuOpen = showMenuMsgId != null
+                            val isCurrentMsg = message.effectiveMsgId == showMenuMsgId
+                            val itemAlpha = if (isMenuOpen && !isCurrentMsg) 0.4f else 1f
+
+                            Box(modifier = Modifier.graphicsLayer(alpha = itemAlpha)) {
+                                MessageBubble(
+                                    context = context,
+                                    clipboard = clipboard,
+                                    message = message,
+                                    onRecall = { viewModel.showRecallDialog(message.effectiveMsgId) },
+                                    onEdit = { viewModel.showEditDialog(message) },
+                                    onImageClick = { urls, idx -> imageViewerUrls = urls; imageViewerInitialPage = idx; showImageViewer = true },
+                                    onReply = { viewModel.setReplyTo(message) },
+                                    isAdmin = uiState.isAdmin,
+                                    chatType = uiState.chatType,
+                                    showDate = message.showDate,
+                                    dateString = message.dateIndicator,
+                                    isSelectionMode = selectionMode,
+                                    isSelected = message.effectiveMsgId in selectedMessages,
+                                    onLongPress = { viewModel.enterSelectionMode(message) },
+                                    onClickInSelectionMode = { viewModel.toggleMessageSelection(message) },
+                                    // 传递菜单状态
+                                    showMenu = showMenuMsgId == message.effectiveMsgId && !selectionMode,
+                                    onShowMenuChanged = { msgId ->
+                                        if (!selectionMode) {
+                                            showMenuMsgId = if (showMenuMsgId == msgId) null else msgId
+                                        }
+                                    }
+                                )
+                            }
                         }
                         if (uiState.isLoadingMore) { item { Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { ContainedLoadingIndicator() } } }
                     }
@@ -502,7 +528,9 @@ fun MessageBubble(
     isSelectionMode: Boolean = false,
     isSelected: Boolean = false,
     onLongPress: (() -> Unit)? = null,
-    onClickInSelectionMode: (() -> Unit)? = null
+    onClickInSelectionMode: (() -> Unit)? = null,
+    showMenu: Boolean = false,
+    onShowMenuChanged: ((String?) -> Unit)? = null
 ) {
     val isMine = message.isMine || message.direction == "right"
     val isRecalledMessage = message.msgDeleteTime != null
@@ -538,8 +566,18 @@ fun MessageBubble(
                 modifier = Modifier
                     .fillMaxWidth()
                     .combinedClickable(
-                        onClick = { if (isSelectionMode) onClickInSelectionMode?.invoke() },
-                        onLongClick = { if (!isSelectionMode) onLongPress?.invoke() }
+                        onClick = {
+                            if (isSelectionMode) {
+                                onClickInSelectionMode?.invoke()
+                            } else {
+                                onShowMenuChanged?.invoke(message.effectiveMsgId)
+                            }
+                        },
+                        onLongClick = {
+                            if (!isSelectionMode) {
+                                onLongPress?.invoke()
+                            }
+                        }
                     )
                     .padding(horizontal = 0.dp, vertical = 0.dp)
                     .then(if (isSelected) Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(8.dp)) else Modifier),
@@ -624,7 +662,6 @@ fun MessageBubble(
                                         if (!hasText) { Spacer(Modifier.height(2.dp)); Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) { Text(timestampDisplay, color = Color.White, fontSize = 11.sp, modifier = Modifier.background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp)).padding(horizontal = 5.dp, vertical = 2.dp)) } }
                                     }
                                 }
-                                // 链接预览
                                 if (message.linkInfo != null && message.linkInfo.isNotEmpty()) {
                                     Spacer(Modifier.height(6.dp))
                                     message.linkInfo.forEach { info ->
@@ -639,6 +676,51 @@ fun MessageBubble(
                                     if (message.editTime != null) Text("已编辑", fontSize = 10.sp, color = if (isMine) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp))
                                 }
                             }
+                        }
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { onShowMenuChanged?.invoke(null) },
+                        modifier = Modifier.align(if (isMine) Alignment.TopStart else Alignment.TopEnd)
+                    ) {
+                        if (message.content.isNotBlank()) {
+                            DropdownMenuItem(
+                                text = { Text("复制") },
+                                onClick = {
+                                    clipboard.nativeClipboard.setPrimaryClip(ClipData.newPlainText("text", message.content))
+                                    onShowMenuChanged?.invoke(null)
+                                    Toast.makeText(context, "复制成功", Toast.LENGTH_SHORT).show()
+                                },
+                                leadingIcon = { Icon(Icons.Default.ContentCopy, null, Modifier.size(18.dp)) }
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text("引用") },
+                            onClick = {
+                                onShowMenuChanged?.invoke(null)
+                                onReply()
+                            },
+                            leadingIcon = { Icon(Icons.Default.FormatQuote, null, Modifier.size(18.dp)) }
+                        )
+                        if (isMine || isAdmin) {
+                            DropdownMenuItem(
+                                text = { Text("撤回") },
+                                onClick = {
+                                    onShowMenuChanged?.invoke(null)
+                                    onRecall()
+                                },
+                                leadingIcon = { Icon(Icons.AutoMirrored.Filled.Undo, null, Modifier.size(18.dp)) }
+                            )
+                        }
+                        if (isMine && message.content.isNotBlank()) {
+                            DropdownMenuItem(
+                                text = { Text("编辑") },
+                                onClick = {
+                                    onShowMenuChanged?.invoke(null)
+                                    onEdit()
+                                },
+                                leadingIcon = { Icon(Icons.Default.Edit, null, Modifier.size(18.dp)) }
+                            )
                         }
                     }
                 }

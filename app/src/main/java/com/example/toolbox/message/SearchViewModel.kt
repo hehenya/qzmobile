@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.toolbox.ApiAddress
+import kotlinx.serialization.Serializable
 import com.example.toolbox.AppJson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,10 +29,11 @@ data class SearchUiState(
     val hasMore: Boolean = false
 )
 
+@Serializable
 data class SearchChatItem(
-    val type: String,          // "private" or "group"
+    val type: String,
     val id: Int,
-    val name: String,          // username or group name
+    val name: String,
     val avatar: String,
     val title: String? = null,
     val lastMessage: String? = null,
@@ -39,6 +41,7 @@ data class SearchChatItem(
     val unreadCount: Int = 0
 )
 
+@Serializable
 data class SearchPagination(
     val currentPage: Int,
     val perPage: Int,
@@ -48,6 +51,7 @@ data class SearchPagination(
     val hasPrev: Boolean
 )
 
+@Serializable
 data class SearchResponse(
     val success: Boolean,
     val chats: List<SearchChatItem> = emptyList(),
