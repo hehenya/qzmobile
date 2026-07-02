@@ -19,6 +19,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -208,7 +210,6 @@ class MessageDetailViewModel(
         loadMessages()
     }
 
-    // ---------- 多选模式 ----------
     fun enterSelectionMode(message: Message) {
         _uiState.update {
             it.copy(
@@ -274,7 +275,6 @@ class MessageDetailViewModel(
         }
     }
 
-    // 编辑相关
     fun showEditDialog(message: Message) {
         _editDialog.value = EditDialogState(isOpen = true, message = message, newContent = message.content, isMarkdown = message.isMarkdown)
     }
@@ -318,7 +318,6 @@ class MessageDetailViewModel(
         }
     }
 
-    // 发送消息
     fun sendMessage() {
         val state = _uiState.value
         val text = state.inputText.trim()
@@ -408,14 +407,21 @@ class MessageDetailViewModel(
     private fun loadBackground() {
         viewModelScope.launch {
             try {
+                val json = JSONObject().apply {
+                    put("chat_type", chatType)
+                    put("target_id", chatId)
+                }
                 val request = Request.Builder()
-                    .url("${ApiAddress}chat/background?chat_type=$chatType&chat_id=$chatId")
+                    .url("${ApiAddress}chat/get_background")
+                    .post(json.toString().toRequestBody("application/json".toMediaType()))
                     .header("x-access-token", token)
                     .build()
                 val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
-                val body = response.body?.string()
-                val url = JSONObject(body ?: "").optString("url", null)
-                _backgroundUrl.value = url
+                val body = response.body?.string() ?: ""
+                val result = AppJson.json.decodeFromString<BackgroundResponse>(body)
+                if (result.success) {
+                    _backgroundUrl.value = result.data?.backgroundUrl?.takeIf { it.isNotEmpty() }
+                }
             } catch (_: Exception) { }
         }
     }
@@ -456,3 +462,17 @@ class MessageDetailViewModelFactory(
         throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
+
+@Serializable
+data class BackgroundResponse(
+    val success: Boolean,
+    val data: BackgroundData? = null,
+    val message: String? = null
+)
+
+@Serializable
+data class BackgroundData(
+    @SerialName("chat_type") val chatType: Int,
+    @SerialName("target_id") val targetId: Int,
+    @SerialName("background_url") val backgroundUrl: String = ""
+)
