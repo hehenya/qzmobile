@@ -148,7 +148,11 @@ class WebSocketManager internal constructor() {
                         val type = json.optString("type")
                         val dataObj = json.optJSONObject("data")
                         if (dataObj != null) {
-                            val chatId = dataObj.optString("chat_id", "")
+                            val chatId = dataObj.optString("chat_id", "").ifEmpty {
+                                dataObj.optString("sender_id", "").ifEmpty {
+                                    dataObj.optString("receiver_id", "")
+                                }
+                            }
                             val chatType = dataObj.optInt("chat_type", 0)
                             val dataStr = dataObj.toString()
                             val message = AppJson.json.decodeFromString<Message>(dataStr)
@@ -190,8 +194,9 @@ class WebSocketManager internal constructor() {
                             mainHandler.post {
                                 groupMessageListener?.invoke(dataObj)
                             }
-                            val chatId = dataObj.optString("chat_id", "")
-                            val chatType = dataObj.optInt("chat_type", 0)
+                            val chatId = dataObj.optString("chat_id", "").ifEmpty {
+                                dataObj.optString("group_id", "")
+                            }
                             val dataStr = dataObj.toString()
                             val message = AppJson.json.decodeFromString<Message>(dataStr)
                             mainHandler.post {

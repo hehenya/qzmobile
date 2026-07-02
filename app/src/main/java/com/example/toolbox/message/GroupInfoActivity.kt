@@ -265,14 +265,14 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
                             Column(modifier = Modifier.fillMaxSize().padding(8.dp), verticalArrangement = Arrangement.Bottom) {
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
                                     Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(16.dp, 16.dp, 16.dp, 4.dp)) {
-                                        Text("这是一条模拟消息", modifier = Modifier.padding(8.dp), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
+                                        Text("你知道轻昼可以调节聊天背景吗", modifier = Modifier.padding(8.dp), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
                                     }
                                 }
                                 Spacer(Modifier.height(6.dp))
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                                     Surface(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), shape = RoundedCornerShape(16.dp, 16.dp, 4.dp, 16.dp)) {
                                         Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(8.dp)) {
-                                            Text("好的，收到", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
+                                            Text("选择图片后就可以设置，试试吧", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
                                             Text(now, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
                                     }
