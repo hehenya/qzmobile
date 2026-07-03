@@ -23,6 +23,8 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
+import okhttp3.MultipartBody
+import java.util.concurrent.TimeUnit
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
@@ -451,7 +453,55 @@ class MessageDetailViewModel(
             }
         }
     }
-
+    fun uploadAndSendImage(uri: Uri, context: Context) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isUploading = true, uploadProgress = 0f, isSending = false) }
+            try {
+                val client = OkHttpClient.Builder()
+                    .connectTimeout(30, TimeUnit.SECONDS)
+                    .readTimeout(30, TimeUnit.SECONDS)
+                    .build()
+    
+                // 读取图片文件
+                val inputStream = context.contentResolver.openInputStream(uri)
+                val bytes = inputStream?.readBytes() ?: throw Exception("无法读取图片")
+                inputStream.close()
+    
+                // 上传到服务器（使用 multipart）
+                val mediaType = "image/*".toMediaType()
+                val requestBody = MultipartBody.Builder()
+                    .setType(MultipartBody.FORM)
+                    .addFormDataPart("file", "image.jpg", bytes.toRequestBody(mediaType))
+                    .build()
+    
+                val request = Request.Builder()
+                    .url("${ApiAddress}upload")
+                    .post(requestBody)
+                    .header("x-access-token", token)
+                    .build()
+    
+                val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
+                val body = response.body?.string() ?: ""
+                val json = JSONObject(body)
+    
+                if (json.optBoolean("success")) {
+                    val imageUrl = json.optString("url", "")
+                    _uiState.update {
+                        it.copy(
+                            isUploading = false,
+                            uploadProgress = 1f,
+                            selectedImages = it.selectedImages + imageUrl
+                        )
+                    }
+                } else {
+                    throw Exception(json.optString("message", "上传失败"))
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isUploading = false, uploadProgress = 0f) }
+                _toastMessage.emit("图片上传失败: ${e.message}")
+            }
+        }
+    }
     fun sendMessage() {
         val state = _uiState.value
         val text = state.inputText.trim()
@@ -498,7 +548,7 @@ class MessageDetailViewModel(
 
     fun handleImageSelected(uri: Uri?, context: Context, scope: kotlinx.coroutines.CoroutineScope) {
         uri?.let {
-            _uiState.update { state -> state.copy(selectedImages = state.selectedImages + it.toString()) }
+            uploadAndSendImage(it, context)
         }
     }
 
