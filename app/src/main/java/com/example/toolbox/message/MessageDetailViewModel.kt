@@ -84,6 +84,10 @@ class MessageDetailViewModel(
         manager.connect(token)
 
         manager.addObserver { type, chatIdStr, chatTypeInt, message ->
+            Log.d(
+                "WS_OBSERVER",
+                "收到$type chatId=$chatIdStr 当前=$chatId msgId=${message.effectiveMsgId}"
+            )
             val incomingChatId = chatIdStr.toIntOrNull() ?: return@addObserver
 
             // 撤回消息：只要 chatId 匹配就处理，忽略 chatType
