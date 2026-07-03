@@ -199,6 +199,8 @@ data class MessageDetailUiState(
     val isAdmin: Boolean = false,
     val relationship: String = "friend",
     val selectionMode: Boolean = false,
+    val isUploading: Boolean = false,
+    val uploadProgress: Float = 0f,
     val selectedMessages: Set<String> = emptySet()
 )
 
