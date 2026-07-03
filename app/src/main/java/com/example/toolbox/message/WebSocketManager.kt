@@ -221,14 +221,19 @@ class WebSocketManager internal constructor() {
                         )
             
                         mainHandler.post {
-            
-                            // 保留你原来的URL卡片刷新功能
+
+                            android.widget.Toast.makeText(
+                                com.example.toolbox.App.context,
+                                "WS事件：$type\nmsg=${message.effectiveMsgId}",
+                                android.widget.Toast.LENGTH_LONG
+                            ).show()
+                        
                             groupMessageListener?.invoke(dataObj)
-            
-                            // 通知所有观察者
+                        
                             observers.toList().forEach { observer ->
                                 observer(type, chatId, chatType, message)
                             }
+                        }
             
                             // 新消息通知（撤回、编辑不会走这里）
                             if (type == "new" && !message.isMine) {
