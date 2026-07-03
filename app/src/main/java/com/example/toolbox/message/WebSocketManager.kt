@@ -141,7 +141,6 @@ class WebSocketManager internal constructor() {
                 Log.e("WS", "认证失败: $message")
             }
 
-            // ========== 私聊消息 ==========
             socket?.on("private_message") { args ->
                 scope?.launch {
                     try {
@@ -150,19 +149,12 @@ class WebSocketManager internal constructor() {
                         val dataObj = json.optJSONObject("data")
                         if (dataObj != null) {
                             val chatId = dataObj.optString("chat_id", "").ifEmpty {
-                                if (type == "recall") {
-                                    dataObj.optString("sender_id", "")
-                                } else {
-                                    dataObj.optString("sender_id", "").ifEmpty {
-                                        dataObj.optString("receiver_id", "")
-                                    }
+                                dataObj.optString("sender_id", "").ifEmpty {
+                                    dataObj.optString("receiver_id", "")
                                 }
                             }
-                            val chatType = if (dataObj.has("chat_type")) {
-                                dataObj.optInt("chat_type", 1)
-                            } else {
-                                1
-                            }
+                            
+                            val chatType = dataObj.optInt("chat_type", 0)
                             val dataStr = dataObj.toString()
                             val message = AppJson.json.decodeFromString<Message>(dataStr)
                             mainHandler.post {
@@ -170,6 +162,7 @@ class WebSocketManager internal constructor() {
                                     observer(type, chatId, chatType, message)
                                 }
 
+                                // 新消息通知（仅他人消息）
                                 if (type == "new" && !dataObj.optBoolean("is_mine", false)) {
                                     val senderName = dataObj.optString("sender_username", "未知用户")
                                     val content = dataObj.optString("content", "")
@@ -192,7 +185,6 @@ class WebSocketManager internal constructor() {
                 }
             }
 
-            // ========== 群聊消息 ==========
             socket?.on("group_message") { args ->
                 scope?.launch {
                     try {
@@ -204,24 +196,17 @@ class WebSocketManager internal constructor() {
                                 groupMessageListener?.invoke(dataObj)
                             }
                             val chatId = dataObj.optString("chat_id", "").ifEmpty {
-                                if (type == "recall") {
-                                    dataObj.optString("group_id", "")
-                                } else {
-                                    dataObj.optString("group_id", "")
-                                }
+                                dataObj.optString("group_id", "")
                             }
-                            val chatType = if (dataObj.has("chat_type")) {
-                                dataObj.optInt("chat_type", 2)
-                            } else {
-                                2
-                            }
+                            val chatType = dataObj.optInt("chat_type", 0)
                             val dataStr = dataObj.toString()
                             val message = AppJson.json.decodeFromString<Message>(dataStr)
                             mainHandler.post {
                                 observers.forEach { observer ->
                                     observer(type, chatId, chatType, message)
                                 }
-
+                               
+                                // 新消息通知（仅他人消息）
                                 if (type == "new" && !dataObj.optBoolean("is_mine", false)) {
                                     val senderName = dataObj.optString("sender_username", "未知用户")
                                     val content = dataObj.optString("content", "")
@@ -234,7 +219,7 @@ class WebSocketManager internal constructor() {
                                             message = content.take(50),
                                             chatId = chatId.toIntOrNull(),
                                             chatType = chatType,
-                                            avatarUrl = senderAvatar
+                                            avatarUrl = senderAvatar // 群聊中显示发送者头像
                                         )
                                     )
                                 }
