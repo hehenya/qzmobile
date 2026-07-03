@@ -115,15 +115,12 @@ class WebSocketManager internal constructor() {
             }
             
             val wsUrl = ApiAddress.replace("http://", "ws://").replace("https://", "wss://")
-            disconnect()
+            
 
-            socket?.off()
+           
 
             socket = IO.socket("${wsUrl}?type=2", opts)
-            socket?.off("private_message")
-            socket?.off("group_message")
-            socket?.off("friend_list_update")
-            socket?.off("group_list_update")
+            
             socket?.on(Socket.EVENT_CONNECT) {
                 Log.d("WS", "连接成功")
                 authenticate()
