@@ -233,17 +233,26 @@ class MessageDetailViewModel(
 
     fun loadMore() {
         if (!hasMore || _uiState.value.isLoadingMore) return
+    
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingMore = true) }
+    
+            _uiState.update {
+                it.copy(isLoadingMore = true)
+            }
+    
             try {
-                currentPage++
-                val response = withContext(Dispatchers.IO) {
+    
+                val nextPage = currentPage + 1
+    
+                val result = withContext(Dispatchers.IO) {
+    
                     val json = JSONObject().apply {
                         put("chat_type", chatType)
                         put("chat_id", chatId)
-                        put("page", currentPage)
+                        put("page", nextPage)
                         put("per_page", 20)
                     }
+    
                     val request = Request.Builder()
                         .url("${ApiAddress}chat/messages")
                         .post(json.toString().toRequestBody("application/json".toMediaType()))
@@ -251,34 +260,88 @@ class MessageDetailViewModel(
                         .header("timeis", "true")
                         .header("linkinfo", "true")
                         .build()
-                    client.newCall(request).execute()
+    
+                    client.newCall(request).execute().use { response ->
+    
+                        Log.d("LOAD_MORE", "HTTP=${response.code}")
+    
+                        if (!response.isSuccessful) {
+                            throw IOException("HTTP ${response.code}")
+                        }
+    
+                        val body = response.body?.string().orEmpty()
+    
+                        if (body.isBlank()) {
+                            throw IOException("Response Body is empty")
+                        }
+    
+                        Log.d("LOAD_MORE", "Body=${body.take(500)}")
+    
+                        AppJson.json.decodeFromString<GetMessagesResponse>(body)
+                    }
                 }
-                val body = response.body?.string() ?: ""
-                val result = AppJson.json.decodeFromString<GetMessagesResponse>(body)
+    
+                Log.d(
+                    "LOAD_MORE",
+                    "status=${result.status.code}, page=$nextPage, msgCount=${result.messages.size}"
+                )
+    
                 if (result.status.code == 0) {
+    
+                    currentPage = nextPage
+    
                     val newMessages = result.messages
                         .filter { it.effectiveMsgId !in msgIdCache }
                         .sortedByDescending { it.sendTime }
+    
                     msgIdCache.addAll(newMessages.map { it.effectiveMsgId })
+    
+                    hasMore = (result.pagination?.pages ?: 1) > currentPage
+    
+                    Log.d(
+                        "LOAD_MORE",
+                        "UI before=${_uiState.value.messages.size}, add=${newMessages.size}"
+                    )
+    
                     _uiState.update { state ->
                         state.copy(
                             messages = state.messages + newMessages,
                             isLoadingMore = false,
-                            hasMore = (result.pagination?.pages ?: 1) > currentPage,
-                            pagination = result.pagination
+                            hasMore = hasMore,
+                            pagination = result.pagination,
+                            error = null
                         )
                     }
+    
                 } else {
-                    _uiState.update { it.copy(isLoadingMore = false, error = result.status.msg) }
-                    _toastMessage.emit("加载更多失败: ${result.status.msg}")
+    
+                    Log.e("LOAD_MORE", "Server Error: ${result.status.msg}")
+    
+                    _uiState.update {
+                        it.copy(
+                            isLoadingMore = false,
+                            error = result.status.msg
+                        )
+                    }
+    
+                    _toastMessage.emit("加载更多失败：${result.status.msg}")
                 }
+    
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoadingMore = false, error = e.message) }
-                _toastMessage.emit("加载更多异常: ${e.message}")
+    
+                Log.e("LOAD_MORE", "loadMore Exception", e)
+    
+                _uiState.update {
+                    it.copy(
+                        isLoadingMore = false,
+                        error = e.stackTraceToString()
+                    )
+                }
+    
+                _toastMessage.emit("加载更多异常：${e.javaClass.simpleName}")
             }
         }
     }
-
     fun refresh() {
         currentPage = 1
         hasMore = true
