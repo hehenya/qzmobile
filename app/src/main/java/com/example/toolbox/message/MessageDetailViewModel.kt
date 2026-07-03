@@ -84,59 +84,61 @@ class MessageDetailViewModel(
         manager.connect(token)
 
         manager.addObserver { type, chatIdStr, chatTypeInt, message ->
-            Log.d(
-                "WS_OBSERVER",
-                "收到$type chatId=$chatIdStr 当前=$chatId msgId=${message.effectiveMsgId}"
-            )
-            val incomingChatId = chatIdStr.toIntOrNull() ?: return@addObserver
 
-            // 撤回消息：只要 chatId 匹配就处理，忽略 chatType
-            if (type == "recall") {
-                if (incomingChatId == chatId) {
+            val incomingChatId = chatIdStr.toIntOrNull() ?: return@addObserver
+            val isCurrentChat = incomingChatId == chatId
+        
+            if (!isCurrentChat) return@addObserver
+        
+            when (type) {
+        
+                "recall" -> {
                     _uiState.update { state ->
-                        state.copy(messages = state.messages.map {
-                            if (it.effectiveMsgId == message.effectiveMsgId) it.copy(
-                                isRecalled = true,
-                                recallHint = message.recallHint
-                            ) else it
-                        })
+                        state.copy(
+                            messages = state.messages.map {
+                                if (it.effectiveMsgId == message.effectiveMsgId) {
+                                    it.copy(
+                                        isRecalled = true,
+                                        recallHint = message.recallHint ?: "已撤回"
+                                    )
+                                } else it
+                            }
+                        )
                     }
                 }
-                return@addObserver
-            }
-
-            // 新消息和编辑消息仍需 chatType 匹配
-            if (incomingChatId == chatId && chatTypeInt == chatType) {
-                when (type) {
-                    "new" -> {
-                        if (message.effectiveMsgId !in msgIdCache) {
-                            msgIdCache.add(message.effectiveMsgId)
-                            _uiState.update { state ->
-                                state.copy(messages = listOf(message) + state.messages)
-                            }
-                        }
-                    }
-                    "edit" -> {
-                        _uiState.update { state ->
-                            state.copy(messages = state.messages.map {
-                                if (it.effectiveMsgId == message.effectiveMsgId) it.copy(
-                                    content = message.content,
-                                    isEdited = true,
-                                    editTime = message.editTime
-                                ) else it
-                            })
-                        }
-                        // 延迟刷新以获取 link_info
-                        viewModelScope.launch {
-                            kotlinx.coroutines.delay(2000)
-                            refresh()
-                        }
         
+                "edit" -> {
+                    _uiState.update { state ->
+                        state.copy(
+                            messages = state.messages.map {
+                                if (it.effectiveMsgId == message.effectiveMsgId) {
+                                    it.copy(
+                                        content = message.content,
+                                        isEdited = true,
+                                        editTime = message.editTime ?: System.currentTimeMillis()
+                                    )
+                                } else it
+                            }
+                        )
+                    }
+                
+                    // 🔥 只在 edit 后刷新（带延迟）
+                    viewModelScope.launch {
+                        delay(2000)
+                        refresh()
+                    }
+                }
+        
+                "new" -> {
+                    if (message.effectiveMsgId !in msgIdCache) {
+                        msgIdCache.add(message.effectiveMsgId)
+                        _uiState.update {
+                            it.copy(messages = listOf(message) + it.messages)
+                        }
                     }
                 }
             }
         }
-    }
 
     private fun loadMessages() {
         viewModelScope.launch {
@@ -708,7 +710,10 @@ fun handleImageSelected(uri: Uri?, context: Context, coroutineScope: CoroutineSc
 
     override fun onCleared() {
         super.onCleared()
-        ChatSocketManager.getInstance().removeObserver { _, _, _, _ -> }
+        private val observer: (String, String, Int, Message) -> Unit =
+            { type, chatIdStr, chatTypeInt, message ->
+                handleSocket(type, chatIdStr, chatTypeInt, message)
+            }
     }
 }
 
