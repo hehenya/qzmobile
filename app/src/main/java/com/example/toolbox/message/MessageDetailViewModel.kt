@@ -582,45 +582,128 @@ fun handleImageSelected(uri: Uri?, context: Context, coroutineScope: CoroutineSc
 
     private fun loadBackground() {
         viewModelScope.launch {
+    
             try {
-                val json = JSONObject().apply {
-                    put("chat_type", chatType)
-                    put("target_id", chatId)
+    
+                val result = withContext(Dispatchers.IO) {
+    
+                    val json = JSONObject().apply {
+                        put("chat_type", chatType)
+                        put("target_id", chatId)
+                    }
+    
+                    val request = Request.Builder()
+                        .url("${ApiAddress}chat/get_background")
+                        .post(json.toString().toRequestBody("application/json".toMediaType()))
+                        .header("x-access-token", token)
+                        .build()
+    
+                    client.newCall(request).execute().use { response ->
+    
+                        if (!response.isSuccessful) {
+                            throw IOException("HTTP ${response.code}")
+                        }
+    
+                        val body = response.body?.string().orEmpty()
+    
+                        Log.d("CHAT_BG", body)
+    
+                        AppJson.json.decodeFromString<BackgroundResponse>(body)
+                    }
                 }
-                val request = Request.Builder()
-                    .url("${ApiAddress}chat/get_background")
-                    .post(json.toString().toRequestBody("application/json".toMediaType()))
-                    .header("x-access-token", token)
-                    .build()
-                val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
-                val body = response.body?.string() ?: ""
-                val result = AppJson.json.decodeFromString<BackgroundResponse>(body)
+    
                 if (result.success) {
-                    _backgroundUrl.value = result.data?.backgroundUrl?.takeIf { it.isNotEmpty() }
+    
+                    _backgroundUrl.value =
+                        result.data?.backgroundUrl?.takeIf { it.isNotBlank() }
+    
+                    Log.d(
+                        "CHAT_BG",
+                        "背景加载成功：${result.data?.backgroundUrl}"
+                    )
+    
+                } else {
+    
+                    Log.e(
+                        "CHAT_BG",
+                        "背景接口返回失败：${result.message}"
+                    )
+    
                 }
-            } catch (_: Exception) { }
+    
+            } catch (e: Exception) {
+    
+                Log.e("CHAT_BG", "loadBackground", e)
+    
+            }
         }
     }
 
     private fun loadGroupInfo() {
+
         viewModelScope.launch {
+    
             try {
-                val json = JSONObject().apply {
-                    put("group_id", chatId)
+    
+                val result = withContext(Dispatchers.IO) {
+    
+                    val json = JSONObject().apply {
+                        put("group_id", chatId)
+                    }
+    
+                    val request = Request.Builder()
+                        .url("${ApiAddress}group/detail")
+                        .post(json.toString().toRequestBody("application/json".toMediaType()))
+                        .header("x-access-token", token)
+                        .build()
+    
+                    client.newCall(request).execute().use { response ->
+    
+                        if (!response.isSuccessful) {
+                            throw IOException("HTTP ${response.code}")
+                        }
+    
+                        val body = response.body?.string().orEmpty()
+    
+                        Log.d("GROUP_INFO", body)
+    
+                        AppJson.json.decodeFromString<GroupDetailResponse>(body)
+                    }
+    
                 }
-                val request = Request.Builder()
-                    .url("${ApiAddress}group/detail")
-                    .post(json.toString().toRequestBody("application/json".toMediaType()))
-                    .header("x-access-token", token)
-                    .build()
-                val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
-                val body = response.body?.string() ?: ""
-                val result = AppJson.json.decodeFromString<GroupDetailResponse>(body)
+    
                 if (result.success && result.group != null) {
-                    _uiState.update { it.copy(groupInfo = result.group) }
+    
+                    _uiState.update {
+    
+                        it.copy(
+                            groupInfo = result.group
+                        )
+    
+                    }
+    
+                    Log.d(
+                        "GROUP_INFO",
+                        "群资料加载成功：${result.group.name}"
+                    )
+    
+                } else {
+    
+                    Log.e(
+                        "GROUP_INFO",
+                        "接口返回失败：${result.message}"
+                    )
+    
                 }
-            } catch (_: Exception) { }
+    
+            } catch (e: Exception) {
+    
+                Log.e("GROUP_INFO", "loadGroupInfo", e)
+    
+            }
+    
         }
+    
     }
 
     override fun onCleared() {
