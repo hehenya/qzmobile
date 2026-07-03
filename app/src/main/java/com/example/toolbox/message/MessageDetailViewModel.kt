@@ -16,7 +16,6 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import java.io.IOException
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -27,6 +26,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import java.io.IOException
 
 class MessageDetailViewModel(
     private val token: String,
@@ -77,7 +77,25 @@ class MessageDetailViewModel(
         manager.connect(token)
 
         manager.addObserver { type, chatIdStr, chatTypeInt, message ->
-            if (chatIdStr.toIntOrNull() == chatId && chatTypeInt == chatType) {
+            val incomingChatId = chatIdStr.toIntOrNull() ?: return@addObserver
+
+            // 撤回消息：只要 chatId 匹配就处理，忽略 chatType
+            if (type == "recall") {
+                if (incomingChatId == chatId) {
+                    _uiState.update { state ->
+                        state.copy(messages = state.messages.map {
+                            if (it.effectiveMsgId == message.effectiveMsgId) it.copy(
+                                isRecalled = true,
+                                recallHint = message.recallHint
+                            ) else it
+                        })
+                    }
+                }
+                return@addObserver
+            }
+
+            // 新消息和编辑消息仍需 chatType 匹配
+            if (incomingChatId == chatId && chatTypeInt == chatType) {
                 when (type) {
                     "new" -> {
                         if (message.effectiveMsgId !in msgIdCache) {
@@ -94,16 +112,6 @@ class MessageDetailViewModel(
                                     content = message.content,
                                     isEdited = true,
                                     editTime = message.editTime
-                                ) else it
-                            })
-                        }
-                    }
-                    "recall" -> {
-                        _uiState.update { state ->
-                            state.copy(messages = state.messages.map {
-                                if (it.effectiveMsgId == message.effectiveMsgId) it.copy(
-                                    isRecalled = true,
-                                    recallHint = message.recallHint
                                 ) else it
                             })
                         }
@@ -195,9 +203,18 @@ class MessageDetailViewModel(
                     )
     
                 } else {
-                    Log.e("CHAT_LOAD", "Server Error: ${result.status.msg}")
-                    _uiState.update { it.copy(isLoading = false, error = result.status.msg) }
-                    _toastMessage.emit("消息加载失败: ${result.status.msg}")
+    
+                    Log.e(
+                        "CHAT_LOAD",
+                        "Server Error: ${result.status.msg}"
+                    )
+    
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = result.status.msg
+                        )
+                    }
                 }
     
             } catch (e: Exception) {
@@ -219,6 +236,7 @@ class MessageDetailViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true) }
             try {
+                currentPage++
                 val response = withContext(Dispatchers.IO) {
                     val json = JSONObject().apply {
                         put("chat_type", chatType)
@@ -238,7 +256,6 @@ class MessageDetailViewModel(
                 val body = response.body?.string() ?: ""
                 val result = AppJson.json.decodeFromString<GetMessagesResponse>(body)
                 if (result.status.code == 0) {
-                    currentPage++
                     val newMessages = result.messages
                         .filter { it.effectiveMsgId !in msgIdCache }
                         .sortedByDescending { it.sendTime }
@@ -253,9 +270,11 @@ class MessageDetailViewModel(
                     }
                 } else {
                     _uiState.update { it.copy(isLoadingMore = false, error = result.status.msg) }
+                    _toastMessage.emit("加载更多失败: ${result.status.msg}")
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoadingMore = false, error = e.message) }
+                _toastMessage.emit("加载更多异常: ${e.message}")
             }
         }
     }

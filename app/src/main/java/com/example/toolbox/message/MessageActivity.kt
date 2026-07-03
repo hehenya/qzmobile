@@ -910,15 +910,16 @@ fun MessageBubble(
                     Column(horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
                         Card(
                             shape = RoundedCornerShape(
-                                topStart = 16.dp,
-                                topEnd = if (isMine) if (message.isLastFromSender) 16.dp else 4.dp else 16.dp,
+                                topStart = 16.dp, topEnd = 16.dp,
                                 bottomStart = if (isMine) 16.dp else if (message.isLastFromSender) 16.dp else 4.dp,
                                 bottomEnd = if (isMine) if (message.isLastFromSender) 16.dp else 4.dp else 16.dp
                             ),
                             colors = CardDefaults.cardColors(
-                                containerColor = if (isMine) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.surfaceContainer
-                            )
+                                containerColor = if (message.images.isNotEmpty()) Color.Transparent
+                                    else if (isMine) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.surfaceContainer
+                            ),
+                            elevation = if (message.images.isNotEmpty()) CardDefaults.cardElevation(defaultElevation = 0.dp) else CardDefaults.cardElevation()
                         ) {
                             Column(modifier = Modifier.padding(8.dp)) {
                                 if (!isMine && message.isFirstFromSender && chatType == 2) {
@@ -935,7 +936,7 @@ fun MessageBubble(
                                         Column {
                                             Text(ref.senderUsername, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = quoteNameColor)
                                             if (ref.content.isNotBlank()) Text(ref.content, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, color = quoteTextColor)
-                                            if (ref.images.isNotEmpty()) AsyncImage(model = ref.images.first(), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(4.dp)).padding(top = 4.dp))
+                                            if (ref.images.isNotEmpty()) AsyncImage(model = ref.images.first(), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(8.dp)).padding(top = 4.dp))
                                         }
                                     }
                                 }
@@ -948,13 +949,24 @@ fun MessageBubble(
                                     if (imgCount == 1) {
                                         Box(modifier = Modifier.widthIn(max = 280.dp).clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, 0) }) {
                                             AsyncImage(model = message.images[0], contentDescription = null, contentScale = ContentScale.FillWidth, modifier = Modifier.fillMaxWidth())
-                                            if (!hasText) { Text(timestampDisplay, color = Color.White, fontSize = 11.sp, modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp).background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp)).padding(horizontal = 5.dp, vertical = 2.dp)) }
+                                            if (!hasText) {
+                                                Text(
+                                                    timestampDisplay,
+                                                    color = Color.White,
+                                                    fontSize = 11.sp,
+                                                    modifier = Modifier
+                                                        .align(Alignment.BottomEnd)
+                                                        .padding(6.dp)
+                                                        .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                                                        .padding(horizontal = 5.dp, vertical = 2.dp)
+                                                )
+                                            }
                                         }
                                     } else if (imgCount == 2) {
                                         Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.height(180.dp).widthIn(max = 280.dp)) {
                                             message.images.forEachIndexed { index, url -> AsyncImage(model = url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, index) }) }
                                         }
-                                        if (!hasText) { Spacer(Modifier.height(2.dp)); Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) { Text(timestampDisplay, color = Color.White, fontSize = 11.sp, modifier = Modifier.background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp)).padding(horizontal = 5.dp, vertical = 2.dp)) } }
+                                        if (!hasText) { Spacer(Modifier.height(2.dp)); Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) { Text(timestampDisplay, color = Color.White, fontSize = 11.sp, modifier = Modifier.background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(8.dp)).padding(horizontal = 5.dp, vertical = 2.dp)) } }
                                     } else if (imgCount == 3) {
                                         Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.height(200.dp).widthIn(max = 280.dp)) {
                                             AsyncImage(model = message.images[0], contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, 0) })
@@ -963,7 +975,7 @@ fun MessageBubble(
                                                 AsyncImage(model = message.images[2], contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, 2) })
                                             }
                                         }
-                                        if (!hasText) { Spacer(Modifier.height(2.dp)); Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) { Text(timestampDisplay, color = Color.White, fontSize = 11.sp, modifier = Modifier.background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp)).padding(horizontal = 5.dp, vertical = 2.dp)) } }
+                                        if (!hasText) { Spacer(Modifier.height(2.dp)); Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) { Text(timestampDisplay, color = Color.White, fontSize = 11.sp, modifier = Modifier.background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(8.dp)).padding(horizontal = 5.dp, vertical = 2.dp)) } }
                                     } else {
                                         val rows = (imgCount + 1) / 2
                                         Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.widthIn(max = 280.dp)) {
@@ -973,7 +985,7 @@ fun MessageBubble(
                                                 }
                                             }
                                         }
-                                        if (!hasText) { Spacer(Modifier.height(2.dp)); Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) { Text(timestampDisplay, color = Color.White, fontSize = 11.sp, modifier = Modifier.background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp)).padding(horizontal = 5.dp, vertical = 2.dp)) } }
+                                        if (!hasText) { Spacer(Modifier.height(2.dp)); Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) { Text(timestampDisplay, color = Color.White, fontSize = 11.sp, modifier = Modifier.background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(8.dp)).padding(horizontal = 5.dp, vertical = 2.dp)) } }
                                     }
                                 }
                                 if (message.linkInfo != null && message.linkInfo.isNotEmpty()) {
@@ -1061,7 +1073,7 @@ fun MessageInput(
             else if (selectedImages.isNotEmpty()) {
                 LazyRow(modifier = Modifier.fillMaxWidth().height(80.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     items(selectedImages.size) { index ->
-                        Box(modifier = Modifier.size(70.dp).clip(RoundedCornerShape(4.dp))) {
+                        Box(modifier = Modifier.size(70.dp).clip(RoundedCornerShape(8.dp))) {
                             AsyncImage(model = selectedImages[index], contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                             IconButton(onClick = { onRemoveImage(index) }, modifier = Modifier.align(Alignment.TopEnd).size(20.dp).background(color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f), shape = CircleShape)) { Icon(Icons.Default.Close, contentDescription = "移除", modifier = Modifier.size(12.dp)) }
                         }
@@ -1167,7 +1179,7 @@ fun LinkPreviewCard(url: String, title: String, onClick: () -> Unit) {
                         .fillMaxWidth()
                         .height(1.dp)
                         .background(
-                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                         )
                 )
                 Spacer(Modifier.height(4.dp))
