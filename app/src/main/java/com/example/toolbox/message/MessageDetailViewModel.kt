@@ -16,7 +16,6 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import java.io.IOException
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -27,6 +26,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import java.io.IOException
 
 class MessageDetailViewModel(
     private val token: String,
@@ -77,7 +77,25 @@ class MessageDetailViewModel(
         manager.connect(token)
 
         manager.addObserver { type, chatIdStr, chatTypeInt, message ->
-            if (chatIdStr.toIntOrNull() == chatId && chatTypeInt == chatType) {
+            val incomingChatId = chatIdStr.toIntOrNull() ?: return@addObserver
+
+            // 撤回消息：只要 chatId 匹配就处理，忽略 chatType
+            if (type == "recall") {
+                if (incomingChatId == chatId) {
+                    _uiState.update { state ->
+                        state.copy(messages = state.messages.map {
+                            if (it.effectiveMsgId == message.effectiveMsgId) it.copy(
+                                isRecalled = true,
+                                recallHint = message.recallHint
+                            ) else it
+                        })
+                    }
+                }
+                return@addObserver
+            }
+
+            // 新消息和编辑消息仍需 chatType 匹配
+            if (incomingChatId == chatId && chatTypeInt == chatType) {
                 when (type) {
                     "new" -> {
                         if (message.effectiveMsgId !in msgIdCache) {
@@ -98,16 +116,6 @@ class MessageDetailViewModel(
                             })
                         }
                     }
-                    "recall" -> {
-                        _uiState.update { state ->
-                            state.copy(messages = state.messages.map {
-                                if (it.effectiveMsgId == message.effectiveMsgId) it.copy(
-                                    isRecalled = true,
-                                    recallHint = message.recallHint
-                                ) else it
-                            })
-                        }
-                    }
                 }
             }
         }
@@ -115,109 +123,7 @@ class MessageDetailViewModel(
 
     private fun loadMessages() {
         viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isLoading = true,
-                    error = null
-                )
-            }
-    
-            try {
-                val result = withContext(Dispatchers.IO) {
-    
-                    val json = JSONObject().apply {
-                        put("chat_type", chatType)
-                        put("chat_id", chatId)
-                        put("page", currentPage)
-                        put("per_page", 20)
-                    }
-    
-                    val request = Request.Builder()
-                        .url("${ApiAddress}chat/messages")
-                        .post(json.toString().toRequestBody("application/json".toMediaType()))
-                        .header("x-access-token", token)
-                        .header("timeis", "true")
-                        .header("linkinfo", "true")
-                        .build()
-    
-                    client.newCall(request).execute().use { response ->
-    
-                        Log.d("CHAT_LOAD", "HTTP=${response.code}")
-    
-                        if (!response.isSuccessful) {
-                            throw IOException("HTTP ${response.code}")
-                        }
-    
-                        val body = response.body?.string().orEmpty()
-    
-                        Log.d("CHAT_LOAD", "Body=${body.take(500)}")
-    
-                        AppJson.json.decodeFromString<GetMessagesResponse>(body)
-                    }
-                }
-    
-                Log.d(
-                    "CHAT_LOAD",
-                    "status=${result.status.code}, msgCount=${result.messages.size}"
-                )
-    
-                if (result.status.code == 0) {
-    
-                    val sortedMessages =
-                        result.messages.sortedByDescending { it.sendTime }
-    
-                    msgIdCache.clear()
-                    msgIdCache.addAll(sortedMessages.map { it.effectiveMsgId })
-    
-                    if (chatType == 1 && result.chatBackgroundUrl.isNotEmpty()) {
-                        _backgroundUrl.value = result.chatBackgroundUrl
-                    }
-    
-                    _uiState.update { state ->
-                        state.copy(
-                            messages = sortedMessages,
-                            isLoading = false,
-                            hasMore = (result.pagination?.pages ?: 1) > currentPage,
-                            pagination = result.pagination,
-                            canSend = result.canSend,
-                            isAdmin = result.isAdmin,
-                            relationship = result.relationship,
-                            isChatExpired = result.tempChatExpired,
-                            otherUser = result.otherUser,
-                            groupInfo = if (chatType == 2) state.groupInfo else null,
-                            error = null
-                        )
-                    }
-    
-                    Log.d(
-                        "CHAT_LOAD",
-                        "UI Updated. messages=${sortedMessages.size}"
-                    )
-    
-                } else {
-                    Log.e("CHAT_LOAD", "Server Error: ${result.status.msg}")
-                    _uiState.update { it.copy(isLoading = false, error = result.status.msg) }
-                    _toastMessage.emit("消息加载失败: ${result.status.msg}")
-                }
-    
-            } catch (e: Exception) {
-    
-                Log.e("CHAT_LOAD", "loadMessages Exception", e)
-    
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        error = e.stackTraceToString()
-                    )
-                }
-            }
-        }
-    }
-
-    fun loadMore() {
-        if (!hasMore || _uiState.value.isLoadingMore) return
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingMore = true) }
+            _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 val response = withContext(Dispatchers.IO) {
                     val json = JSONObject().apply {
@@ -238,7 +144,63 @@ class MessageDetailViewModel(
                 val body = response.body?.string() ?: ""
                 val result = AppJson.json.decodeFromString<GetMessagesResponse>(body)
                 if (result.status.code == 0) {
-                    currentPage++
+                    val sortedMessages = result.messages.sortedByDescending { it.sendTime }
+                    msgIdCache.clear()
+                    msgIdCache.addAll(sortedMessages.map { it.effectiveMsgId })
+                    if (chatType == 1 && result.chatBackgroundUrl.isNotEmpty()) {
+                        _backgroundUrl.value = result.chatBackgroundUrl
+                    }
+                    _uiState.update { state ->
+                        state.copy(
+                            messages = sortedMessages,
+                            isLoading = false,
+                            hasMore = (result.pagination?.pages ?: 1) > currentPage,
+                            pagination = result.pagination,
+                            canSend = result.canSend,
+                            isAdmin = result.isAdmin,
+                            relationship = result.relationship,
+                            isChatExpired = result.tempChatExpired,
+                            otherUser = result.otherUser,
+                            groupInfo = if (chatType == 2) state.groupInfo else null,
+                            error = null
+                        )
+                    }
+                } else {
+                    _uiState.update { it.copy(isLoading = false, error = result.status.msg) }
+                    _toastMessage.emit("消息加载失败: ${result.status.msg}")
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, error = e.message) }
+                _toastMessage.emit("消息加载异常: ${e.message}")
+            }
+        }
+    }
+
+    fun loadMore() {
+        if (!hasMore || _uiState.value.isLoadingMore) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingMore = true) }
+            try {
+                currentPage++
+                val response = withContext(Dispatchers.IO) {
+                    val json = JSONObject().apply {
+                        put("chat_type", chatType)
+                        put("chat_id", chatId)
+                        put("page", currentPage)
+                        put("per_page", 20)
+                    }
+                    val request = Request.Builder()
+                        .url("${ApiAddress}chat/messages")
+                        .post(json.toString().toRequestBody("application/json".toMediaType()))
+                        .header("x-access-token", token)
+                        .header("timeis", "true")
+                        .header("linkinfo", "true")
+                        .build()
+                    client.newCall(request).execute()
+                }
+                val body = response.body?.string() ?: ""
+                val result = AppJson.json.decodeFromString<GetMessagesResponse>(body)
+                if (result.status.code == 0) {
                     val newMessages = result.messages
                         .filter { it.effectiveMsgId !in msgIdCache }
                         .sortedByDescending { it.sendTime }
@@ -253,9 +215,11 @@ class MessageDetailViewModel(
                     }
                 } else {
                     _uiState.update { it.copy(isLoadingMore = false, error = result.status.msg) }
+                    _toastMessage.emit("加载更多失败: ${result.status.msg}")
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoadingMore = false, error = e.message) }
+                _toastMessage.emit("加载更多异常: ${e.message}")
             }
         }
     }
