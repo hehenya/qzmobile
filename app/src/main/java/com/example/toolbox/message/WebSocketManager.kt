@@ -197,88 +197,49 @@ class WebSocketManager internal constructor() {
             }
 
             // ========== 群聊消息 ==========
-            socket?.on("group_message") { args ->
-                scope?.launch {
-                    try {
-            
-                        val json = args[0] as JSONObject
-                        val type = json.optString("type")
-                        val dataObj = json.optJSONObject("data") ?: return@launch
-            
-                        Log.d(
-                            "WS_GROUP",
-                            "收到事件 type=$type chatId=${dataObj.optString("chat_id")} msgId=${dataObj.optString("msg_id")}"
-                        )
-            
-                        val chatId = dataObj.optString("chat_id").ifEmpty {
-                            dataObj.optString("group_id")
-                        }
-            
-                        val chatType = dataObj.optInt("chat_type", 2)
-            
-                        val message = AppJson.json.decodeFromString<Message>(
-                            dataObj.toString()
-                        )
-            
-                        mainHandler.post {
+            // ========== 群聊消息 ==========
+socket?.on("group_message") { args ->
+    scope?.launch {
+        try {
+            val json = args[0] as JSONObject
+            val type = json.optString("type")
+            val dataObj = json.optJSONObject("data") ?: return@launch
 
-                            android.widget.Toast.makeText(
-                                com.example.toolbox.App.context,
-                                "WS事件：$type\nmsg=${message.effectiveMsgId}",
-                                android.widget.Toast.LENGTH_LONG
-                            ).show()
-                        
-                            groupMessageListener?.invoke(dataObj)
-                        
-                            observers.toList().forEach { observer ->
-                                observer(type, chatId, chatType, message)
-                            }
-                        }
-            
-                            // 新消息通知（撤回、编辑不会走这里）
-                            if (type == "new" && !message.isMine) {
-            
-                                val senderName =
-                                    dataObj.optString("sender_username", "未知用户")
-            
-                                val content =
-                                    dataObj.optString("content", "")
-            
-                                val senderAvatar =
-                                    dataObj.optString("sender_avatar", "")
-            
-                                val groupName =
-                                    dataObj.optString("group_name", "")
-            
-                                val title =
-                                    if (groupName.isNotEmpty())
-                                        "$groupName - $senderName"
-                                    else
-                                        "群聊($chatId) $senderName"
-            
-                                NotificationManager.show(
-                                    InAppNotification(
-                                        title = title,
-                                        message = content.take(50),
-                                        chatId = chatId.toIntOrNull(),
-                                        chatType = chatType,
-                                        avatarUrl = senderAvatar
-                                    )
-                                )
-                            }
-                        }
-            
-                    } catch (e: Exception) {
-            
-                        Log.e(
-                            "WS_GROUP",
-                            "解析失败",
-                            e
+            val chatId = dataObj.optString("chat_id").ifEmpty {
+                dataObj.optString("group_id")
+            }
+            val chatType = dataObj.optInt("chat_type", 2)
+            val message = AppJson.json.decodeFromString<Message>(dataObj.toString())
+
+            mainHandler.post {
+                groupMessageListener?.invoke(dataObj)
+                observers.toList().forEach { observer ->
+                    observer(type, chatId, chatType, message)
+                }
+
+                // 新消息通知
+                if (type == "new" && !message.isMine) {
+                    val senderName = dataObj.optString("sender_username", "未知用户")
+                    val content = dataObj.optString("content", "")
+                    val senderAvatar = dataObj.optString("sender_avatar", "")
+                    val groupName = dataObj.optString("group_name", "")
+                    val title = if (groupName.isNotEmpty()) "$groupName - $senderName" else "群聊($chatId) $senderName"
+                    NotificationManager.show(
+                        InAppNotification(
+                            title = title,
+                            message = content.take(50),
+                            chatId = chatId.toIntOrNull(),
+                            chatType = chatType,
+                            avatarUrl = senderAvatar
                         )
-            
-                    }
+                    )
                 }
             }
+        } catch (e: Exception) {
+            Log.e("WS_GROUP", "解析失败", e)
+        }
+    }
+}
 
             socket?.on("friend_list_update") { args ->
                 try {
