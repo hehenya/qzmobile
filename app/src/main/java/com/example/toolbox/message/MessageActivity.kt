@@ -919,7 +919,7 @@ fun MessageBubble(
                                     else if (isMine) MaterialTheme.colorScheme.primary
                                     else MaterialTheme.colorScheme.surfaceContainer
                             ),
-                            elevation = if (message.images.isNotEmpty()) 0.dp else CardDefaults.cardElevation()
+                            elevation = if (message.images.isNotEmpty()) CardDefaults.cardElevation(defaultElevation = 0.dp) else CardDefaults.cardElevation()
                         ) {
                             Column(modifier = Modifier.padding(8.dp)) {
                                 if (!isMine && message.isFirstFromSender && chatType == 2) {
