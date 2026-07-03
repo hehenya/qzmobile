@@ -69,6 +69,7 @@ class MessageDetailViewModel(
     private var currentPage = 1
     private var hasMore = true
     private val msgIdCache = mutableSetOf<String>()
+    private var wsObserver: ((String, String, Int, Message) -> Unit)? = null
 
     init {
         loadMessages()
@@ -80,18 +81,22 @@ class MessageDetailViewModel(
     }
 
     fun connectWebSocket() {
+
         val manager = ChatSocketManager.getInstance()
+    
         manager.connect(token)
-
-        manager.addObserver { type, chatIdStr, chatTypeInt, message ->
-
-            val incomingChatId = chatIdStr.toIntOrNull() ?: return@addObserver
-            val isCurrentChat = incomingChatId == chatId
-        
-            if (!isCurrentChat) return@addObserver
-        
+    
+        wsObserver = observer@ { type, chatIdStr, chatTypeInt, message ->
+    
+            val incomingChatId = chatIdStr.toIntOrNull()
+                ?: return@observer
+    
+            // 不是当前聊天直接忽略
+            if (incomingChatId != chatId) return@observer
+            if (chatTypeInt != chatType) return@observer
+    
             when (type) {
-        
+    
                 "recall" -> {
                     _uiState.update { state ->
                         state.copy(
@@ -101,12 +106,14 @@ class MessageDetailViewModel(
                                         isRecalled = true,
                                         recallHint = message.recallHint ?: "已撤回"
                                     )
-                                } else it
+                                } else {
+                                    it
+                                }
                             }
                         )
                     }
                 }
-        
+    
                 "edit" -> {
                     _uiState.update { state ->
                         state.copy(
@@ -115,30 +122,39 @@ class MessageDetailViewModel(
                                     it.copy(
                                         content = message.content,
                                         isEdited = true,
-                                        editTime = message.editTime ?: System.currentTimeMillis()
+                                        editTime = message.editTime
+                                            ?: System.currentTimeMillis()
                                     )
-                                } else it
+                                } else {
+                                    it
+                                }
                             }
                         )
                     }
-                
-                    // 🔥 只在 edit 后刷新（带延迟）
+    
                     viewModelScope.launch {
                         delay(2000)
                         refresh()
                     }
                 }
-        
+    
                 "new" -> {
                     if (message.effectiveMsgId !in msgIdCache) {
                         msgIdCache.add(message.effectiveMsgId)
-                        _uiState.update {
-                            it.copy(messages = listOf(message) + it.messages)
+    
+                        _uiState.update { state ->
+                            state.copy(
+                                messages = listOf(message) + state.messages
+                            )
                         }
                     }
                 }
             }
         }
+    
+        manager.addObserver(wsObserver!!)
+    }
+        
 
     private fun loadMessages() {
         viewModelScope.launch {
@@ -710,12 +726,13 @@ fun handleImageSelected(uri: Uri?, context: Context, coroutineScope: CoroutineSc
 
     override fun onCleared() {
         super.onCleared()
-        private val observer: (String, String, Int, Message) -> Unit =
-            { type, chatIdStr, chatTypeInt, message ->
-                handleSocket(type, chatIdStr, chatTypeInt, message)
-            }
+    
+        wsObserver?.let {
+            ChatSocketManager.getInstance().removeObserver(it)
+        }
     }
-}
+    } 
+
 
 @Serializable
 data class BackgroundResponse(
