@@ -199,6 +199,7 @@ class WebSocketManager internal constructor() {
             // ========== 群聊消息 ==========
             // ========== 群聊消息 ==========
 socket?.on("group_message") { args ->
+
     scope?.launch {
         try {
             val json = args[0] as JSONObject
@@ -213,8 +214,24 @@ socket?.on("group_message") { args ->
 
             mainHandler.post {
                 groupMessageListener?.invoke(dataObj)
-                observers.toList().forEach { observer ->
-                    observer(type, chatId, chatType, message)
+                mainHandler.post {
+
+                    Toast.makeText(
+                        MyApplication.instance,
+                        "WS事件：$type",
+                        Toast.LENGTH_LONG
+                    ).show()
+                
+
+                    Toast.makeText(
+                        MyApplication.instance,
+                        "准备通知 observer 数量=${observers.size} type=$type",
+                        Toast.LENGTH_LONG
+                    ).show()
+                
+                    observers.toList().forEach { observer ->
+                        observer(type, chatId, chatType, message)
+                    }
                 }
 
                 // 新消息通知

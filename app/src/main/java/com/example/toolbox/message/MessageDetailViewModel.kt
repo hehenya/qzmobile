@@ -153,6 +153,12 @@ class MessageDetailViewModel(
         }
     
         manager.addObserver(wsObserver!!)
+
+        Toast.makeText(
+            getApplication(),
+            "Observer 已注册",
+            Toast.LENGTH_SHORT
+        ).show()
     }
         
 
