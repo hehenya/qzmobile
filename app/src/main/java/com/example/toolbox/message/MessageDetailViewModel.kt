@@ -455,27 +455,26 @@ class MessageDetailViewModel(
     }
     fun uploadAndSendImage(uri: Uri, context: Context) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isUploading = true, uploadProgress = 0f, isSending = false) }
+            _uiState.update { it.copy(isUploading = true, uploadProgress = 0f) }
             try {
                 val client = OkHttpClient.Builder()
                     .connectTimeout(30, TimeUnit.SECONDS)
                     .readTimeout(30, TimeUnit.SECONDS)
                     .build()
     
-                // 读取图片文件
                 val inputStream = context.contentResolver.openInputStream(uri)
                 val bytes = inputStream?.readBytes() ?: throw Exception("无法读取图片")
                 inputStream.close()
     
-                // 上传到服务器（使用 multipart）
                 val mediaType = "image/*".toMediaType()
                 val requestBody = MultipartBody.Builder()
                     .setType(MultipartBody.FORM)
                     .addFormDataPart("file", "image.jpg", bytes.toRequestBody(mediaType))
+                    .addFormDataPart("status", "3")  // 图片消息
                     .build()
     
                 val request = Request.Builder()
-                    .url("${ApiAddress}upload")
+                    .url("${ApiAddress}upload_image")
                     .post(requestBody)
                     .header("x-access-token", token)
                     .build()
@@ -485,7 +484,7 @@ class MessageDetailViewModel(
                 val json = JSONObject(body)
     
                 if (json.optBoolean("success")) {
-                    val imageUrl = json.optString("url", "")
+                    val imageUrl = json.optString("image_url", "")
                     _uiState.update {
                         it.copy(
                             isUploading = false,
