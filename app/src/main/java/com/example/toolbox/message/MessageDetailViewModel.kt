@@ -728,11 +728,11 @@ fun handleImageSelected(uri: Uri?, context: Context, coroutineScope: CoroutineSc
 
     override fun onCleared() {
         super.onCleared()
-    
         wsObserver?.let {
             ChatSocketManager.getInstance().removeObserver(it)
         }
     }
+}
 
 
 @Serializable
