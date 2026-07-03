@@ -180,14 +180,14 @@ class WebSocketManager internal constructor() {
                                     val content = dataObj.optString("content", "")
                                     val senderAvatar = dataObj.optString("sender_avatar", "")
                                     NotificationManager.show(
-                                        InAppNotification(
-                                            title = senderName,
-                                            message = content.take(50),
-                                            chatId = chatId.toIntOrNull(),
-                                            chatType = chatType,
-                                            avatarUrl = senderAvatar
-                                        )
-                                    )
+    InAppNotification(
+        title = "WS调试",
+        message = "type=$type msgId=${message.effectiveMsgId}",
+        chatId = null,
+        chatType = null,
+        avatarUrl = ""
+    )
+)
                                 }
                             }
                         }
@@ -215,27 +215,23 @@ socket?.on("group_message") { args ->
 
             mainHandler.post {
                 groupMessageListener?.invoke(dataObj)
-                mainHandler.post {
-
-                    Toast.makeText(
-                        MyApplication.instance,
-                        "WS事件：$type",
-                        Toast.LENGTH_LONG
-                    ).show()
-                
-
-                    Toast.makeText(
-                        MyApplication.instance,
-                        "准备通知 observer 数量=${observers.size} type=$type",
-                        Toast.LENGTH_LONG
-                    ).show()
-                
-                    observers.toList().forEach { observer ->
-                        observer(type, chatId, chatType, message)
-                    }
+            
+                Toast.makeText(
+                    com.example.toolbox.App.context,
+                    "WS事件：$type",
+                    Toast.LENGTH_LONG
+                ).show()
+            
+                Toast.makeText(
+                    com.example.toolbox.App.context,
+                    "准备通知 observer 数量=${observers.size} type=$type",
+                    Toast.LENGTH_LONG
+                ).show()
+            
+                observers.toList().forEach { observer ->
+                    observer(type, chatId, chatType, message)
                 }
-
-                // 新消息通知
+            
                 if (type == "new" && !message.isMine) {
                     val senderName = dataObj.optString("sender_username", "未知用户")
                     val content = dataObj.optString("content", "")

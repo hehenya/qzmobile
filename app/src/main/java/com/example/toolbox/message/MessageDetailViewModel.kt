@@ -154,12 +154,7 @@ class MessageDetailViewModel(
         }
     
         manager.addObserver(wsObserver!!)
-
-        Toast.makeText(
-            getApplication(),
-            "Observer 已注册",
-            Toast.LENGTH_SHORT
-        ).show()
+        viewModelScope.launch { _toastMessage.emit("Observer 已注册") }
     }
         
 
@@ -738,7 +733,6 @@ fun handleImageSelected(uri: Uri?, context: Context, coroutineScope: CoroutineSc
             ChatSocketManager.getInstance().removeObserver(it)
         }
     }
-    } 
 
 
 @Serializable
