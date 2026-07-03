@@ -7,6 +7,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.toolbox.ApiAddress
+import com.example.toolbox.community.uploadImage
+import java.io.File
+import java.io.FileOutputStream
 import com.example.toolbox.AppJson
 import com.example.toolbox.data.*
 import kotlinx.coroutines.Dispatchers
@@ -453,54 +456,7 @@ class MessageDetailViewModel(
             }
         }
     }
-    fun uploadAndSendImage(uri: Uri, context: Context) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isUploading = true, uploadProgress = 0f) }
-            try {
-                val client = OkHttpClient.Builder()
-                    .connectTimeout(30, TimeUnit.SECONDS)
-                    .readTimeout(30, TimeUnit.SECONDS)
-                    .build()
     
-                val inputStream = context.contentResolver.openInputStream(uri)
-                val bytes = inputStream?.readBytes() ?: throw Exception("无法读取图片")
-                inputStream.close()
-    
-                val mediaType = "image/*".toMediaType()
-                val requestBody = MultipartBody.Builder()
-                    .setType(MultipartBody.FORM)
-                    .addFormDataPart("file", "image.jpg", bytes.toRequestBody(mediaType))
-                    .addFormDataPart("status", "3")  // 图片消息
-                    .build()
-    
-                val request = Request.Builder()
-                    .url("${ApiAddress}upload_image")
-                    .post(requestBody)
-                    .header("x-access-token", token)
-                    .build()
-    
-                val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
-                val body = response.body?.string() ?: ""
-                val json = JSONObject(body)
-    
-                if (json.optBoolean("success")) {
-                    val imageUrl = json.optString("image_url", "")
-                    _uiState.update {
-                        it.copy(
-                            isUploading = false,
-                            uploadProgress = 1f,
-                            selectedImages = it.selectedImages + imageUrl
-                        )
-                    }
-                } else {
-                    throw Exception(json.optString("message", "上传失败"))
-                }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isUploading = false, uploadProgress = 0f) }
-                _toastMessage.emit("图片上传失败: ${e.message}")
-            }
-        }
-    }
     fun sendMessage() {
         val state = _uiState.value
         val text = state.inputText.trim()
@@ -545,11 +501,36 @@ class MessageDetailViewModel(
         _uiState.update { it.copy(isMarkdown = !it.isMarkdown) }
     }
 
-    fun handleImageSelected(uri: Uri?, context: Context, scope: kotlinx.coroutines.CoroutineScope) {
-        uri?.let {
-            uploadAndSendImage(it, context)
+    
+
+fun handleImageSelected(uri: Uri?, context: Context, coroutineScope: CoroutineScope) {
+    if (uiState.value.selectedImages.size >= 20) {
+        viewModelScope.launch { _toastMessage.emit("最多只能上传20张图片") }
+        return
+    }
+    if (uri == null) return
+
+    coroutineScope.launch {
+        try {
+            val inputStream = context.contentResolver.openInputStream(uri)
+            val tempFile = File(context.cacheDir, "temp_img_${System.currentTimeMillis()}.jpg")
+            FileOutputStream(tempFile).use { output ->
+                inputStream?.copyTo(output)
+            }
+            inputStream?.close()
+
+            val url = uploadImage(tempFile.absolutePath, token, 3) { _: Int -> }
+            if (url != null) {
+                _uiState.update { it.copy(selectedImages = it.selectedImages + url) }
+                tempFile.delete()
+            } else {
+                _toastMessage.emit("图片上传失败")
+            }
+        } catch (e: Exception) {
+            _toastMessage.emit("上传出错: ${e.message}")
         }
     }
+}
 
     fun removeImage(index: Int) {
         _uiState.update { state ->
