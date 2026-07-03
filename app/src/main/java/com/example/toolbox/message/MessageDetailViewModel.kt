@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -121,6 +122,12 @@ class MessageDetailViewModel(
                                 ) else it
                             })
                         }
+                        // 延迟刷新以获取 link_info
+                        viewModelScope.launch {
+                            kotlinx.coroutines.delay(2000)
+                            refresh()
+                        }
+        
                     }
                 }
             }
