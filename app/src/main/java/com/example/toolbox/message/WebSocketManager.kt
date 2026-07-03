@@ -8,6 +8,7 @@ import com.example.toolbox.ApiAddress
 import com.example.toolbox.AppJson
 import com.example.toolbox.InAppNotification
 import com.example.toolbox.NotificationManager
+import com.example.toolbox.data.effectiveMsgId
 import com.example.toolbox.data.Message
 import io.socket.client.IO
 import io.socket.client.Socket
@@ -216,17 +217,7 @@ socket?.on("group_message") { args ->
             mainHandler.post {
                 groupMessageListener?.invoke(dataObj)
             
-                Toast.makeText(
-                    com.example.toolbox.App.context,
-                    "WS事件：$type",
-                    Toast.LENGTH_LONG
-                ).show()
-            
-                Toast.makeText(
-                    com.example.toolbox.App.context,
-                    "准备通知 observer 数量=${observers.size} type=$type",
-                    Toast.LENGTH_LONG
-                ).show()
+                
             
                 observers.toList().forEach { observer ->
                     observer(type, chatId, chatType, message)
@@ -239,14 +230,14 @@ socket?.on("group_message") { args ->
                     val groupName = dataObj.optString("group_name", "")
                     val title = if (groupName.isNotEmpty()) "$groupName - $senderName" else "群聊($chatId) $senderName"
                     NotificationManager.show(
-                        InAppNotification(
-                            title = title,
-                            message = content.take(50),
-                            chatId = chatId.toIntOrNull(),
-                            chatType = chatType,
-                            avatarUrl = senderAvatar
-                        )
-                    )
+    InAppNotification(
+        title = "WS调试",
+        message = "type=$type msgId=${message.effectiveMsgId} observers=${observers.size}",
+        chatId = null,
+        chatType = null,
+        avatarUrl = ""
+    )
+)
                 }
             }
         } catch (e: Exception) {
