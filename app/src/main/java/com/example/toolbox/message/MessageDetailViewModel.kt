@@ -594,7 +594,11 @@ class MessageDetailViewModel(
 
                 val url = uploadImage(tempFile.absolutePath, token, 3) { _: Int -> }
                 if (url != null) {
-                    _uiState.update { it.copy(selectedImages = it.selectedImages + url) }
+                    if (_uiState.editingMessage != null) {
+                        _uiState.update { it.copy(editingImages = it.editingImages + url) }
+                    } else {
+                        _uiState.update { it.copy(selectedImages = it.selectedImages + url) }
+                    }
                     tempFile.delete()
                 } else {
                     _toastMessage.emit("图片上传失败")
