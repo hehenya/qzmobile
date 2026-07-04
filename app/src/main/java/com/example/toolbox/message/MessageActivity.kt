@@ -653,8 +653,10 @@ fun MessageDetailScreen(
                                             showMenuMsgId = if (showMenuMsgId == msgId) null else msgId
                                         }
                                     },
-                                    onTimeClick = { viewModel.showHeatmap() }  
+                                    onTimeClick = { viewModel.showHeatmap() }
                                 )
+                            }  
+                        }  
 
                         if (uiState.isLoadingMore) {
                             item {
