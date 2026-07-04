@@ -767,12 +767,86 @@ fun MessageDetailScreen(
                         }
                     }
 
+                    uiState.editingMessage?.let { editingMsg ->
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f),
+                            shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Edit,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        "编辑消息",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                    Text(
+                                        editingMsg.content.take(30).ifEmpty { "图片消息" },
+                                        fontSize = 11.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                                    )
+                                }
+                                IconButton(
+                                    onClick = { viewModel.cancelEditMessage() },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(Icons.Default.Close, "取消编辑", Modifier.size(16.dp))
+                                }
+                            }
+                        }
+
+                        // 编辑时的图片预览
+                        if (uiState.editingImages.isNotEmpty()) {
+                            LazyRow(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                items(uiState.editingImages.size) { index ->
+                                    Box(Modifier.size(60.dp).clip(RoundedCornerShape(4.dp))) {
+                                        AsyncImage(
+                                            model = uiState.editingImages[index],
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                        IconButton(
+                                            onClick = { viewModel.removeEditingImage(index) },
+                                            modifier = Modifier.align(Alignment.TopEnd).size(18.dp)
+                                                .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                                        ) {
+                                            Icon(Icons.Default.Close, "移除", Modifier.size(10.dp), tint = Color.White)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     MessageInput(
-                        inputText = uiState.inputText,
+                        inputText = if (uiState.editingMessage != null) uiState.editingContent else uiState.inputText,
                         selectedImages = uiState.selectedImages,
                         isMarkdown = uiState.isMarkdown,
                         onTextChange = { viewModel.updateInputText(it) },
-                        onSendClick = { viewModel.sendMessage() },
+                        onSendClick = {
+                            if (uiState.editingMessage != null) {
+                                viewModel.submitEditMessage()
+                            } else {
+                                viewModel.sendMessage()
+                            }
+                        },
                         onAddImageClick = { imagePicker.launch("image/*") },
                         onRemoveImage = { viewModel.removeImage(it) },
                         onToggleMarkdown = { viewModel.toggleMarkdown() },
@@ -804,15 +878,7 @@ fun MessageDetailScreen(
         )
     }
 
-    if (editDialog.isOpen && editDialog.message != null) {
-        EditMessageDialog(
-            state = editDialog,
-            onDismiss = { viewModel.hideEditDialog() },
-            onContentChange = { viewModel.updateEditContent(it) },
-            onSave = { viewModel.editMessage() },
-            onToggleMarkdown = { viewModel.toggleEditMarkdown() }
-        )
-    }
+    
 }
 
 @Composable
@@ -1068,7 +1134,7 @@ fun MessageBubble(
                                 text = { Text("编辑") },
                                 onClick = {
                                     onShowMenuChanged?.invoke(null)
-                                    onEdit()
+                                    viewModel.startEditMessage(message)
                                 },
                                 leadingIcon = { Icon(Icons.Default.Edit, null, Modifier.size(18.dp)) }
                             )
