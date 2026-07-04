@@ -38,13 +38,17 @@ import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.example.toolbox.data.ActiveDay
+import com.example.toolbox.data.ActiveDaysResponse
+import java.time.YearMonth
+import kotlinx.serialization.json.Json
 
 class MessageDetailViewModel(
     private val token: String,
     private val chatType: Int,
     private val chatId: Int
 ) : ViewModel() {
-
+    private val jsonParser = Json { ignoreUnknownKeys = true }
     private val _uiState = MutableStateFlow(MessageDetailUiState(chatType = chatType, chatId = chatId))
     val uiState: StateFlow<MessageDetailUiState> = _uiState.asStateFlow()
 
@@ -703,73 +707,156 @@ class MessageDetailViewModel(
             }
         }
     }
+    
 
-    private fun loadGroupInfo() {
+    private val _activeDays = MutableStateFlow<List<ActiveDay>>(emptyList())
+    val activeDays: StateFlow<List<ActiveDay>> = _activeDays.asStateFlow()
 
+    private val _showHeatmap = MutableStateFlow(false)
+    val showHeatmap: StateFlow<Boolean> = _showHeatmap.asStateFlow()
+
+    private val _heatmapYearMonth = MutableStateFlow(YearMonth.now())
+    val heatmapYearMonth: StateFlow<YearMonth> = _heatmapYearMonth.asStateFlow()
+
+    private val _isLoadingActiveDays = MutableStateFlow(false)
+    val isLoadingActiveDays: StateFlow<Boolean> = _isLoadingActiveDays.asStateFlow()
+
+    // 加载活跃天数
+    fun loadActiveDays(yearMonth: YearMonth = YearMonth.now()) {
         viewModelScope.launch {
-    
+            _isLoadingActiveDays.value = true
             try {
-    
-                val result = withContext(Dispatchers.IO) {
-    
-                    val json = JSONObject().apply {
-                        put("group_id", chatId)
-                    }
-    
-                    val request = Request.Builder()
-                        .url("${ApiAddress}group/detail")
-                        .post(json.toString().toRequestBody("application/json".toMediaType()))
-                        .header("x-access-token", token)
-                        .build()
-    
+                val client = OkHttpClient.Builder()
+                    .connectTimeout(10, TimeUnit.SECONDS)
+                    .readTimeout(10, TimeUnit.SECONDS)
+                    .build()
+                
+                val jsonBody = JSONObject().apply {
+                    put("chat_type", chatType)
+                    put("chat_id", chatId)
+                    put("page", 1)
+                    put("per_page", 31)
+                }.toString()
+                
+                val requestBody = jsonBody.toRequestBody("application/json; charset=utf-8".toMediaType())
+                val request = Request.Builder()
+                    .url("${ApiAddress}chat/active_days")
+                    .post(requestBody)
+                    .addHeader("x-access-token", token)
+                    .build()
+                
+                withContext(Dispatchers.IO) {
                     client.newCall(request).execute().use { response ->
-    
-                        if (!response.isSuccessful) {
-                            throw IOException("HTTP ${response.code}")
+                        val body = response.body?.string()
+                        if (response.isSuccessful && body != null) {
+                            val result = jsonParser.decodeFromString<ActiveDaysResponse>(body)
+                            if (result.success) {
+                                _activeDays.value = result.activeDays
+                            }
                         }
-    
-                        val body = response.body?.string().orEmpty()
-    
-                        Log.d("GROUP_INFO", body)
-    
-                        AppJson.json.decodeFromString<GroupDetailResponse>(body)
                     }
-    
                 }
-    
-                if (result.success && result.group != null) {
-    
-                    _uiState.update {
-    
-                        it.copy(
-                            groupInfo = result.group
-                        )
-    
-                    }
-    
-                    Log.d(
-                        "GROUP_INFO",
-                        "群资料加载成功：${result.group.name}"
-                    )
-    
-                } else {
-    
-                    Log.e(
-                        "GROUP_INFO",
-                        "接口返回失败：${result.message}"
-                    )
-    
-                }
-    
             } catch (e: Exception) {
-    
-                Log.e("GROUP_INFO", "loadGroupInfo", e)
-    
+                android.util.Log.e("ActiveDays", "加载活跃天数失败", e)
+            } finally {
+                _isLoadingActiveDays.value = false
             }
-    
         }
-    
     }
+
+    // 显示热力图
+    fun showHeatmap() {
+        _heatmapYearMonth.value = YearMonth.now()
+        loadActiveDays()
+        _showHeatmap.value = true
+    }
+
+    // 隐藏热力图
+    fun hideHeatmap() {
+        _showHeatmap.value = false
+    }
+
+    // 上一个月
+    fun previousMonth() {
+        val newMonth = _heatmapYearMonth.value.minusMonths(1)
+        _heatmapYearMonth.value = newMonth
+        loadActiveDays(newMonth)
+    }
+
+    // 下一个月
+    fun nextMonth() {
+        val newMonth = _heatmapYearMonth.value.plusMonths(1)
+        if (!newMonth.isAfter(YearMonth.now())) {
+            _heatmapYearMonth.value = newMonth
+            loadActiveDays(newMonth)
+        }
+    }
+        private fun loadGroupInfo() {
+
+            viewModelScope.launch {
+        
+                try {
+        
+                    val result = withContext(Dispatchers.IO) {
+        
+                        val json = JSONObject().apply {
+                            put("group_id", chatId)
+                        }
+        
+                        val request = Request.Builder()
+                            .url("${ApiAddress}group/detail")
+                            .post(json.toString().toRequestBody("application/json".toMediaType()))
+                            .header("x-access-token", token)
+                            .build()
+        
+                        client.newCall(request).execute().use { response ->
+        
+                            if (!response.isSuccessful) {
+                                throw IOException("HTTP ${response.code}")
+                            }
+        
+                            val body = response.body?.string().orEmpty()
+        
+                            Log.d("GROUP_INFO", body)
+        
+                            AppJson.json.decodeFromString<GroupDetailResponse>(body)
+                        }
+        
+                    }
+        
+                    if (result.success && result.group != null) {
+        
+                        _uiState.update {
+        
+                            it.copy(
+                                groupInfo = result.group
+                            )
+        
+                        }
+        
+                        Log.d(
+                            "GROUP_INFO",
+                            "群资料加载成功：${result.group.name}"
+                        )
+        
+                    } else {
+        
+                        Log.e(
+                            "GROUP_INFO",
+                            "接口返回失败：${result.message}"
+                        )
+        
+                    }
+        
+                } catch (e: Exception) {
+        
+                    Log.e("GROUP_INFO", "loadGroupInfo", e)
+        
+                }
+        
+            }
+        
+        }
 
     override fun onCleared() {
         super.onCleared()

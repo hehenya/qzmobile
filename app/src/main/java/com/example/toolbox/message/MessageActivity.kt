@@ -652,10 +652,9 @@ fun MessageDetailScreen(
                                         if (!selectionMode) {
                                             showMenuMsgId = if (showMenuMsgId == msgId) null else msgId
                                         }
-                                    }
+                                    },
+                                    onTimeClick = { viewModel.showHeatmap() }  
                                 )
-                            }
-                        }
 
                         if (uiState.isLoadingMore) {
                             item {
@@ -864,7 +863,41 @@ fun MessageDetailScreen(
             }
         }
     }
+    // 热力图弹窗
+    val showHeatmap by viewModel.showHeatmap.collectAsState()
+    val activeDays by viewModel.activeDays.collectAsState()
+    val heatmapYearMonth by viewModel.heatmapYearMonth.collectAsState()
+    val isLoadingActiveDays by viewModel.isLoadingActiveDays.collectAsState()
 
+    if (showHeatmap) {
+        if (isLoadingActiveDays) {
+            AlertDialog(
+                onDismissRequest = { viewModel.hideHeatmap() },
+                title = { Text("加载中...") },
+                text = {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().height(100.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.hideHeatmap() }) {
+                        Text("取消")
+                    }
+                }
+            )
+        } else {
+            HeatmapDialog(
+                activeDays = activeDays,
+                yearMonth = heatmapYearMonth,
+                onDismiss = { viewModel.hideHeatmap() },
+                onPreviousMonth = { viewModel.previousMonth() },
+                onNextMonth = { viewModel.nextMonth() }
+            )
+        }
+    }
     if (recallDialog.isOpen) {
         AlertDialog(
             onDismissRequest = { viewModel.hideRecallDialog() },
@@ -921,7 +954,8 @@ fun MessageBubble(
     onClickInSelectionMode: (() -> Unit)? = null,
     showMenu: Boolean = false,
     onShowMenuChanged: ((String?) -> Unit)? = null,
-    avatarAlignment: Alignment.Vertical = Alignment.Bottom
+    avatarAlignment: Alignment.Vertical = Alignment.Bottom,
+    onTimeClick: (() -> Unit)? = null
 ) {
     val isMine = message.isMine || message.direction == "right"
     val isRecalledMessage = message.msgDeleteTime != null
@@ -1093,8 +1127,14 @@ fun MessageBubble(
                                         })
                                     }
                                 }
-                                Row(modifier = Modifier.align(if (isMine) Alignment.End else Alignment.Start)) {
-                                    if (message.content.isNotBlank()) { Text(timestampDisplay, fontSize = 10.sp, color = if (isMine) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant) }
+                                Row(
+                                    modifier = Modifier
+                                        .align(if (isMine) Alignment.End else Alignment.Start)
+                                        .clickable { onTimeClick?.invoke() }  // 添加点击事件
+                                ) {
+                                    if (message.content.isNotBlank()) { 
+                                        Text(timestampDisplay, fontSize = 10.sp, color = if (isMine) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant) 
+                                    }
                                     if (message.editTime != null) Text("已编辑", fontSize = 10.sp, color = if (isMine) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp))
                                 }
                             }

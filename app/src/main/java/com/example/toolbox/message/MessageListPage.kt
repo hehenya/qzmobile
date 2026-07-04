@@ -257,7 +257,7 @@ DisposableEffect(lifecycle) {
                         modifier = Modifier.fillMaxSize()
                     ) {
                         items(uiState.friends, key = { "${it.id}_${refreshKey}" }) { friend ->
-                            FriendItem(friend = friend, viewModel = viewModel)
+                            FriendItem(friend = friend, viewModel = viewModel, refreshKey = refreshKey)
                         }
                         if (uiState.isLoadingMore) {
                             item {
@@ -495,15 +495,16 @@ fun CreateGroupDialog(
 }
 
 @Composable
-fun FriendItem(friend: Friend, viewModel: MessageViewModel) {
+fun FriendItem(friend: Friend, viewModel: MessageViewModel, refreshKey: Long) {
     val context = LocalContext.current
-    // 加载草稿
     val chatType = if (friend.type == "group") 2 else 1
     val chatId = friend.id
-    val draft = DraftManager.getDraft(chatType, chatId)
+    val draft = remember(refreshKey) { DraftManager.getDraft(chatType, chatId) }
+    val draftTime = remember(refreshKey) { DraftManager.getDraftTime(chatType, chatId) }
     
-    val lastMsgText = if (draft != null) "[草稿] $draft" else (friend.lastMessage ?: "暂无消息")
-    val lastMsgColor = if (draft != null) Color.Red 
+    
+    val lastMsgText = if (!draft.isNullOrBlank()) "[草稿] $draft" else (friend.lastMessage ?: "暂无消息")
+    val lastMsgColor = if (!draft.isNullOrBlank()) Color.Red 
         else if (friend.unreadCount > 0) MaterialTheme.colorScheme.primary 
         else MaterialTheme.colorScheme.onSurfaceVariant
 
@@ -596,10 +597,9 @@ fun FriendItem(friend: Friend, viewModel: MessageViewModel) {
                     modifier = Modifier.weight(1f)
                 )
 
-                // 有时间就显示：有草稿显示草稿时间，没草稿显示最后消息时间
-                if (draft != null) {
+                if (!draft.isNullOrBlank()) {
                     Text(
-                        text = formatRelativeTime(DraftManager.getDraftTime(chatType, chatId)),
+                        text = formatRelativeTime(draftTime ?: ""),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 8.dp)
