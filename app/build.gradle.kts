@@ -110,6 +110,9 @@ dependencies {
     implementation(libs.multiplatform.markdown.renderer.m3)
     implementation(libs.multiplatform.markdown.renderer.coil3)
 
+    implementation(libs.haze)
+    implementation(libs.haze.materials)
+
     implementation(libs.coil.compose)
     implementation(libs.coil.gif)
     implementation(libs.coil.network)

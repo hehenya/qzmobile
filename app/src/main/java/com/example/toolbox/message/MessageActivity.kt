@@ -148,10 +148,15 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
+import dev.chrisbanes.haze.materials.HazeMaterials
 
 // ---- Activity ----
 class MessageDetailActivity : ComponentActivity() {
-    @OptIn(ExperimentalMaterial3Api::class)
+    @OptIn(ExperimentalMaterial3Api::class, ExperimentalHazeMaterialsApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -166,6 +171,8 @@ class MessageDetailActivity : ComponentActivity() {
                 )
                 val uiState by viewModel.uiState.collectAsState()
 
+                val hazeState = remember { HazeState() }
+
                 LaunchedEffect(uiState.messages.size) {
                     Toast.makeText(this@MessageDetailActivity, "消息数: ${uiState.messages.size}, 加载中: ${uiState.isLoading}", Toast.LENGTH_SHORT).show()
                 }
@@ -174,106 +181,128 @@ class MessageDetailActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     contentWindowInsets = WindowInsets(0.dp),
                     topBar = {
-                        AnimatedContent(
-                            targetState = uiState.selectionMode,
-                            transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(200)) },
-                            label = "topbar"
-                        ) { isSelecting ->
-                            if (isSelecting) {
-                                TopAppBar(
-                                    title = { Text("${uiState.selectedMessages.size} 条选中") },
-                                    navigationIcon = {
-                                        IconButton(onClick = { viewModel.exitSelectionMode() }) {
-                                            Icon(Icons.Default.Close, contentDescription = "退出多选")
-                                        }
-                                    },
-                                    actions = {
-                                        if (uiState.selectedMessages.size == 1) {
-                                            val msgId = uiState.selectedMessages.first()
-                                            val msg = uiState.messages.find { it.effectiveMsgId == msgId }
-                                            if (msg != null) {
-                                                if (msg.content.isNotBlank()) {
-                                                    IconButton(onClick = {
-                                                        val clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                                        clipboardManager.setPrimaryClip(ClipData.newPlainText("text", msg.content))
-                                                        Toast.makeText(this@MessageDetailActivity, "已复制", Toast.LENGTH_SHORT).show()
-                                                    }) {
-                                                        Icon(Icons.Default.ContentCopy, contentDescription = "复制")
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .hazeEffect(
+                                        state = hazeState,
+                                        style = HazeMaterials.thin().copy(
+                                            noiseFactor = 0f
+                                        ),
+                                        block = null
+                                    )
+                            )
+            
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(0.5.dp)
+                                    .align(Alignment.BottomCenter)
+                                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                            )
+
+                            AnimatedContent(
+                                targetState = uiState.selectionMode,
+                                transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(200)) },
+                                label = "topbar"
+                            ) { isSelecting ->
+                                if (isSelecting) {
+                                    TopAppBar(
+                                        title = { Text("${uiState.selectedMessages.size} 条选中") },
+                                        navigationIcon = {
+                                            IconButton(onClick = { viewModel.exitSelectionMode() }) {
+                                                Icon(Icons.Default.Close, contentDescription = "退出多选")
+                                            }
+                                        },
+                                        actions = {
+                                            if (uiState.selectedMessages.size == 1) {
+                                                val msgId = uiState.selectedMessages.first()
+                                                val msg = uiState.messages.find { it.effectiveMsgId == msgId }
+                                                if (msg != null) {
+                                                    if (msg.content.isNotBlank()) {
+                                                        IconButton(onClick = {
+                                                            val clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                                            clipboardManager.setPrimaryClip(ClipData.newPlainText("text", msg.content))
+                                                            Toast.makeText(this@MessageDetailActivity, "已复制", Toast.LENGTH_SHORT).show()
+                                                        }) {
+                                                            Icon(Icons.Default.ContentCopy, contentDescription = "复制")
+                                                        }
                                                     }
-                                                }
-                                                IconButton(onClick = {
-                                                    viewModel.setReplyTo(msg)
-                                                    viewModel.exitSelectionMode()
-                                                }) {
-                                                    Icon(Icons.Default.FormatQuote, contentDescription = "引用")
-                                                }
-                                                if (msg.isMine && msg.content.isNotBlank()) {
                                                     IconButton(onClick = {
-                                                        viewModel.showEditDialog(msg)
+                                                        viewModel.setReplyTo(msg)
                                                         viewModel.exitSelectionMode()
                                                     }) {
-                                                        Icon(Icons.Default.Edit, contentDescription = "编辑")
+                                                        Icon(Icons.Default.FormatQuote, contentDescription = "引用")
+                                                    }
+                                                    if (msg.isMine && msg.content.isNotBlank()) {
+                                                        IconButton(onClick = {
+                                                            viewModel.showEditDialog(msg)
+                                                            viewModel.exitSelectionMode()
+                                                        }) {
+                                                            Icon(Icons.Default.Edit, contentDescription = "编辑")
+                                                        }
                                                     }
                                                 }
                                             }
-                                        }
-                                    },
-                                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-                                )
-                            } else {
-                                TopAppBar(
-                                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)),
-                                    title = {
-                                        if (chatType == 2 && uiState.groupInfo != null) {
-                                            val group = uiState.groupInfo!!
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                modifier = Modifier.fillMaxWidth().clickable {
-                                                    startActivity(Intent(this@MessageDetailActivity, GroupInfoActivity::class.java).apply {
-                                                        putExtra("group_id", chatId)
-                                                        putExtra("is_joined", true)
-                                                        putExtra("group_name", group.name)
-                                                        putExtra("group_avatar", group.avatarUrl)
-                                                        putExtra("group_description", group.description)
-                                                        putExtra("group_members_count", group.membersCount)
-                                                        putExtra("group_created_at", group.createdAt)
-                                                        putExtra("group_is_private", group.isPrivate)
-                                                    })
+                                        },
+                                        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                                    )
+                                } else {
+                                    TopAppBar(
+                                        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+                                        title = {
+                                            if (chatType == 2 && uiState.groupInfo != null) {
+                                                val group = uiState.groupInfo!!
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    modifier = Modifier.fillMaxWidth().clickable {
+                                                        startActivity(Intent(this@MessageDetailActivity, GroupInfoActivity::class.java).apply {
+                                                            putExtra("group_id", chatId)
+                                                            putExtra("is_joined", true)
+                                                            putExtra("group_name", group.name)
+                                                            putExtra("group_avatar", group.avatarUrl)
+                                                            putExtra("group_description", group.description)
+                                                            putExtra("group_members_count", group.membersCount)
+                                                            putExtra("group_created_at", group.createdAt)
+                                                            putExtra("group_is_private", group.isPrivate)
+                                                        })
+                                                    }
+                                                ) {
+                                                    AsyncImage(
+                                                        model = if (group.avatarUrl.startsWith("http")) group.avatarUrl else "${ApiAddress}uploads/${group.avatarUrl}",
+                                                        contentDescription = null,
+                                                        contentScale = ContentScale.Crop,
+                                                        modifier = Modifier.size(36.dp).clip(CircleShape)
+                                                    )
+                                                    Spacer(Modifier.width(8.dp))
+                                                    Column {
+                                                        Text(group.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                                        Text("${group.membersCount} 名成员", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                    }
                                                 }
-                                            ) {
-                                                AsyncImage(
-                                                    model = if (group.avatarUrl.startsWith("http")) group.avatarUrl else "${ApiAddress}uploads/${group.avatarUrl}",
-                                                    contentDescription = null,
-                                                    contentScale = ContentScale.Crop,
-                                                    modifier = Modifier.size(36.dp).clip(CircleShape)
-                                                )
-                                                Spacer(Modifier.width(8.dp))
-                                                Column {
-                                                    Text(group.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                                                    Text("${group.membersCount} 名成员", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            } else if (uiState.otherUser != null) {
+                                                val otherUser = uiState.otherUser!!
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    modifier = Modifier.fillMaxWidth().clickable {
+                                                        startActivity(Intent(this@MessageDetailActivity, UserInfoActivity::class.java).apply { putExtra("userId", otherUser.id) })
+                                                    }
+                                                ) {
+                                                    AsyncImage(model = otherUser.avatar, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(36.dp).clip(CircleShape))
+                                                    Spacer(Modifier.width(8.dp))
+                                                    Column { Text(otherUser.username, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
                                                 }
-                                            }
-                                        } else if (uiState.otherUser != null) {
-                                            val otherUser = uiState.otherUser!!
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                modifier = Modifier.fillMaxWidth().clickable {
-                                                    startActivity(Intent(this@MessageDetailActivity, UserInfoActivity::class.java).apply { putExtra("userId", otherUser.id) })
-                                                }
-                                            ) {
-                                                AsyncImage(model = otherUser.avatar, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(36.dp).clip(CircleShape))
-                                                Spacer(Modifier.width(8.dp))
-                                                Column { Text(otherUser.username, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
-                                            }
-                                        } else Text("聊天详情")
-                                    },
-                                    navigationIcon = { FilledTonalIconButton(onClick = { finish() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回") } }
-                                )
+                                            } else Text("聊天详情")
+                                        },
+                                        navigationIcon = { FilledTonalIconButton(onClick = { finish() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回") } }
+                                    )
+                                }
                             }
                         }
                     }
                 ) { innerPadding ->
-                    Box(modifier = Modifier.fillMaxSize()) {
+                    Box(modifier = Modifier.fillMaxSize().hazeSource(hazeState)) {
                         MessageDetailScreen(PaddingValues(0.dp), viewModel)
                     }
                 }

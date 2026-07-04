@@ -104,6 +104,9 @@ class MessageDetailViewModel(
                             messages = state.messages.map {
                                 if (it.effectiveMsgId == message.effectiveMsgId) {
                                     it.copy(
+                                        msgDeleteTime = System.currentTimeMillis(),
+                                        content = "",
+                                        images = emptyList(),
                                         isRecalled = true,
                                         recallHint = message.recallHint ?: "已撤回"
                                     )

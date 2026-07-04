@@ -118,9 +118,6 @@ class WebSocketManager internal constructor() {
             
             val wsUrl = ApiAddress.replace("http://", "ws://").replace("https://", "wss://")
             
-
-           
-
             socket = IO.socket("${wsUrl}?type=2", opts)
             
             socket?.on(Socket.EVENT_CONNECT) {
@@ -181,14 +178,14 @@ class WebSocketManager internal constructor() {
                                     val content = dataObj.optString("content", "")
                                     val senderAvatar = dataObj.optString("sender_avatar", "")
                                     NotificationManager.show(
-    InAppNotification(
-        title = "WS调试",
-        message = "type=$type msgId=${message.effectiveMsgId}",
-        chatId = null,
-        chatType = null,
-        avatarUrl = ""
-    )
-)
+                                        InAppNotification(
+                                            title = "WS调试",
+                                            message = "type=$type msgId=${message.effectiveMsgId}",
+                                            chatId = null,
+                                            chatType = null,
+                                            avatarUrl = ""
+                                        )
+                                    )
                                 }
                             }
                         }
@@ -199,52 +196,48 @@ class WebSocketManager internal constructor() {
             }
 
             // ========== 群聊消息 ==========
-            // ========== 群聊消息 ==========
-socket?.on("group_message") { args ->
+            socket?.on("group_message") { args ->
+                scope?.launch {
+                    try {
+                        val json = args[0] as JSONObject
+                        val type = json.optString("type")
+                        val dataObj = json.optJSONObject("data") ?: return@launch
 
-    scope?.launch {
-        try {
-            val json = args[0] as JSONObject
-            val type = json.optString("type")
-            val dataObj = json.optJSONObject("data") ?: return@launch
+                        val chatId = dataObj.optString("chat_id").ifEmpty {
+                            dataObj.optString("group_id")
+                        }
+                        val chatType = dataObj.optInt("chat_type", 2)
+                        val message = AppJson.json.decodeFromString<Message>(dataObj.toString())
 
-            val chatId = dataObj.optString("chat_id").ifEmpty {
-                dataObj.optString("group_id")
-            }
-            val chatType = dataObj.optInt("chat_type", 2)
-            val message = AppJson.json.decodeFromString<Message>(dataObj.toString())
-
-            mainHandler.post {
-                groupMessageListener?.invoke(dataObj)
-            
-                
-            
-                observers.toList().forEach { observer ->
-                    observer(type, chatId, chatType, message)
+                        mainHandler.post {
+                            groupMessageListener?.invoke(dataObj)
+                        
+                            observers.toList().forEach { observer ->
+                                observer(type, chatId, chatType, message)
+                            }
+                        
+                            if (type == "new" && !message.isMine) {
+                                val senderName = dataObj.optString("sender_username", "未知用户")
+                                val content = dataObj.optString("content", "")
+                                val senderAvatar = dataObj.optString("sender_avatar", "")
+                                val groupName = dataObj.optString("group_name", "")
+                                val title = if (groupName.isNotEmpty()) "$groupName - $senderName" else "群聊($chatId) $senderName"
+                                NotificationManager.show(
+                                    InAppNotification(
+                                        title = "WS调试",
+                                        message = "type=$type msgId=${message.effectiveMsgId} observers=${observers.size}",
+                                        chatId = null,
+                                        chatType = null,
+                                        avatarUrl = ""
+                                    )
+                                )
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e("WS_GROUP", "解析失败", e)
+                    }
                 }
-            
-                if (type == "new" && !message.isMine) {
-                    val senderName = dataObj.optString("sender_username", "未知用户")
-                    val content = dataObj.optString("content", "")
-                    val senderAvatar = dataObj.optString("sender_avatar", "")
-                    val groupName = dataObj.optString("group_name", "")
-                    val title = if (groupName.isNotEmpty()) "$groupName - $senderName" else "群聊($chatId) $senderName"
-                    NotificationManager.show(
-    InAppNotification(
-        title = "WS调试",
-        message = "type=$type msgId=${message.effectiveMsgId} observers=${observers.size}",
-        chatId = null,
-        chatType = null,
-        avatarUrl = ""
-    )
-)
-                }
             }
-        } catch (e: Exception) {
-            Log.e("WS_GROUP", "解析失败", e)
-        }
-    }
-}
 
             socket?.on("friend_list_update") { args ->
                 try {
