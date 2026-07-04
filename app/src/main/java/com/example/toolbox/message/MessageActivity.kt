@@ -153,6 +153,8 @@ import dev.chrisbanes.haze.materials.HazeMaterials
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.runtime.DisposableEffect
+import com.example.toolbox.DraftManager
 
 // ---- Activity ----
 class MessageDetailActivity : ComponentActivity() {
@@ -507,13 +509,7 @@ fun MessageDetailScreen(
             }
         }
     }
-    DisposableEffect(Unit) {
-        onDispose {
-            if (uiState.inputText.isBlank() && uiState.editingMessage == null) {
-                DraftManager.clearDraft(uiState.chatType, uiState.chatId)
-            }
-        }
-    }
+    
     if (showImageViewer) {
         MultiImageViewer(
             images = imageViewerUrls,

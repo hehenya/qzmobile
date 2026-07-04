@@ -43,6 +43,8 @@ import com.example.toolbox.data.ActiveDaysResponse
 import java.time.YearMonth
 import kotlinx.serialization.json.Json
 import com.example.toolbox.DraftManager
+import androidx.compose.runtime.DisposableEffect
+
 class MessageDetailViewModel(
     private val token: String,
     private val chatType: Int,
