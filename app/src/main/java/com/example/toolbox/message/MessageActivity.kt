@@ -669,8 +669,7 @@ fun MessageDetailScreen(
                                             putExtra("date_string", dateString)
                                         }
                                         context.startActivity(intent)
-                                            }
-                                        )
+                                    }
                                 )
                             }  
                         }  
