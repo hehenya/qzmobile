@@ -490,7 +490,7 @@ class MessageDetailViewModel(
                     it.copy(inputText = "", selectedImages = emptyList(), isMarkdown = false, isSending = false)
                 }
                 _replyTo.value = null
-                DraftManager.clearDraft(chatType, chatId)
+                DraftManager.removeDraft(chatType, chatId)
             } catch (e: Exception) {
                 _uiState.update { it.copy(isSending = false) }
                 _toastMessage.emit("发送失败: ${e.message}")
