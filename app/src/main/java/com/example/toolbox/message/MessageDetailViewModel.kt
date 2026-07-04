@@ -42,7 +42,7 @@ import com.example.toolbox.data.ActiveDay
 import com.example.toolbox.data.ActiveDaysResponse
 import java.time.YearMonth
 import kotlinx.serialization.json.Json
-
+import com.example.toolbox.DraftManager
 class MessageDetailViewModel(
     private val token: String,
     private val chatType: Int,
@@ -490,6 +490,7 @@ class MessageDetailViewModel(
                     it.copy(inputText = "", selectedImages = emptyList(), isMarkdown = false, isSending = false)
                 }
                 _replyTo.value = null
+                DraftManager.clearDraft(chatType, chatId)
             } catch (e: Exception) {
                 _uiState.update { it.copy(isSending = false) }
                 _toastMessage.emit("发送失败: ${e.message}")
@@ -574,6 +575,7 @@ class MessageDetailViewModel(
     }
     fun updateInputText(text: String) {
         _uiState.update { it.copy(inputText = text) }
+        DraftManager.saveDraft(chatType, chatId, text)
     }
 
     fun toggleMarkdown() {
@@ -765,9 +767,32 @@ class MessageDetailViewModel(
     }
 
     // 显示热力图
-    fun showHeatmap() {
-        _heatmapYearMonth.value = YearMonth.now()
-        loadActiveDays()
+    // ✅ 接受日期字符串，解析出年月
+    fun showHeatmap(dateString: String? = null) {
+        val yearMonth = if (dateString != null) {
+            try {
+                // 尝试解析 "7月1日" 或 "2024年7月1日" 格式
+                val cleanedDate = dateString
+                    .replace("年", "-")
+                    .replace("月", "-")
+                    .replace("日", "")
+                val parts = cleanedDate.split("-")
+                if (parts.size >= 2) {
+                    val year = parts.getOrNull(0)?.toIntOrNull() ?: YearMonth.now().year
+                    val month = parts.getOrNull(parts.size - 2)?.toIntOrNull() ?: YearMonth.now().monthValue
+                    YearMonth.of(year, month)
+                } else {
+                    YearMonth.now()
+                }
+            } catch (e: Exception) {
+                YearMonth.now()
+            }
+        } else {
+            YearMonth.now()
+        }
+        
+        _heatmapYearMonth.value = yearMonth
+        loadActiveDays(yearMonth)
         _showHeatmap.value = true
     }
 

@@ -507,7 +507,13 @@ fun MessageDetailScreen(
             }
         }
     }
-
+    DisposableEffect(Unit) {
+        onDispose {
+            if (uiState.inputText.isBlank() && uiState.editingMessage == null) {
+                DraftManager.clearDraft(uiState.chatType, uiState.chatId)
+            }
+        }
+    }
     if (showImageViewer) {
         MultiImageViewer(
             images = imageViewerUrls,
@@ -653,7 +659,22 @@ fun MessageDetailScreen(
                                             showMenuMsgId = if (showMenuMsgId == msgId) null else msgId
                                         }
                                     },
-                                    onTimeClick = { viewModel.showHeatmap() }
+                                    onTimeClick = {
+                                        val intent = Intent(context, HeatmapActivity::class.java).apply {
+                                            putExtra("chat_type", uiState.chatType)
+                                            putExtra("chat_id", uiState.chatId)
+                                        }
+                                        context.startActivity(intent)
+                                    },
+                                    onDateClick = { dateString ->
+                                        val intent = Intent(context, HeatmapActivity::class.java).apply {
+                                            putExtra("chat_type", uiState.chatType)
+                                            putExtra("chat_id", uiState.chatId)
+                                            putExtra("date_string", dateString)
+                                        }
+                                        context.startActivity(intent)
+                                            }
+                                        )
                                 )
                             }  
                         }  
@@ -866,40 +887,7 @@ fun MessageDetailScreen(
         }
     }
     // 热力图弹窗
-    val showHeatmap by viewModel.showHeatmap.collectAsState()
-    val activeDays by viewModel.activeDays.collectAsState()
-    val heatmapYearMonth by viewModel.heatmapYearMonth.collectAsState()
-    val isLoadingActiveDays by viewModel.isLoadingActiveDays.collectAsState()
-
-    if (showHeatmap) {
-        if (isLoadingActiveDays) {
-            AlertDialog(
-                onDismissRequest = { viewModel.hideHeatmap() },
-                title = { Text("加载中...") },
-                text = {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().height(100.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { viewModel.hideHeatmap() }) {
-                        Text("取消")
-                    }
-                }
-            )
-        } else {
-            HeatmapDialog(
-                activeDays = activeDays,
-                yearMonth = heatmapYearMonth,
-                onDismiss = { viewModel.hideHeatmap() },
-                onPreviousMonth = { viewModel.previousMonth() },
-                onNextMonth = { viewModel.nextMonth() }
-            )
-        }
-    }
+    
     if (recallDialog.isOpen) {
         AlertDialog(
             onDismissRequest = { viewModel.hideRecallDialog() },
@@ -957,7 +945,8 @@ fun MessageBubble(
     showMenu: Boolean = false,
     onShowMenuChanged: ((String?) -> Unit)? = null,
     avatarAlignment: Alignment.Vertical = Alignment.Bottom,
-    onTimeClick: (() -> Unit)? = null
+    onTimeClick: (() -> Unit)? = null,
+    onDateClick: ((String) -> Unit)? = null
 ) {
     val isMine = message.isMine || message.direction == "right"
     val isRecalledMessage = message.msgDeleteTime != null
@@ -982,9 +971,21 @@ fun MessageBubble(
     } else {
         Column(modifier = Modifier.fillMaxWidth()) {
             if (showDate && dateString != null) {
-                Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
-                    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)) {
-                        Text(dateString, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Box(
+                    Modifier.fillMaxWidth().padding(vertical = 8.dp), 
+                    contentAlignment = Alignment.Center
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp), 
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                        modifier = Modifier.clickable { onDateClick?.invoke(dateString) }  // ✅ 添加点击事件
+                    ) {
+                        Text(
+                            dateString, 
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), 
+                            fontSize = 12.sp, 
+                            color = MaterialTheme.colorScheme.primary  // ✅ 改为主题色，表示可点击
+                        )
                     }
                 }
             }
