@@ -594,7 +594,7 @@ class MessageDetailViewModel(
 
                 val url = uploadImage(tempFile.absolutePath, token, 3) { _: Int -> }
                 if (url != null) {
-                    if (_uiState.editingMessage != null) {
+                    if (_uiState.value.editingMessage != null) {
                         _uiState.update { it.copy(editingImages = it.editingImages + url) }
                     } else {
                         _uiState.update { it.copy(selectedImages = it.selectedImages + url) }
