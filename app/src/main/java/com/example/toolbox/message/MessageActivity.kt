@@ -237,7 +237,7 @@ class MessageDetailActivity : ComponentActivity() {
                                                     }
                                                     if (msg.isMine && msg.content.isNotBlank()) {
                                                         IconButton(onClick = {
-                                                            viewModel.showEditDialog(msg)
+                                                            viewModel.startEditMessage(msg)
                                                             viewModel.exitSelectionMode()
                                                         }) {
                                                             Icon(Icons.Default.Edit, contentDescription = "编辑")
@@ -354,7 +354,6 @@ fun MessageDetailScreen(
     }
 
     val recallDialog by viewModel.recallDialog.collectAsState()
-    val editDialog by viewModel.editDialog.collectAsState()
     val listState = rememberLazyListState()
     var showScrollToBottom by remember { mutableStateOf(false) }
     var unreadCount by remember { mutableIntStateOf(0) }
@@ -629,7 +628,7 @@ fun MessageDetailScreen(
                                     clipboard = clipboard,
                                     message = message,
                                     onRecall = { viewModel.showRecallDialog(message.effectiveMsgId) },
-                                    onEdit = { viewModel.showEditDialog(message) },
+                                    onEdit = { viewModel.startEditMessage(message) },
                                     onImageClick = { urls, idx ->
                                         imageViewerUrls = urls
                                         imageViewerInitialPage = idx
@@ -1134,7 +1133,7 @@ fun MessageBubble(
                                 text = { Text("编辑") },
                                 onClick = {
                                     onShowMenuChanged?.invoke(null)
-                                    viewModel.startEditMessage(message)
+                                    onEdit()
                                 },
                                 leadingIcon = { Icon(Icons.Default.Edit, null, Modifier.size(18.dp)) }
                             )
