@@ -144,9 +144,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import java.util.concurrent.TimeUnit
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
@@ -174,7 +171,7 @@ class MessageDetailActivity : ComponentActivity() {
                 val hazeState = remember { HazeState() }
 
                 LaunchedEffect(uiState.messages.size) {
-                    Toast.makeText(this@MessageDetailActivity, "消息数: ${uiState.messages.size}, 加载中: ${uiState.isLoading}", Toast.LENGTH_SHORT).show()
+                    
                 }
 
                 Scaffold(
@@ -338,11 +335,7 @@ fun MessageDetailScreen(
         uiState.otherUser,
         uiState.isLoading
     ) {
-        Toast.makeText(
-            context,
-            "msg=${uiState.messages.size} group=${uiState.groupInfo != null} user=${uiState.otherUser != null} loading=${uiState.isLoading}",
-            Toast.LENGTH_SHORT
-        ).show()
+        
     }
 
     LaunchedEffect(viewModel) {
@@ -944,7 +937,7 @@ fun MessageBubble(
                                 bottomEnd = if (isMine) if (message.isLastFromSender) 16.dp else 4.dp else 16.dp
                             ),
                             colors = CardDefaults.cardColors(
-                                containerColor = if (message.images.isNotEmpty()) Color.Transparent
+                                containerColor = if (message.images.isNotEmpty() && message.content.isBlank()) Color.Transparent
                                     else if (isMine) MaterialTheme.colorScheme.primary
                                     else MaterialTheme.colorScheme.surfaceContainer
                             ),

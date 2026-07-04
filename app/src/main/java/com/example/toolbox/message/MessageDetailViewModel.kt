@@ -35,6 +35,9 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class MessageDetailViewModel(
     private val token: String,
@@ -82,7 +85,6 @@ class MessageDetailViewModel(
     }
 
     fun connectWebSocket() {
-
         val manager = ChatSocketManager.getInstance()
     
         manager.connect(token)
@@ -91,14 +93,17 @@ class MessageDetailViewModel(
     
             val incomingChatId = chatIdStr.toIntOrNull()
                 ?: return@observer
-    
-            // 不是当前聊天直接忽略
+
             if (incomingChatId != chatId) return@observer
             if (chatTypeInt != chatType) return@observer
     
             when (type) {
     
                 "recall" -> {
+                    val senderName = message.senderUsername ?: message.sender?.name ?: "用户"
+                    val timeStr = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+                    val hint = "$senderName 在 $timeStr 撤回了一条消息"
+
                     _uiState.update { state ->
                         state.copy(
                             messages = state.messages.map {
@@ -108,7 +113,7 @@ class MessageDetailViewModel(
                                         content = "",
                                         images = emptyList(),
                                         isRecalled = true,
-                                        recallHint = message.recallHint ?: "已撤回"
+                                        recallHint = hint
                                     )
                                 } else {
                                     it
