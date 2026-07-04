@@ -201,7 +201,7 @@ data class MessageDetailUiState(
     val selectionMode: Boolean = false,
     val isUploading: Boolean = false,
     val uploadProgress: Float = 0f,
-    val selectedMessages: Set<String> = emptySet()
+    val selectedMessages: Set<String> = emptySet(),
     val editingContent: String = "",
     val editingImages: List<String> = emptyList(),
     val editingIsMarkdown: Boolean = false,
