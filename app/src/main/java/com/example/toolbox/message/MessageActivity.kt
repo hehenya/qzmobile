@@ -150,6 +150,9 @@ import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 // ---- Activity ----
 class MessageDetailActivity : ComponentActivity() {
