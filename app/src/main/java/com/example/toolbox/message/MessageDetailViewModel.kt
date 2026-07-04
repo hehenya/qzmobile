@@ -54,8 +54,7 @@ class MessageDetailViewModel(
     private val _recallDialog = MutableStateFlow(RecallDialogState())
     val recallDialog: StateFlow<RecallDialogState> = _recallDialog.asStateFlow()
 
-    private val _editDialog = MutableStateFlow(EditDialogState())
-    val editDialog: StateFlow<EditDialogState> = _editDialog.asStateFlow()
+    
 
     private val _replyTo = MutableStateFlow<Message?>(null)
     val replyTo: StateFlow<Message?> = _replyTo.asStateFlow()
@@ -454,48 +453,9 @@ class MessageDetailViewModel(
         }
     }
 
-    fun showEditDialog(message: Message) {
-        _editDialog.value = EditDialogState(isOpen = true, message = message, newContent = message.content, isMarkdown = message.isMarkdown)
-    }
+    
 
-    fun hideEditDialog() {
-        _editDialog.value = EditDialogState(isOpen = false)
-    }
-
-    fun updateEditContent(content: String) {
-        _editDialog.update { it.copy(newContent = content) }
-    }
-
-    fun toggleEditMarkdown() {
-        _editDialog.update { it.copy(isMarkdown = !it.isMarkdown) }
-    }
-
-    fun editMessage() {
-        val state = _editDialog.value
-        val message = state.message ?: return
-        viewModelScope.launch {
-            try {
-                val json = JSONObject().apply {
-                    put("msg_id", message.effectiveMsgId)
-                    put("content", state.newContent)
-                    put("is_markdown", state.isMarkdown)
-                }
-                val request = Request.Builder()
-                    .url("${ApiAddress}chat/edit")
-                    .post(json.toString().toRequestBody("application/json".toMediaType()))
-                    .header("x-access-token", token)
-                    .build()
-                withContext(Dispatchers.IO) { client.newCall(request).execute() }
-                _uiState.update { it.copy(messages = it.messages.map { msg ->
-                    if (msg.effectiveMsgId == message.effectiveMsgId) msg.copy(content = state.newContent, isEdited = true, editTime = System.currentTimeMillis())
-                    else msg
-                })}
-                hideEditDialog()
-            } catch (e: Exception) {
-                _toastMessage.emit("编辑失败: ${e.message}")
-            }
-        }
-    }
+    
     
     fun sendMessage() {
         val state = _uiState.value
@@ -532,7 +492,82 @@ class MessageDetailViewModel(
             }
         }
     }
-
+    fun startEditMessage(message: Message) {
+        _uiState.update {
+            it.copy(
+                editingMessage = message,
+                editingContent = message.content,
+                editingImages = message.images,
+                editingIsMarkdown = message.isMarkdown
+            )
+        }
+    }
+    
+    fun cancelEditMessage() {
+        _uiState.update {
+            it.copy(
+                editingMessage = null,
+                editingContent = "",
+                editingImages = emptyList(),
+                editingIsMarkdown = false
+            )
+        }
+    }
+    
+    fun updateEditingContent(content: String) {
+        _uiState.update { it.copy(editingContent = content) }
+    }
+    
+    fun removeEditingImage(index: Int) {
+        val current = _uiState.value.editingImages.toMutableList()
+        if (index in current.indices) {
+            current.removeAt(index)
+            _uiState.update { it.copy(editingImages = current) }
+        }
+    }
+    
+    fun addEditingImage(url: String) {
+        _uiState.update { it.copy(editingImages = it.editingImages + url) }
+    }
+    
+    fun toggleEditingMarkdown() {
+        _uiState.update { it.copy(editingIsMarkdown = !it.editingIsMarkdown) }
+    }
+    
+    fun submitEditMessage() {
+        val state = _uiState.value
+        val message = state.editingMessage ?: return
+    
+        viewModelScope.launch {
+            try {
+                val json = JSONObject().apply {
+                    put("message_id", message.effectiveMsgId)
+                    put("content", state.editingContent)
+                    put("images", org.json.JSONArray(state.editingImages))
+                    put("is_markdown", state.editingIsMarkdown)
+                }
+                val request = Request.Builder()
+                    .url("${ApiAddress}chat/edit")
+                    .post(json.toString().toRequestBody("application/json".toMediaType()))
+                    .header("x-access-token", token)
+                    .build()
+                withContext(Dispatchers.IO) { client.newCall(request).execute() }
+                _uiState.update { it.copy(messages = it.messages.map { msg ->
+                    if (msg.effectiveMsgId == message.effectiveMsgId) msg.copy(
+                        content = state.editingContent,
+                        images = state.editingImages,
+                        isMarkdown = state.editingIsMarkdown,
+                        isEdited = true,
+                        editTime = System.currentTimeMillis()
+                    )
+                    else msg
+                })}
+                cancelEditMessage()
+            } catch (e: Exception) {
+                _toastMessage.emit("编辑失败: ${e.message}")
+            }
+        }
+    }
     fun updateInputText(text: String) {
         _uiState.update { it.copy(inputText = text) }
     }

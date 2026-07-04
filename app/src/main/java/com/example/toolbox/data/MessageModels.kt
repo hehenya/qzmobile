@@ -202,6 +202,10 @@ data class MessageDetailUiState(
     val isUploading: Boolean = false,
     val uploadProgress: Float = 0f,
     val selectedMessages: Set<String> = emptySet()
+    val editingMessage: Message? = null,
+    val editingContent: String = "",
+    val editingImages: List<String> = emptyList(),
+    val editingIsMarkdown: Boolean = false,
 )
 
 // 撤回确认弹窗状态
