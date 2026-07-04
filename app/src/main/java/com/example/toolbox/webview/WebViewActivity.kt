@@ -36,7 +36,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.Icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.WebAsset
 import androidx.compose.material3.BottomAppBar
@@ -160,7 +160,7 @@ fun WebViewScreen(
         AlertDialog(
             onDismissRequest = { showSchemeDialog = false },
             icon = {
-                Icon(Icons.Default.OpenInNew, contentDescription = null)
+                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null)
             },
             title = { Text("跳转应用") },
             text = {

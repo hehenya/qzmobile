@@ -838,7 +838,13 @@ fun MessageDetailScreen(
                         inputText = if (uiState.editingMessage != null) uiState.editingContent else uiState.inputText,
                         selectedImages = uiState.selectedImages,
                         isMarkdown = uiState.isMarkdown,
-                        onTextChange = { viewModel.updateInputText(it) },
+                        onTextChange = { 
+                            if (uiState.editingMessage != null) {
+                                viewModel.updateEditingContent(it)
+                            } else {
+                                viewModel.updateInputText(it) 
+                            }
+                        },
                         onSendClick = {
                             if (uiState.editingMessage != null) {
                                 viewModel.submitEditMessage()

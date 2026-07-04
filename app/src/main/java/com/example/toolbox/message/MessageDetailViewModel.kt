@@ -547,7 +547,7 @@ class MessageDetailViewModel(
                     put("is_markdown", state.editingIsMarkdown)
                 }
                 val request = Request.Builder()
-                    .url("${ApiAddress}chat/edit")
+                    .url("${ApiAddress}group/edit_message")
                     .post(json.toString().toRequestBody("application/json".toMediaType()))
                     .header("x-access-token", token)
                     .build()
@@ -576,36 +576,34 @@ class MessageDetailViewModel(
         _uiState.update { it.copy(isMarkdown = !it.isMarkdown) }
     }
 
-    
+    fun handleImageSelected(uri: Uri?, context: Context, coroutineScope: CoroutineScope) {
+        if (uiState.value.selectedImages.size >= 20) {
+            viewModelScope.launch { _toastMessage.emit("最多只能上传20张图片") }
+            return
+        }
+        if (uri == null) return
 
-fun handleImageSelected(uri: Uri?, context: Context, coroutineScope: CoroutineScope) {
-    if (uiState.value.selectedImages.size >= 20) {
-        viewModelScope.launch { _toastMessage.emit("最多只能上传20张图片") }
-        return
-    }
-    if (uri == null) return
+        coroutineScope.launch {
+            try {
+                val inputStream = context.contentResolver.openInputStream(uri)
+                val tempFile = File(context.cacheDir, "temp_img_${System.currentTimeMillis()}.jpg")
+                FileOutputStream(tempFile).use { output ->
+                    inputStream?.copyTo(output)
+                }
+                inputStream?.close()
 
-    coroutineScope.launch {
-        try {
-            val inputStream = context.contentResolver.openInputStream(uri)
-            val tempFile = File(context.cacheDir, "temp_img_${System.currentTimeMillis()}.jpg")
-            FileOutputStream(tempFile).use { output ->
-                inputStream?.copyTo(output)
+                val url = uploadImage(tempFile.absolutePath, token, 3) { _: Int -> }
+                if (url != null) {
+                    _uiState.update { it.copy(selectedImages = it.selectedImages + url) }
+                    tempFile.delete()
+                } else {
+                    _toastMessage.emit("图片上传失败")
+                }
+            } catch (e: Exception) {
+                _toastMessage.emit("上传出错: ${e.message}")
             }
-            inputStream?.close()
-
-            val url = uploadImage(tempFile.absolutePath, token, 3) { _: Int -> }
-            if (url != null) {
-                _uiState.update { it.copy(selectedImages = it.selectedImages + url) }
-                tempFile.delete()
-            } else {
-                _toastMessage.emit("图片上传失败")
-            }
-        } catch (e: Exception) {
-            _toastMessage.emit("上传出错: ${e.message}")
         }
     }
-}
 
     fun removeImage(index: Int) {
         _uiState.update { state ->
