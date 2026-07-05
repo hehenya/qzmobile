@@ -87,6 +87,7 @@ class MessageDetailViewModel(
         if (chatType == 2) {
             loadGroupInfo()
         }
+        loadDraft()
     }
 
     fun connectWebSocket() {
@@ -711,7 +712,12 @@ class MessageDetailViewModel(
             }
         }
     }
-    
+    private fun loadDraft() {
+        val draft = DraftManager.getDraft(chatType, chatId)
+        if (!draft.isNullOrBlank()) {
+            _uiState.update { it.copy(inputText = draft) }
+        }
+    }
 
     private val _activeDays = MutableStateFlow<List<ActiveDay>>(emptyList())
     val activeDays: StateFlow<List<ActiveDay>> = _activeDays.asStateFlow()
@@ -916,3 +922,4 @@ class MessageDetailViewModelFactory(
         throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
+

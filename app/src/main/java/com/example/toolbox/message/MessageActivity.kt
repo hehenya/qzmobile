@@ -47,6 +47,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.onPaste
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -94,6 +95,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -110,7 +112,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.Clipboard
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -122,6 +123,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.example.toolbox.ApiAddress
+import com.example.toolbox.DraftManager
 import com.example.toolbox.R
 import com.example.toolbox.TokenManager
 import com.example.toolbox.community.UserInfoActivity
@@ -134,6 +136,11 @@ import com.example.toolbox.ui.theme.ToolBoxTheme
 import com.example.toolbox.utils.MarkdownRenderer
 import com.example.toolbox.utils.MultiImageViewer
 import com.example.toolbox.webview.WebViewActivity
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
+import dev.chrisbanes.haze.materials.HazeMaterials
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
@@ -144,17 +151,10 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
-import java.util.concurrent.TimeUnit
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
-import dev.chrisbanes.haze.materials.HazeMaterials
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import androidx.compose.runtime.DisposableEffect
-import com.example.toolbox.DraftManager
+import java.util.concurrent.TimeUnit
 
 // ---- Activity ----
 class MessageDetailActivity : ComponentActivity() {
@@ -875,7 +875,17 @@ fun MessageDetailScreen(
                         innerPadding = innerPadding,
                         isUploading = isUploading,
                         uploadProgress = uploadProgress,
-                        onCancelUpload = { viewModel.cancelUpload() }
+                        onCancelUpload = { viewModel.cancelUpload() },
+                        onPasteImage = {
+                            val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clip = cm.primaryClip
+                            if (clip != null && clip.itemCount > 0) {
+                                val uri = clip.getItemAt(0).uri
+                                if (uri != null) {
+                                    viewModel.handleImageSelected(uri, context, scope)
+                                }
+                            }
+                        }
                     )
                 }
             }
@@ -1194,7 +1204,8 @@ fun MessageInput(
     inputText: String, selectedImages: List<String>, isMarkdown: Boolean,
     onTextChange: (String) -> Unit, onSendClick: () -> Unit, onAddImageClick: () -> Unit,
     onRemoveImage: (Int) -> Unit, onToggleMarkdown: () -> Unit, innerPadding: PaddingValues,
-    isUploading: Boolean = false, uploadProgress: Float = 0f, onCancelUpload: () -> Unit = {}
+    isUploading: Boolean = false, uploadProgress: Float = 0f, onCancelUpload: () -> Unit = {},
+    onPasteImage: () -> Unit = {}
 ) {
     var showAttachmentMenu by remember { mutableStateOf(false) }
     Surface(
@@ -1226,7 +1237,10 @@ fun MessageInput(
                 Spacer(Modifier.width(5.dp))
                 TextField(
                     value = inputText, onValueChange = onTextChange,
-                    modifier = Modifier.weight(1f).background(Color.Transparent, RoundedCornerShape(20.dp)),
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(Color.Transparent, RoundedCornerShape(20.dp))
+                        .onPaste { onPasteImage() },
                     placeholder = { Text("输入消息...") }, shape = RoundedCornerShape(20.dp), maxLines = 5,
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
