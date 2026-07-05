@@ -598,7 +598,7 @@ fun MessageDetailScreen(
                             val olderMessage = uiState.messages.getOrNull(index + 1)
 
                             val isFirstFromSender =
-                                newerMessage == null || newerMessage.isRecalled || newerMessage.isSystem || newerMessage.senderId != message.senderId
+                                olderMessage == null || olderMessage.isRecalled || olderMessage.isSystem || olderMessage.senderId != message.senderId
                             val isLastFromSender =
                                 olderMessage == null || olderMessage.isRecalled || olderMessage.isSystem || olderMessage.senderId != message.senderId
                             val isOlderSameSender =

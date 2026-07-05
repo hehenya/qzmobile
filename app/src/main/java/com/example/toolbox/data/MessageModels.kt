@@ -82,7 +82,16 @@ data class Message(
 
 )
 val Message.displayTag: String
-    get() = tag.firstOrNull() ?: ""
+    get() {
+        val senderTag = sender?.tag
+        return when (senderTag) {
+            is kotlinx.serialization.json.JsonArray -> senderTag.firstOrNull()?.let {
+                (it as? kotlinx.serialization.json.JsonPrimitive)?.content
+            } ?: ""
+            is kotlinx.serialization.json.JsonPrimitive -> senderTag.content
+            else -> ""
+        }
+    }
 val Message.displayName: String
     get() = sender?.name ?: senderUsername ?: ""
 
