@@ -724,8 +724,6 @@ class MessageDetailViewModel(
 
     private val _isLoadingActiveDays = MutableStateFlow(false)
     val isLoadingActiveDays: StateFlow<Boolean> = _isLoadingActiveDays.asStateFlow()
-
-    // 加载活跃天数
     fun loadActiveDays(yearMonth: YearMonth = YearMonth.now()) {
         viewModelScope.launch {
             _isLoadingActiveDays.value = true
@@ -767,50 +765,47 @@ class MessageDetailViewModel(
             }
         }
     }
-
-    // 显示热力图
-    // ✅ 接受日期字符串，解析出年月
     fun showHeatmap(dateString: String? = null) {
         val yearMonth = if (dateString != null) {
-            try {
-                // 尝试解析 "7月1日" 或 "2024年7月1日" 格式
-                val cleanedDate = dateString
-                    .replace("年", "-")
-                    .replace("月", "-")
-                    .replace("日", "")
-                val parts = cleanedDate.split("-")
-                if (parts.size >= 2) {
-                    val year = parts.getOrNull(0)?.toIntOrNull() ?: YearMonth.now().year
-                    val month = parts.getOrNull(parts.size - 2)?.toIntOrNull() ?: YearMonth.now().monthValue
-                    YearMonth.of(year, month)
-                } else {
-                    YearMonth.now()
-                }
-            } catch (e: Exception) {
-                YearMonth.now()
-            }
+            parseDateString(dateString)
         } else {
             YearMonth.now()
         }
-        
         _heatmapYearMonth.value = yearMonth
         loadActiveDays(yearMonth)
         _showHeatmap.value = true
     }
-
-    // 隐藏热力图
+    
+    private fun parseDateString(dateString: String): YearMonth {
+        return try {
+            val cleaned = dateString
+                .replace("年", "-")
+                .replace("月", "-")
+                .replace("日", "")
+            val parts = cleaned.split("-").filter { it.isNotBlank() }
+    
+            if (parts.size == 2) {
+                val month = parts[0].toIntOrNull() ?: return YearMonth.now()
+                YearMonth.of(YearMonth.now().year, month)
+            } else if (parts.size >= 3) {
+                val year = parts[0].toIntOrNull() ?: return YearMonth.now()
+                val month = parts[1].toIntOrNull() ?: return YearMonth.now()
+                YearMonth.of(year, month)
+            } else {
+                YearMonth.now()
+            }
+        } catch (e: Exception) {
+            YearMonth.now()
+        }
+    }
     fun hideHeatmap() {
         _showHeatmap.value = false
     }
-
-    // 上一个月
     fun previousMonth() {
         val newMonth = _heatmapYearMonth.value.minusMonths(1)
         _heatmapYearMonth.value = newMonth
         loadActiveDays(newMonth)
     }
-
-    // 下一个月
     fun nextMonth() {
         val newMonth = _heatmapYearMonth.value.plusMonths(1)
         if (!newMonth.isAfter(YearMonth.now())) {

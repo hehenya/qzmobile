@@ -979,7 +979,7 @@ fun MessageBubble(
                             dateString, 
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), 
                             fontSize = 12.sp, 
-                            color = MaterialTheme.colorScheme.primary  // ✅ 改为主题色，表示可点击
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
