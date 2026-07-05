@@ -597,7 +597,7 @@ fun MessageDetailScreen(
                             val isFirstFromSender =
                                 olderMessage == null || olderMessage.isRecalled || olderMessage.isSystem || olderMessage.senderId != message.senderId
                             val isLastFromSender =
-                                olderMessage == null || olderMessage.isRecalled || olderMessage.isSystem || olderMessage.senderId != message.senderId
+                                newerMessage == null || newerMessage.isRecalled || newerMessage.isSystem || newerMessage.senderId != message.senderId
                             val isOlderSameSender =
                                 olderMessage != null && !olderMessage.isRecalled && !olderMessage.isSystem && olderMessage.senderId == message.senderId
                             val isNewerSameSender =
