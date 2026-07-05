@@ -1054,7 +1054,7 @@ fun MessageBubble(
                             elevation = if (message.images.isNotEmpty()) CardDefaults.cardElevation(defaultElevation = 0.dp) else CardDefaults.cardElevation()
                         ) {
                             Column(modifier = Modifier.padding(8.dp)) {
-                                if (!isMine && message.isFirstFromSender && chatType == 2) {
+                                if (!isMine && isFirstFromSender && chatType == 2) {
                                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 2.dp)) {
                                         Text(message.displayName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                                         if (message.displayTag.isNotBlank()) {
