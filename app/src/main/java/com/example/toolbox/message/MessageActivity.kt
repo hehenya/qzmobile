@@ -648,6 +648,7 @@ fun MessageDetailScreen(
                                     isSelectionMode = selectionMode,
                                     isSelected = message.effectiveMsgId in selectedMessages,
                                     onLongPress = { viewModel.enterSelectionMode(message) },
+                                    isFirstFromSender = isFirstFromSender,
                                     onClickInSelectionMode = { viewModel.toggleMessageSelection(message) },
                                     showMenu = showMenuMsgId == message.effectiveMsgId && !selectionMode,
                                     onShowMenuChanged = { msgId ->
@@ -942,7 +943,8 @@ fun MessageBubble(
     onShowMenuChanged: ((String?) -> Unit)? = null,
     avatarAlignment: Alignment.Vertical = Alignment.Bottom,
     onTimeClick: (() -> Unit)? = null,
-    onDateClick: ((String) -> Unit)? = null
+    onDateClick: ((String) -> Unit)? = null,
+    isFirstFromSender: Boolean = true
 ) {
     val isMine = message.isMine || message.direction == "right"
     val isRecalledMessage = message.msgDeleteTime != null
@@ -974,7 +976,7 @@ fun MessageBubble(
                     Surface(
                         shape = RoundedCornerShape(12.dp), 
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
-                        modifier = Modifier.clickable { onDateClick?.invoke(dateString) }  // ✅ 添加点击事件
+                        modifier = Modifier.clickable { onDateClick?.invoke(dateString) } 
                     ) {
                         Text(
                             dateString, 

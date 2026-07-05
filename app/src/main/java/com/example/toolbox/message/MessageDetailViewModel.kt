@@ -441,8 +441,9 @@ class MessageDetailViewModel(
             val json = JSONObject().apply {
                 put("message_id", msgId)
             }
+            val url = if (chatType == 1) "${ApiAddress}private/delete_message" else "${ApiAddress}group/recall"
             val request = Request.Builder()
-                .url("${ApiAddress}group/recall")
+                .url(url)
                 .post(json.toString().toRequestBody("application/json".toMediaType()))
                 .header("x-access-token", token)
                 .build()
