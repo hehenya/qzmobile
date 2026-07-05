@@ -323,10 +323,7 @@ fun MessageDetailScreen(
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
 
-    Text(
-        text = "消息:${uiState.messages.size}",
-        color = Color.Red
-    )
+    
 
     val scope = rememberCoroutineScope()
     val clipboard = LocalClipboard.current
