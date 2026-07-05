@@ -47,7 +47,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.onPaste
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -877,16 +876,7 @@ fun MessageDetailScreen(
                         isUploading = isUploading,
                         uploadProgress = uploadProgress,
                         onCancelUpload = { viewModel.cancelUpload() },
-                        onPasteImage = {
-                            val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            val clip = cm.primaryClip
-                            if (clip != null && clip.itemCount > 0) {
-                                val uri = clip.getItemAt(0).uri
-                                if (uri != null) {
-                                    viewModel.handleImageSelected(uri, context, scope)
-                                }
-                            }
-                        }
+                        
                     )
                 }
             }
@@ -1205,8 +1195,7 @@ fun MessageInput(
     inputText: String, selectedImages: List<String>, isMarkdown: Boolean,
     onTextChange: (String) -> Unit, onSendClick: () -> Unit, onAddImageClick: () -> Unit,
     onRemoveImage: (Int) -> Unit, onToggleMarkdown: () -> Unit, innerPadding: PaddingValues,
-    isUploading: Boolean = false, uploadProgress: Float = 0f, onCancelUpload: () -> Unit = {},
-    onPasteImage: () -> Unit = {}
+    isUploading: Boolean = false, uploadProgress: Float = 0f, onCancelUpload: () -> Unit = {}
 ) {
     var showAttachmentMenu by remember { mutableStateOf(false) }
     Surface(
@@ -1240,8 +1229,7 @@ fun MessageInput(
                     value = inputText, onValueChange = onTextChange,
                     modifier = Modifier
                         .weight(1f)
-                        .background(Color.Transparent, RoundedCornerShape(20.dp))
-                        .onPaste { onPasteImage() },
+                        .background(Color.Transparent, RoundedCornerShape(20.dp)),
                     placeholder = { Text("输入消息...") }, shape = RoundedCornerShape(20.dp), maxLines = 5,
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
