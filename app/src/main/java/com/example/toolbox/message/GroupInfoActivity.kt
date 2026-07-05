@@ -163,7 +163,6 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
                     }
                 }
             } else {
-                // --- 头像上传（无进度） ---
                 scope.launch {
                     try {
                         val inputStream = context.contentResolver.openInputStream(uri) ?: return@launch

@@ -77,10 +77,12 @@ data class Message(
     @SerialName("msg_delete_time") val msgDeleteTime: Long? = null,
     @SerialName("msg_delete_time_formatted") val msgDeleteTimeFormatted: String? = null,
     @SerialName("msg_delete_time_display") val msgDeleteTimeDisplay: String? = null,
-    @SerialName("link_info") val linkInfo: List<LinkInfo>? = null
+    @SerialName("link_info") val linkInfo: List<LinkInfo>? = null,
+    val tag: List<String> = emptyList()
 
 )
-
+val Message.displayTag: String
+    get() = tag.firstOrNull() ?: ""
 val Message.displayName: String
     get() = sender?.name ?: senderUsername ?: ""
 
