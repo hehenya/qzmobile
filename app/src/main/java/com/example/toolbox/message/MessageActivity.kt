@@ -913,8 +913,8 @@ fun AnimatedScrollToBottomButton(visible: Boolean, unreadCount: Int, onClick: ()
     val animatedScale by animateFloatAsState(targetValue = if (visible) 1f else 0.5f, animationSpec = tween(300, easing = FastOutSlowInEasing), label = "scale")
     Box(modifier = modifier.wrapContentSize().graphicsLayer { alpha = animatedAlpha; scaleX = animatedScale; scaleY = animatedScale }) {
         BadgedBox(badge = { if (unreadCount > 0) Badge(containerColor = MaterialTheme.colorScheme.error, contentColor = MaterialTheme.colorScheme.onError) { Text(if (unreadCount > 99) "99+" else unreadCount.toString(), fontSize = 10.sp) } }) {
-            FloatingActionButton(onClick = onClick, containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary, elevation = FloatingActionButtonDefaults.elevation(6.dp)) {
-                Icon(Icons.Default.KeyboardArrowDown, "滚动到底部")
+            SmallFloatingActionButton(onClick = onClick, shape = CircleShape, containerColor = MaterialTheme.colorScheme.surfaceContainerHigh, contentColor = MaterialTheme.colorScheme.onSurface) {
+                Icon(Icons.Default.KeyboardArrowDown, "滚动到底部", modifier = Modifier.size(18.dp))
             }
         }
     }
@@ -1042,9 +1042,9 @@ fun MessageBubble(
                     Column(horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
                         Card(
                             shape = RoundedCornerShape(
-                                topStart = 16.dp, topEnd = 16.dp,
-                                bottomStart = if (isMine) 16.dp else if (message.isLastFromSender) 16.dp else 4.dp,
-                                bottomEnd = if (isMine) if (message.isLastFromSender) 16.dp else 4.dp else 16.dp
+                                topStart = 20.dp, topEnd = 20.dp,
+                                bottomStart = if (isMine) 20.dp else if (message.isLastFromSender) 20.dp else 6.dp,
+                                bottomEnd = if (isMine) if (message.isLastFromSender) 20.dp else 6.dp else 20.dp
                             ),
                             colors = CardDefaults.cardColors(
                                 containerColor = if (message.images.isNotEmpty() && message.content.isBlank()) Color.Transparent

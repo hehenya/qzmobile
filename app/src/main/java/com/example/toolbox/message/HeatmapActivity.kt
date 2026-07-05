@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.toolbox.TokenManager
+import com.example.toolbox.data.ActiveDay
 import com.example.toolbox.ui.theme.ToolBoxTheme
 import java.time.LocalDate
 import java.time.YearMonth
@@ -69,7 +70,6 @@ fun HeatmapScreen(
     val today = LocalDate.now()
     val todayYM = YearMonth.from(today)
 
-    // 生成从 2020年1月 到当前月的所有月份
     val allMonths = remember {
         val list = mutableListOf<YearMonth>()
         var ym = YearMonth.of(2020, 1)
@@ -115,7 +115,7 @@ fun HeatmapScreen(
             state = listState,
             modifier = Modifier.fillMaxSize().padding(pd)
         ) {
-            itemsIndexed(allMonths) { index, ym ->
+            itemsIndexed(allMonths) { _, ym ->
                 MonthItem(
                     yearMonth = ym,
                     viewModel = viewModel,
@@ -134,12 +134,13 @@ private fun MonthItem(
     today: LocalDate,
     todayYM: YearMonth
 ) {
-    val activeDays by viewModel.activeDays.collectAsState()
-    val loading by viewModel.isLoadingActiveDays.collectAsState()
-
-    LaunchedEffect(yearMonth) {
+    // ✅ 一次性加载，不重复请求
+    LaunchedEffect(Unit) {
         viewModel.loadActiveDays(yearMonth)
     }
+
+    val activeDays by viewModel.activeDays.collectAsState()
+    val loading by viewModel.isLoadingActiveDays.collectAsState()
 
     val daysInMonth = yearMonth.lengthOfMonth()
     val firstDow = yearMonth.atDay(1).dayOfWeek.value
