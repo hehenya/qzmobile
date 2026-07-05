@@ -913,7 +913,7 @@ fun AnimatedScrollToBottomButton(visible: Boolean, unreadCount: Int, onClick: ()
     val animatedScale by animateFloatAsState(targetValue = if (visible) 1f else 0.5f, animationSpec = tween(300, easing = FastOutSlowInEasing), label = "scale")
     Box(modifier = modifier.wrapContentSize().graphicsLayer { alpha = animatedAlpha; scaleX = animatedScale; scaleY = animatedScale }) {
         BadgedBox(badge = { if (unreadCount > 0) Badge(containerColor = MaterialTheme.colorScheme.error, contentColor = MaterialTheme.colorScheme.onError) { Text(if (unreadCount > 99) "99+" else unreadCount.toString(), fontSize = 10.sp) } }) {
-            SmallFloatingActionButton(onClick = onClick, shape = CircleShape, containerColor = MaterialTheme.colorScheme.surfaceContainerHigh, contentColor = MaterialTheme.colorScheme.onSurface) {
+            FloatingActionButton(onClick = onClick, shape = CircleShape, containerColor = MaterialTheme.colorScheme.surfaceContainerHigh, contentColor = MaterialTheme.colorScheme.onSurface, elevation = FloatingActionButtonDefaults.elevation(2.dp), modifier = Modifier.size(40.dp)) {
                 Icon(Icons.Default.KeyboardArrowDown, "滚动到底部", modifier = Modifier.size(18.dp))
             }
         }
