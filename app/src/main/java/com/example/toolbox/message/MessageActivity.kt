@@ -1054,13 +1054,13 @@ fun MessageBubble(
                             elevation = if (message.images.isNotEmpty()) CardDefaults.cardElevation(defaultElevation = 0.dp) else CardDefaults.cardElevation()
                         ) {
                             Column(modifier = Modifier.padding(8.dp)) {
-                                if (!isMine && isFirstFromSender && chatType == 2) {
+                                if (!isMine && isFirstFromSender && chatType == 2 && message.content.isNotBlank()) {
                                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 2.dp)) {
                                         Text(message.displayName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                                         if (message.displayTag.isNotBlank()) {
                                             Spacer(Modifier.width(4.dp))
                                             Surface(
-                                                shape = RoundedCornerShape(4.dp),
+                                                shape = RoundedCornerShape(8.dp),
                                                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                                             ) {
                                                 Text(
