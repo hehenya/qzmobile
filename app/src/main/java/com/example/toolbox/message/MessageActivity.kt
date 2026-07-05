@@ -406,10 +406,7 @@ fun MessageDetailScreen(
                         } else {
                             null
                         }
-                        val isLastFromSender = olderMessage == null ||
-                                olderMessage.isRecalled ||
-                                olderMessage.isSystem ||
-                                olderMessage.senderId != message.senderId
+                        val isLastFromSender = newerMessage == null || newerMessage.isRecalled || newerMessage.isSystem || newerMessage.senderId != message.senderId
                         val hasOtherSameSender = (newerMessage != null &&
                                 !newerMessage.isRecalled &&
                                 !newerMessage.isSystem &&
@@ -611,7 +608,7 @@ fun MessageDetailScreen(
                             val shouldShowItemAvatar = if (isTopVisibleItem) {
                                 !showFloatingAvatar && (isLastFromSender || isFirstFromSender)
                             } else {
-                                isFirstFromSender
+                                isLastFromSender
                             }
     
                             val avatarAlignment =
