@@ -7,7 +7,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -56,20 +58,15 @@ class HeatmapActivity : ComponentActivity() {
     private fun parseYearMonth(dateString: String): YearMonth {
         if (dateString.isBlank()) return YearMonth.now()
         return try {
-            // 解析 "7月1日" 格式（没有年份，用当前年份）
             val cleaned = dateString
                 .replace("年", "-")
                 .replace("月", "-")
                 .replace("日", "")
             val parts = cleaned.split("-").filter { it.isNotBlank() }
-
             if (parts.size == 2) {
-                // "7-1" → 月份和日期
                 val month = parts[0].toIntOrNull() ?: return YearMonth.now()
-                val now = YearMonth.now()
-                YearMonth.of(now.year, month)
+                YearMonth.of(YearMonth.now().year, month)
             } else if (parts.size >= 3) {
-                // "2026-7-1" → 年月日
                 val year = parts[0].toIntOrNull() ?: return YearMonth.now()
                 val month = parts[1].toIntOrNull() ?: return YearMonth.now()
                 YearMonth.of(year, month)
@@ -165,7 +162,8 @@ fun HeatmapScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp, vertical = 16.dp)
                 ) {
                     // 星期标题
                     Row(
@@ -178,7 +176,6 @@ fun HeatmapScreen(
                                 modifier = Modifier.weight(1f),
                                 textAlign = TextAlign.Center,
                                 fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -186,18 +183,18 @@ fun HeatmapScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // 热力图网格
+                    // 日历网格
                     val totalCells = firstDayOfWeek - 1 + daysInMonth
                     val rows = (totalCells + 6) / 7
 
                     Column(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         for (row in 0 until rows) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 for (col in 0..6) {
                                     val cellIndex = row * 7 + col
@@ -208,26 +205,26 @@ fun HeatmapScreen(
                                             val date = currentYearMonth.atDay(dayOfMonth)
                                             val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
                                             val msgCount = activeDaysMap[dateStr] ?: 0
-                                            val isFuture = date.isAfter(today)
+                                            val isFuture = date.isAfter(today) && currentYearMonth == YearMonth.from(today)
                                             val isToday = date == today
 
                                             Box(
                                                 modifier = Modifier
                                                     .aspectRatio(1f)
-                                                    .clip(RoundedCornerShape(6.dp))
+                                                    .clip(CircleShape)
                                                     .background(
                                                         when {
-                                                            isFuture -> Color.Transparent
-                                                            msgCount == 0 -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                                                            isFuture -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                                                            msgCount == 0 -> Color.Transparent
                                                             else -> getHeatColor(msgCount, maxMsgCount)
                                                         }
                                                     )
                                                     .then(
-                                                        if (isToday) {
+                                                        if (isToday && msgCount == 0) {
                                                             Modifier.border(
-                                                                2.dp,
+                                                                1.5.dp,
                                                                 MaterialTheme.colorScheme.primary,
-                                                                RoundedCornerShape(6.dp)
+                                                                CircleShape
                                                             )
                                                         } else Modifier
                                                     ),
@@ -235,14 +232,13 @@ fun HeatmapScreen(
                                             ) {
                                                 Text(
                                                     text = dayOfMonth.toString(),
-                                                    fontSize = 13.sp,
+                                                    fontSize = 14.sp,
                                                     fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
                                                     color = when {
-                                                        isFuture -> Color.Transparent
-                                                        msgCount > maxMsgCount * 0.6f -> Color.White
-                                                        msgCount > 0 -> Color.White.copy(alpha = 0.85f)
+                                                        isFuture -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                                                        msgCount > 0 -> Color.White
                                                         isToday -> MaterialTheme.colorScheme.primary
-                                                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                                        else -> MaterialTheme.colorScheme.onSurface
                                                     }
                                                 )
                                             }
@@ -252,44 +248,15 @@ fun HeatmapScreen(
                             }
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    // 图例
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("少", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        // 4 个渐变色块
-                        for (i in 1..4) {
-                            val intensity = i / 4f
-                            Box(
-                                modifier = Modifier
-                                    .size(16.dp)
-                                    .clip(RoundedCornerShape(3.dp))
-                                    .background(getHeatColor((maxMsgCount * intensity).toInt(), maxMsgCount))
-                            )
-                            Spacer(modifier = Modifier.width(3.dp))
-                        }
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("多", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
                 }
             }
         }
     }
 }
 
-/**
- * 根据消息数量返回颜色深度（绿色系，类似 TG）
- */
 private fun getHeatColor(msgCount: Int, maxCount: Int): Color {
-    if (maxCount == 0) return Color(0x3365BC7A)
-    val ratio = (msgCount.toFloat() / maxCount.toFloat()).coerceIn(0.15f, 1f)
-    // 类似 Telegram 的绿色渐变
-    val alpha = (0.2f + ratio * 0.8f).coerceIn(0f, 1f)
-    return Color(0x0065BC7A).copy(alpha = alpha)
+    if (maxCount == 0) return Color(0xFF4CAF50).copy(alpha = 0.3f)
+    val ratio = (msgCount.toFloat() / maxCount.toFloat()).coerceIn(0.2f, 1f)
+    val green = 0xFF4CAF50
+    return Color(green).copy(alpha = 0.25f + ratio * 0.75f)
 }
