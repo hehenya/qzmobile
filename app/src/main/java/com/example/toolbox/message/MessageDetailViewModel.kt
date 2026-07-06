@@ -46,6 +46,7 @@ import com.example.toolbox.DraftManager
 import androidx.compose.runtime.DisposableEffect
 import com.example.toolbox.CacheManager
 import com.example.toolbox.MyApplication
+import kotlinx.serialization.builtins.ListSerializer
 
 class MessageDetailViewModel(
     private val token: String,
@@ -226,8 +227,11 @@ class MessageDetailViewModel(
     
                     val sortedMessages =
                         result.messages.sortedByDescending { it.sendTime }
-                    val cacheKey = "messages_${chatType}_${chatId}"
-                    CacheManager.saveJson(MyApplication.instance, cacheKey, sortedMessages)
+                        val cacheKey = "messages_${chatType}_${chatId}"
+                        try {
+                            val jsonStr = AppJson.json.encodeToString(ListSerializer(Message.serializer()), sortedMessages)
+                            CacheManager.save(MyApplication.instance, cacheKey, jsonStr)
+                        } catch (_: Exception) {}
                     msgIdCache.clear()
                     msgIdCache.addAll(sortedMessages.map { it.effectiveMsgId })
     
@@ -274,9 +278,14 @@ class MessageDetailViewModel(
             } catch (e: Exception) {
                 Log.e("CHAT_LOAD", "loadMessages Exception", e)
                 val cacheKey = "messages_${chatType}_${chatId}"
-                val cached = CacheManager.loadJson<List<Message>>(MyApplication.instance, cacheKey)
-                if (cached != null && _uiState.value.messages.isEmpty()) {
-                    _uiState.update { it.copy(messages = cached, isLoading = false) }
+                val cachedStr = CacheManager.load(MyApplication.instance, cacheKey)
+                if (cachedStr != null && _uiState.value.messages.isEmpty()) {
+                    try {
+                        val cached = AppJson.json.decodeFromString<List<Message>>(cachedStr)
+                        _uiState.update { it.copy(messages = cached, isLoading = false) }
+                    } catch (_: Exception) {
+                        _uiState.update { it.copy(isLoading = false, error = "无法连接到轻昼服务器，请检查网络配置！") }
+                    }
                 } else {
                     _uiState.update { it.copy(isLoading = false, error = "无法连接到轻昼服务器，请检查网络配置！") }
                 }

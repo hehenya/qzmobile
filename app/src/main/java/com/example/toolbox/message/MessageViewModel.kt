@@ -5,6 +5,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.toolbox.ApiAddress
 import com.example.toolbox.AppJson
+import com.example.toolbox.CacheManager
+import com.example.toolbox.MyApplication
+import com.example.toolbox.data.Friend
 import com.example.toolbox.data.FriendsResponse
 import com.example.toolbox.data.Message
 import com.example.toolbox.data.MessageUiState
@@ -18,9 +21,6 @@ import kotlinx.coroutines.withContext
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import android.content.Context
-import com.example.toolbox.CacheManager
-import com.example.toolbox.MyApplication
 
 class MessageViewModel(
     private val token: String
@@ -46,9 +46,6 @@ class MessageViewModel(
         loadFriends(page = 1, isRefresh = true)
     }
 
-    /**
-     * 标记某个会话为已读（本地清零）
-     */
     fun markAsRead(chatId: Int, chatType: Int) {
         _uiState.update { current ->
             current.copy(
@@ -66,9 +63,7 @@ class MessageViewModel(
 
     private fun silentRefresh() {
         viewModelScope.launch {
-            _uiState.update {
-                it.copy(error = null)
-            }
+            _uiState.update { it.copy(error = null) }
 
             val result = runCatching {
                 withContext(Dispatchers.IO) {
@@ -84,9 +79,7 @@ class MessageViewModel(
                         .build()
 
                     val response = client.newCall(request).execute()
-                    if (!response.isSuccessful) {
-                        return@withContext null
-                    }
+                    if (!response.isSuccessful) return@withContext null
 
                     val responseBody = response.body.string()
                     AppJson.json.decodeFromString<FriendsResponse>(responseBody)
@@ -130,14 +123,17 @@ class MessageViewModel(
                 else it.copy(isLoadingMore = true, error = null)
             }
 
+            // 先加载缓存
             if (isRefresh) {
-                val context = MyApplication.instance
-                val cached = CacheManager.loadJson<List<com.example.toolbox.data.Friend>>(context, "friends_list")
-                if (cached != null && _uiState.value.friends.isEmpty()) {
-                    _uiState.update { it.copy(friends = cached) }
+                val cachedStr = CacheManager.load(MyApplication.instance, "friends_list")
+                if (cachedStr != null && _uiState.value.friends.isEmpty()) {
+                    try {
+                        val cached = AppJson.json.decodeFromString<FriendsResponse>(cachedStr)
+                        _uiState.update { it.copy(friends = cached.friends) }
+                    } catch (_: Exception) {}
                 }
             }
-    
+
             val result = runCatching {
                 withContext(Dispatchers.IO) {
                     val requestBody = FormBody.Builder()
@@ -152,9 +148,7 @@ class MessageViewModel(
                         .build()
 
                     val response = client.newCall(request).execute()
-                    if (!response.isSuccessful) {
-                        return@withContext null
-                    }
+                    if (!response.isSuccessful) return@withContext null
 
                     val responseBody = response.body.string()
                     AppJson.json.decodeFromString<FriendsResponse>(responseBody)
@@ -175,14 +169,20 @@ class MessageViewModel(
                             error = null
                         )
                     }
-                    CacheManager.saveJson(MyApplication.instance, "friends_list", friendsResponse.friends)
+                    // 缓存数据
+                    CacheManager.save(MyApplication.instance, "friends_list", AppJson.json.encodeToString(FriendsResponse::class.java, friendsResponse))
                 } else {
                     _uiState.update { it.copy(isRefreshing = false, isLoadingMore = false, error = "请求失败或数据为空") }
                 }
             }.onFailure { e ->
-                val cached = CacheManager.loadJson<List<com.example.toolbox.data.Friend>>(MyApplication.instance, "friends_list")
-                if (cached != null && _uiState.value.friends.isEmpty()) {
-                    _uiState.update { it.copy(friends = cached, isRefreshing = false, isLoadingMore = false, isOffline = true) }
+                val cachedStr = CacheManager.load(MyApplication.instance, "friends_list")
+                if (cachedStr != null && _uiState.value.friends.isEmpty()) {
+                    try {
+                        val cached = AppJson.json.decodeFromString<FriendsResponse>(cachedStr)
+                        _uiState.update { it.copy(friends = cached.friends, isRefreshing = false, isLoadingMore = false, isOffline = true) }
+                    } catch (_: Exception) {
+                        _uiState.update { it.copy(isRefreshing = false, isLoadingMore = false, error = "无法连接到轻昼服务器，请检查网络配置！", isOffline = true) }
+                    }
                 } else {
                     _uiState.update { it.copy(isRefreshing = false, isLoadingMore = false, error = "无法连接到轻昼服务器，请检查网络配置！", isOffline = true) }
                 }

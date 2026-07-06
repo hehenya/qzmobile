@@ -18,11 +18,11 @@ object CacheManager {
         return prefs(context).getString(key, null)
     }
 
-    fun <reified T> saveJson(context: Context, key: String, data: T) {
-        save(context, key, json.encodeToString(data))
+    fun saveJson(context: Context, key: String, jsonData: String) {
+        save(context, key, jsonData)
     }
 
-    fun <reified T> loadJson(context: Context, key: String): T? {
-        return load(context, key)?.let { json.decodeFromString<T>(it) }
+    fun loadJson(context: Context, key: String): String? {
+        return load(context, key)
     }
 }
