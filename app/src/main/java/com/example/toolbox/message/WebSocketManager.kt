@@ -179,15 +179,7 @@ class WebSocketManager internal constructor() {
                                     val senderName = dataObj.optString("sender_username", "未知用户")
                                     val content = dataObj.optString("content", "")
                                     val senderAvatar = dataObj.optString("sender_avatar", "")
-                                    NotificationManager.show(
-                                        InAppNotification(
-                                            title = "WS调试",
-                                            message = "type=$type msgId=${message.effectiveMsgId}",
-                                            chatId = null,
-                                            chatType = null,
-                                            avatarUrl = ""
-                                        )
-                                    )
+                                    
                                 }
                             }
                         }
@@ -224,15 +216,7 @@ class WebSocketManager internal constructor() {
                                 val senderAvatar = dataObj.optString("sender_avatar", "")
                                 val groupName = dataObj.optString("group_name", "")
                                 val title = if (groupName.isNotEmpty()) "$groupName - $senderName" else "群聊($chatId) $senderName"
-                                NotificationManager.show(
-                                    InAppNotification(
-                                        title = "WS调试",
-                                        message = "type=$type msgId=${message.effectiveMsgId} observers=${observers.size}",
-                                        chatId = null,
-                                        chatType = null,
-                                        avatarUrl = ""
-                                    )
-                                )
+                                
                             }
                         }
                     } catch (e: Exception) {
