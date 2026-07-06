@@ -38,6 +38,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.rememberAsyncImagePainter
 import com.example.toolbox.TokenManager
 import com.example.toolbox.ui.theme.ToolBoxTheme
+import androidx.compose.material3.FilterChip
 
 class SearchActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -62,6 +63,7 @@ fun SearchScreen(token: String, onBack: () -> Unit) {
     val focusManager = LocalFocusManager.current
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
+    var searchMode by remember { mutableStateOf(0) } // 0=会话, 1=消息
 
     LaunchedEffect(listState) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
@@ -74,84 +76,149 @@ fun SearchScreen(token: String, onBack: () -> Unit) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    TextField(
-                        value = inputText,
-                        onValueChange = { inputText = it },
-                        placeholder = { Text("搜索会话...") },
-                        singleLine = true,
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-                            unfocusedIndicatorColor = MaterialTheme.colorScheme.surfaceVariant
-                        ),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        keyboardActions = KeyboardActions(onSearch = {
-                            focusManager.clearFocus()
-                            viewModel.search(inputText)
-                        }),
-                        trailingIcon = {
-                            if (inputText.isNotEmpty()) {
-                                IconButton(onClick = { inputText = "" }) {
-                                    Icon(Icons.Default.Clear, contentDescription = "清除")
+            Column {
+                TopAppBar(
+                    title = {
+                        TextField(
+                            value = inputText,
+                            onValueChange = { inputText = it },
+                            placeholder = { Text("搜索...") },
+                            singleLine = true,
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                                unfocusedIndicatorColor = MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                            keyboardActions = KeyboardActions(onSearch = {
+                                focusManager.clearFocus()
+                                if (searchMode == 0) viewModel.search(inputText)
+                                else viewModel.searchMessages(inputText)
+                            }),
+                            trailingIcon = {
+                                if (inputText.isNotEmpty()) {
+                                    IconButton(onClick = { inputText = "" }) {
+                                        Icon(Icons.Default.Clear, contentDescription = "清除")
+                                    }
                                 }
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = {
+                            focusManager.clearFocus()
+                            if (searchMode == 0) viewModel.search(inputText)
+                            else viewModel.searchMessages(inputText)
+                        }) {
+                            Icon(Icons.Default.Search, contentDescription = "搜索")
+                        }
+                    }
+                )
+                // 切换按钮
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = searchMode == 0,
+                        onClick = { searchMode = 0 },
+                        label = { Text("搜索会话") }
                     )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = {
-                        focusManager.clearFocus()
-                        viewModel.search(inputText)
-                    }) {
-                        Icon(Icons.Default.Search, contentDescription = "搜索")
-                    }
+                    FilterChip(
+                        selected = searchMode == 1,
+                        onClick = { searchMode = 1 },
+                        label = { Text("搜索消息") }
+                    )
                 }
-            )
+            }
         }
     ) { padding ->
         Box(modifier = Modifier.padding(padding).fillMaxSize()) {
             if (uiState.isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else if (uiState.error != null && uiState.results.isEmpty()) {
-                Text(
-                    text = "搜索失败: ${uiState.error}",
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            } else if (uiState.results.isEmpty() && inputText.isNotEmpty()) {
-                Text("未找到相关会话", modifier = Modifier.align(Alignment.Center))
-            } else {
-                LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-                    items(uiState.results, key = { "${it.type}_${it.id}" }) { chat ->
-                        SearchResultItem(chat = chat, onClick = {
-                            val intent = Intent(context, MessageDetailActivity::class.java)
-                            intent.putExtra("chat_type", if (chat.type == "group") 2 else 1)
-                            if (chat.type == "group") {
-                                intent.putExtra("chat_id", chat.id)
-                            } else {
-                                intent.putExtra("user_id", chat.id)
-                            }
-                            context.startActivity(intent)
-                        })
+            } else if (uiState.error != null && uiState.results.isEmpty() && uiState.messageResults.isEmpty()) {
+                Text(uiState.error ?: "搜索失败", color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center))
+            } else if (searchMode == 0) {
+                // 会话结果
+                if (uiState.results.isEmpty() && inputText.isNotEmpty()) {
+                    Text("未找到相关会话", modifier = Modifier.align(Alignment.Center))
+                } else {
+                    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+                        items(uiState.results, key = { "${it.type}_${it.id}" }) { chat ->
+                            SearchResultItem(chat = chat, onClick = {
+                                val intent = Intent(context, MessageDetailActivity::class.java)
+                                intent.putExtra("chat_type", if (chat.type == "group") 2 else 1)
+                                if (chat.type == "group") {
+                                    intent.putExtra("chat_id", chat.id)
+                                } else {
+                                    intent.putExtra("user_id", chat.id)
+                                }
+                                context.startActivity(intent)
+                            })
+                        }
+                        if (uiState.isLoadingMore) {
+                            item { Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
+                        }
                     }
-                    if (uiState.isLoadingMore) {
-                        item {
-                            Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator()
-                            }
+                }
+            } else {
+                // 消息结果
+                if (uiState.messageResults.isEmpty() && inputText.isNotEmpty()) {
+                    Text("未找到相关消息", modifier = Modifier.align(Alignment.Center))
+                } else {
+                    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+                        items(uiState.messageResults, key = { it.messageId }) { msg ->
+                            SearchMessageItem(msg = msg, onClick = {
+                                val intent = Intent(context, MessageDetailActivity::class.java)
+                                intent.putExtra("chat_type", msg.chatType)
+                                if (msg.chatType == 2) {
+                                    intent.putExtra("chat_id", msg.chatId)
+                                } else {
+                                    intent.putExtra("user_id", msg.chatId)
+                                }
+                                context.startActivity(intent)
+                            })
+                        }
+                        if (uiState.isLoadingMore) {
+                            item { Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun SearchMessageItem(msg: SearchMessageItem, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Image(
+            painter = rememberAsyncImagePainter(msg.chatAvatar),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.size(44.dp).clip(CircleShape)
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(msg.chatName, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Spacer(Modifier.weight(1f))
+                Text(msg.timestampDisplay ?: "", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Spacer(Modifier.height(2.dp))
+            Text(msg.senderUsername, fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.height(2.dp))
+            Text(msg.content, maxLines = 2, overflow = TextOverflow.Ellipsis, fontSize = 14.sp)
         }
     }
 }

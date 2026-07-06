@@ -23,19 +23,21 @@ import org.json.JSONObject
 data class SearchUiState(
     val query: String = "",
     val results: List<SearchChatItem> = emptyList(),
+    val messageResults: List<SearchMessageItem> = emptyList(),
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
     val error: String? = null,
     val pagination: SearchPagination? = null,
-    val hasMore: Boolean = false
+    val hasMore: Boolean = false,
+    val isMessageSearch: Boolean = false
 )
 
 @Serializable
 data class SearchChatItem(
     val type: String,
     val id: Int,
-    val name: String? = null,      // 群聊名称，私聊可能为 null
-    val username: String? = null,  // 私聊用户名，群聊可能为 null
+    val name: String? = null,
+    val username: String? = null,
     val avatar: String,
     val title: String? = null,
     @SerialName("last_message") val lastMessage: String? = null,
@@ -61,6 +63,28 @@ data class SearchResponse(
     val message: String? = null
 )
 
+@Serializable
+data class SearchMessageItem(
+    @SerialName("message_id") val messageId: Int,
+    @SerialName("chat_type") val chatType: Int,
+    @SerialName("chat_id") val chatId: Int,
+    @SerialName("chat_name") val chatName: String,
+    @SerialName("chat_avatar") val chatAvatar: String = "",
+    @SerialName("sender_id") val senderId: Int,
+    @SerialName("sender_username") val senderUsername: String,
+    val content: String,
+    val timestamp: String? = null,
+    @SerialName("timestamp_display") val timestampDisplay: String? = null
+)
+
+@Serializable
+data class MessageSearchResponse(
+    val success: Boolean,
+    val messages: List<SearchMessageItem> = emptyList(),
+    val pagination: SearchPagination? = null,
+    val message: String? = null
+)
+
 class SearchViewModel(private val token: String) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SearchUiState())
@@ -71,7 +95,7 @@ class SearchViewModel(private val token: String) : ViewModel() {
     fun search(keyword: String, chatType: Int? = null) {
         if (keyword.isBlank()) return
         viewModelScope.launch {
-            _uiState.update { it.copy(query = keyword, isLoading = true, error = null, results = emptyList()) }
+            _uiState.update { it.copy(query = keyword, isLoading = true, error = null, results = emptyList(), isMessageSearch = false) }
             try {
                 val result = withContext(Dispatchers.IO) {
                     val json = JSONObject().apply {
@@ -90,14 +114,40 @@ class SearchViewModel(private val token: String) : ViewModel() {
                     AppJson.json.decodeFromString<SearchResponse>(body)
                 }
                 if (result.success) {
-                    _uiState.update {
-                        it.copy(
-                            results = result.chats,
-                            isLoading = false,
-                            pagination = result.pagination,
-                            hasMore = result.pagination?.hasNext ?: false
-                        )
+                    _uiState.update { it.copy(results = result.chats, isLoading = false, pagination = result.pagination, hasMore = result.pagination?.hasNext ?: false) }
+                } else {
+                    _uiState.update { it.copy(isLoading = false, error = result.message ?: "搜索失败") }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, error = e.message) }
+            }
+        }
+    }
+
+    fun searchMessages(keyword: String, chatType: Int? = null) {
+        if (keyword.isBlank()) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(query = keyword, isLoading = true, error = null, messageResults = emptyList(), isMessageSearch = true) }
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    val json = JSONObject().apply {
+                        put("keyword", keyword)
+                        chatType?.let { put("chat_type", it) }
+                        put("page", 1)
+                        put("per_page", 20)
                     }
+                    val request = Request.Builder()
+                        .url("${ApiAddress}chat/search")
+                        .post(json.toString().toRequestBody("application/json".toMediaType()))
+                        .header("x-access-token", token)
+                        .header("isnew", "true")
+                        .build()
+                    val response = client.newCall(request).execute()
+                    val body = response.body?.string() ?: ""
+                    AppJson.json.decodeFromString<MessageSearchResponse>(body)
+                }
+                if (result.success) {
+                    _uiState.update { it.copy(messageResults = result.messages, isLoading = false, pagination = result.pagination, hasMore = result.pagination?.hasNext ?: false) }
                 } else {
                     _uiState.update { it.copy(isLoading = false, error = result.message ?: "搜索失败") }
                 }
@@ -114,32 +164,49 @@ class SearchViewModel(private val token: String) : ViewModel() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true) }
             try {
-                val result = withContext(Dispatchers.IO) {
-                    val json = JSONObject().apply {
-                        put("keyword", state.query)
-                        put("page", nextPage)
-                        put("per_page", 20)
+                if (state.isMessageSearch) {
+                    val result = withContext(Dispatchers.IO) {
+                        val json = JSONObject().apply {
+                            put("keyword", state.query)
+                            put("page", nextPage)
+                            put("per_page", 20)
+                        }
+                        val request = Request.Builder()
+                            .url("${ApiAddress}chat/search")
+                            .post(json.toString().toRequestBody("application/json".toMediaType()))
+                            .header("x-access-token", token)
+                            .header("isnew", "true")
+                            .build()
+                        val response = client.newCall(request).execute()
+                        val body = response.body?.string() ?: ""
+                        AppJson.json.decodeFromString<MessageSearchResponse>(body)
                     }
-                    val request = Request.Builder()
-                        .url("${ApiAddress}chat/search")
-                        .post(json.toString().toRequestBody("application/json".toMediaType()))
-                        .header("x-access-token", token)
-                        .build()
-                    val response = client.newCall(request).execute()
-                    val body = response.body?.string() ?: ""
-                    AppJson.json.decodeFromString<SearchResponse>(body)
-                }
-                if (result.success) {
-                    _uiState.update {
-                        it.copy(
-                            results = it.results + result.chats,
-                            isLoadingMore = false,
-                            pagination = result.pagination,
-                            hasMore = result.pagination?.hasNext ?: false
-                        )
+                    if (result.success) {
+                        _uiState.update { it.copy(messageResults = it.messageResults + result.messages, isLoadingMore = false, pagination = result.pagination, hasMore = result.pagination?.hasNext ?: false) }
+                    } else {
+                        _uiState.update { it.copy(isLoadingMore = false, error = result.message) }
                     }
                 } else {
-                    _uiState.update { it.copy(isLoadingMore = false, error = result.message) }
+                    val result = withContext(Dispatchers.IO) {
+                        val json = JSONObject().apply {
+                            put("keyword", state.query)
+                            put("page", nextPage)
+                            put("per_page", 20)
+                        }
+                        val request = Request.Builder()
+                            .url("${ApiAddress}chat/search")
+                            .post(json.toString().toRequestBody("application/json".toMediaType()))
+                            .header("x-access-token", token)
+                            .build()
+                        val response = client.newCall(request).execute()
+                        val body = response.body?.string() ?: ""
+                        AppJson.json.decodeFromString<SearchResponse>(body)
+                    }
+                    if (result.success) {
+                        _uiState.update { it.copy(results = it.results + result.chats, isLoadingMore = false, pagination = result.pagination, hasMore = result.pagination?.hasNext ?: false) }
+                    } else {
+                        _uiState.update { it.copy(isLoadingMore = false, error = result.message) }
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoadingMore = false, error = e.message) }
