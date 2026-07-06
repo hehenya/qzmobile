@@ -245,7 +245,23 @@ DisposableEffect(lifecycle) {
                     }
                 }
             )
+            val isOffline by viewModel.isOffline.collectAsState()
 
+            if (isOffline) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.errorContainer
+                ) {
+                    Row(
+                        Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("无法连接到轻昼服务器，请检查网络配置！", fontSize = 13.sp, color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            }
             Box(modifier = Modifier.fillMaxSize()) {
                 PullToRefreshBox(
                     isRefreshing = uiState.isRefreshing,

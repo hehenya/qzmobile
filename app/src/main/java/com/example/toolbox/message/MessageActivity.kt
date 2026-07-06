@@ -517,7 +517,7 @@ fun MessageDetailScreen(
     BackHandler(enabled = selectionMode) {
         viewModel.exitSelectionMode()
     }
-
+    
     Box(modifier = Modifier.fillMaxSize()) {
         val backgroundUrl by viewModel.backgroundUrl.collectAsState()
         backgroundUrl?.takeIf { it.isNotEmpty() }?.let { bgUrl ->

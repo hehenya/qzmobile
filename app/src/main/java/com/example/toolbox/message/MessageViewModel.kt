@@ -18,6 +18,9 @@ import kotlinx.coroutines.withContext
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import android.content.Context
+import com.example.toolbox.CacheManager
+import com.example.toolbox.MyApplication
 
 class MessageViewModel(
     private val token: String
@@ -25,7 +28,8 @@ class MessageViewModel(
 
     private val _uiState = MutableStateFlow(MessageUiState())
     val uiState: StateFlow<MessageUiState> = _uiState.asStateFlow()
-
+    private val _isOffline = MutableStateFlow(false)
+    val isOffline: StateFlow<Boolean> = _isOffline.asStateFlow()
     private val client = OkHttpClient()
     private var isWebSocketUpdate = false
 
@@ -122,10 +126,18 @@ class MessageViewModel(
     private fun loadFriends(page: Int, isRefresh: Boolean) {
         viewModelScope.launch {
             _uiState.update {
-                if (isRefresh) it.copy(isRefreshing = true, error = null)
+                if (isRefresh) it.copy(isRefreshing = true, error = null, isOffline = false)
                 else it.copy(isLoadingMore = true, error = null)
             }
 
+            if (isRefresh) {
+                val context = MyApplication.instance
+                val cached = CacheManager.loadJson<List<com.example.toolbox.data.Friend>>(context, "friends_list")
+                if (cached != null && _uiState.value.friends.isEmpty()) {
+                    _uiState.update { it.copy(friends = cached) }
+                }
+            }
+    
             val result = runCatching {
                 withContext(Dispatchers.IO) {
                     val requestBody = FormBody.Builder()
@@ -163,19 +175,17 @@ class MessageViewModel(
                             error = null
                         )
                     }
+                    CacheManager.saveJson(MyApplication.instance, "friends_list", friendsResponse.friends)
                 } else {
-                    _uiState.update { it.copy(
-                        isRefreshing = false,
-                        isLoadingMore = false,
-                        error = "请求失败或数据为空"
-                    ) }
+                    _uiState.update { it.copy(isRefreshing = false, isLoadingMore = false, error = "请求失败或数据为空") }
                 }
             }.onFailure { e ->
-                _uiState.update { it.copy(
-                    isRefreshing = false,
-                    isLoadingMore = false,
-                    error = e.message
-                ) }
+                val cached = CacheManager.loadJson<List<com.example.toolbox.data.Friend>>(MyApplication.instance, "friends_list")
+                if (cached != null && _uiState.value.friends.isEmpty()) {
+                    _uiState.update { it.copy(friends = cached, isRefreshing = false, isLoadingMore = false, isOffline = true) }
+                } else {
+                    _uiState.update { it.copy(isRefreshing = false, isLoadingMore = false, error = "无法连接到轻昼服务器，请检查网络配置！", isOffline = true) }
+                }
             }
         }
     }

@@ -44,6 +44,8 @@ import java.time.YearMonth
 import kotlinx.serialization.json.Json
 import com.example.toolbox.DraftManager
 import androidx.compose.runtime.DisposableEffect
+import com.example.toolbox.CacheManager
+import com.example.toolbox.MyApplication
 
 class MessageDetailViewModel(
     private val token: String,
@@ -224,7 +226,8 @@ class MessageDetailViewModel(
     
                     val sortedMessages =
                         result.messages.sortedByDescending { it.sendTime }
-    
+                    val cacheKey = "messages_${chatType}_${chatId}"
+                    CacheManager.saveJson(MyApplication.instance, cacheKey, sortedMessages)
                     msgIdCache.clear()
                     msgIdCache.addAll(sortedMessages.map { it.effectiveMsgId })
     
@@ -269,14 +272,13 @@ class MessageDetailViewModel(
                 }
     
             } catch (e: Exception) {
-    
                 Log.e("CHAT_LOAD", "loadMessages Exception", e)
-    
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        error = e.stackTraceToString()
-                    )
+                val cacheKey = "messages_${chatType}_${chatId}"
+                val cached = CacheManager.loadJson<List<Message>>(MyApplication.instance, cacheKey)
+                if (cached != null && _uiState.value.messages.isEmpty()) {
+                    _uiState.update { it.copy(messages = cached, isLoading = false) }
+                } else {
+                    _uiState.update { it.copy(isLoading = false, error = "无法连接到轻昼服务器，请检查网络配置！") }
                 }
             }
         }
