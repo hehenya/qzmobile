@@ -38,7 +38,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.rememberAsyncImagePainter
 import com.example.toolbox.TokenManager
 import com.example.toolbox.ui.theme.ToolBoxTheme
-import androidx.compose.material3.FilterChip
 
 class SearchActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -63,7 +62,6 @@ fun SearchScreen(token: String, onBack: () -> Unit) {
     val focusManager = LocalFocusManager.current
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
-    var searchMode by remember { mutableStateOf(0) } // 0=会话, 1=消息
 
     LaunchedEffect(listState) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
@@ -76,68 +74,41 @@ fun SearchScreen(token: String, onBack: () -> Unit) {
 
     Scaffold(
         topBar = {
-            Column {
-                TopAppBar(
-                    title = {
-                        TextField(
-                            value = inputText,
-                            onValueChange = { inputText = it },
-                            placeholder = { Text("搜索...") },
-                            singleLine = true,
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                                focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-                                unfocusedIndicatorColor = MaterialTheme.colorScheme.surfaceVariant
-                            ),
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                            keyboardActions = KeyboardActions(onSearch = {
-                                focusManager.clearFocus()
-                                if (searchMode == 0) viewModel.search(inputText)
-                                else viewModel.searchMessages(inputText)
-                            }),
-                            trailingIcon = {
-                                if (inputText.isNotEmpty()) {
-                                    IconButton(onClick = { inputText = "" }) {
-                                        Icon(Icons.Default.Clear, contentDescription = "清除")
-                                    }
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = {
+            TopAppBar(
+                title = {
+                    TextField(
+                        value = inputText,
+                        onValueChange = { inputText = it },
+                        placeholder = { Text("搜索...") },
+                        singleLine = true,
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                            focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                            unfocusedIndicatorColor = MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = {
                             focusManager.clearFocus()
-                            if (searchMode == 0) viewModel.search(inputText)
-                            else viewModel.searchMessages(inputText)
-                        }) {
-                            Icon(Icons.Default.Search, contentDescription = "搜索")
-                        }
+                            viewModel.search(inputText)
+                            viewModel.searchMessages(inputText)
+                        }),
+                        trailingIcon = {
+                            if (inputText.isNotEmpty()) {
+                                IconButton(onClick = { inputText = "" }) {
+                                    Icon(Icons.Default.Clear, contentDescription = "清除")
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
-                )
-                // 切换按钮
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    FilterChip(
-                        selected = searchMode == 0,
-                        onClick = { searchMode = 0 },
-                        label = { Text("搜索会话") }
-                    )
-                    FilterChip(
-                        selected = searchMode == 1,
-                        onClick = { searchMode = 1 },
-                        label = { Text("搜索消息") }
-                    )
                 }
-            }
+            )
         }
     ) { padding ->
         Box(modifier = Modifier.padding(padding).fillMaxSize()) {
@@ -149,16 +120,11 @@ fun SearchScreen(token: String, onBack: () -> Unit) {
                 Text("未找到相关结果", modifier = Modifier.align(Alignment.Center))
             } else {
                 LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-                    // 会话结果
                     if (uiState.results.isNotEmpty()) {
                         item {
-                            Text(
-                                "会话",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp,
+                            Text("会话", fontWeight = FontWeight.Bold, fontSize = 14.sp,
                                 color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                            )
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
                         }
                         items(uiState.results, key = { "chat_${it.type}_${it.id}" }) { chat ->
                             SearchResultItem(chat = chat, onClick = {
@@ -170,24 +136,14 @@ fun SearchScreen(token: String, onBack: () -> Unit) {
                             })
                         }
                     }
-        
-                    // 分割器
                     if (uiState.results.isNotEmpty() && uiState.messageResults.isNotEmpty()) {
-                        item {
-                            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-                        }
+                        item { HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) }
                     }
-        
-                    // 消息结果
                     if (uiState.messageResults.isNotEmpty()) {
                         item {
-                            Text(
-                                "消息",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp,
+                            Text("消息", fontWeight = FontWeight.Bold, fontSize = 14.sp,
                                 color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                            )
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
                         }
                         items(uiState.messageResults, key = { "msg_${it.messageId}" }) { msg ->
                             SearchMessageItem(msg = msg, onClick = {
@@ -199,7 +155,6 @@ fun SearchScreen(token: String, onBack: () -> Unit) {
                             })
                         }
                     }
-        
                     if (uiState.isLoadingMore) {
                         item { Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
                     }
@@ -239,10 +194,7 @@ fun SearchMessageItem(msg: SearchMessageItem, onClick: () -> Unit) {
 @Composable
 fun SearchResultItem(chat: SearchChatItem, onClick: () -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box {
@@ -250,70 +202,34 @@ fun SearchResultItem(chat: SearchChatItem, onClick: () -> Unit) {
                 painter = rememberAsyncImagePainter(chat.avatar),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(50.dp)
-                    .clip(CircleShape)
+                modifier = Modifier.size(50.dp).clip(CircleShape)
             )
             if (chat.unreadCount > 0) {
-                Badge(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .offset(x = 4.dp, y = (-4).dp)
-                ) {
+                Badge(modifier = Modifier.align(Alignment.TopEnd).offset(x = 4.dp, y = (-4).dp)) {
                     Text(text = chat.unreadCount.toString(), fontSize = 10.sp)
                 }
             }
         }
-
         Spacer(modifier = Modifier.width(12.dp))
-
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = chat.name ?: chat.username ?: "未知",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
-                if (chat.title != null && chat.title.isNotBlank()) {
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Icon(
-                        modifier = Modifier.size(14.dp),
-                        imageVector = Icons.Default.Search,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
+                Text(chat.name ?: chat.username ?: "未知", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Spacer(modifier = Modifier.weight(1f))
                 Icon(
                     imageVector = if (chat.type == "group") Icons.Default.Group else Icons.Default.Person,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
+                    contentDescription = null, modifier = Modifier.size(16.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-
             Spacer(modifier = Modifier.height(4.dp))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = chat.lastMessage ?: "暂无消息",
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f)
-                )
-
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Text(chat.lastMessage ?: "暂无消息", maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f))
                 if (chat.lastMessageTime != null) {
-                    Text(
-                        text = chat.lastMessageTime,
-                        fontSize = 12.sp,
+                    Text(chat.lastMessageTime, fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
+                        modifier = Modifier.padding(start = 8.dp))
                 }
             }
         }
