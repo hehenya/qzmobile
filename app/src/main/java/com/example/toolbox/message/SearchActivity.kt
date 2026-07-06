@@ -145,50 +145,63 @@ fun SearchScreen(token: String, onBack: () -> Unit) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else if (uiState.error != null && uiState.results.isEmpty() && uiState.messageResults.isEmpty()) {
                 Text(uiState.error ?: "搜索失败", color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center))
-            } else if (searchMode == 0) {
-                // 会话结果
-                if (uiState.results.isEmpty() && inputText.isNotEmpty()) {
-                    Text("未找到相关会话", modifier = Modifier.align(Alignment.Center))
-                } else {
-                    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-                        items(uiState.results, key = { "${it.type}_${it.id}" }) { chat ->
+            } else if (uiState.results.isEmpty() && uiState.messageResults.isEmpty() && inputText.isNotEmpty()) {
+                Text("未找到相关结果", modifier = Modifier.align(Alignment.Center))
+            } else {
+                LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+                    // 会话结果
+                    if (uiState.results.isNotEmpty()) {
+                        item {
+                            Text(
+                                "会话",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
+                        items(uiState.results, key = { "chat_${it.type}_${it.id}" }) { chat ->
                             SearchResultItem(chat = chat, onClick = {
                                 val intent = Intent(context, MessageDetailActivity::class.java)
                                 intent.putExtra("chat_type", if (chat.type == "group") 2 else 1)
-                                if (chat.type == "group") {
-                                    intent.putExtra("chat_id", chat.id)
-                                } else {
-                                    intent.putExtra("user_id", chat.id)
-                                }
+                                if (chat.type == "group") intent.putExtra("chat_id", chat.id)
+                                else intent.putExtra("user_id", chat.id)
                                 context.startActivity(intent)
                             })
                         }
-                        if (uiState.isLoadingMore) {
-                            item { Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
+                    }
+        
+                    // 分割器
+                    if (uiState.results.isNotEmpty() && uiState.messageResults.isNotEmpty()) {
+                        item {
+                            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                         }
                     }
-                }
-            } else {
-                // 消息结果
-                if (uiState.messageResults.isEmpty() && inputText.isNotEmpty()) {
-                    Text("未找到相关消息", modifier = Modifier.align(Alignment.Center))
-                } else {
-                    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-                        items(uiState.messageResults, key = { it.messageId }) { msg ->
+        
+                    // 消息结果
+                    if (uiState.messageResults.isNotEmpty()) {
+                        item {
+                            Text(
+                                "消息",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
+                        items(uiState.messageResults, key = { "msg_${it.messageId}" }) { msg ->
                             SearchMessageItem(msg = msg, onClick = {
                                 val intent = Intent(context, MessageDetailActivity::class.java)
                                 intent.putExtra("chat_type", msg.chatType)
-                                if (msg.chatType == 2) {
-                                    intent.putExtra("chat_id", msg.chatId)
-                                } else {
-                                    intent.putExtra("user_id", msg.chatId)
-                                }
+                                if (msg.chatType == 2) intent.putExtra("chat_id", msg.chatId)
+                                else intent.putExtra("user_id", msg.chatId)
                                 context.startActivity(intent)
                             })
                         }
-                        if (uiState.isLoadingMore) {
-                            item { Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
-                        }
+                    }
+        
+                    if (uiState.isLoadingMore) {
+                        item { Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
                     }
                 }
             }
