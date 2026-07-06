@@ -179,7 +179,15 @@ class WebSocketManager internal constructor() {
                                     val senderName = dataObj.optString("sender_username", "未知用户")
                                     val content = dataObj.optString("content", "")
                                     val senderAvatar = dataObj.optString("sender_avatar", "")
-                                    
+                                    NotificationManager.show(
+                                        InAppNotification(
+                                            title = senderName,
+                                            message = content.ifEmpty { "[图片]" },
+                                            avatarUrl = senderAvatar,
+                                            chatId = chatId.toIntOrNull(),
+                                            chatType = 1
+                                        )
+                                    )
                                 }
                             }
                         }
@@ -216,7 +224,15 @@ class WebSocketManager internal constructor() {
                                 val senderAvatar = dataObj.optString("sender_avatar", "")
                                 val groupName = dataObj.optString("group_name", "")
                                 val title = if (groupName.isNotEmpty()) "$groupName - $senderName" else "群聊($chatId) $senderName"
-                                
+                                NotificationManager.show(
+                                    InAppNotification(
+                                        title = title,
+                                        message = content.ifEmpty { "[图片]" },
+                                        avatarUrl = senderAvatar,
+                                        chatId = chatId.toIntOrNull(),
+                                        chatType = 2
+                                    )
+                                )
                             }
                         }
                     } catch (e: Exception) {
