@@ -77,6 +77,7 @@ data class Message(
     @SerialName("msg_delete_time") val msgDeleteTime: Long? = null,
     @SerialName("msg_delete_time_formatted") val msgDeleteTimeFormatted: String? = null,
     @SerialName("msg_delete_time_display") val msgDeleteTimeDisplay: String? = null,
+    val isTyping: Boolean = false,
     @SerialName("link_info") val linkInfo: List<LinkInfo>? = null,
     val tag: List<String> = emptyList()
 

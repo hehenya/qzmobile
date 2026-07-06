@@ -281,7 +281,12 @@ class MessageDetailActivity : ComponentActivity() {
                                                     Spacer(Modifier.width(8.dp))
                                                     Column {
                                                         Text(group.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                                                        Text("${group.membersCount} 名成员", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                        val typingText by viewModel.typingText.collectAsState()
+                                                        Text(
+                                                            typingText ?: "${group.membersCount} 名成员", 
+                                                            fontSize = 12.sp, 
+                                                            color = if (typingText != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                                        )
                                                     }
                                                 }
                                             } else if (uiState.otherUser != null) {
@@ -294,7 +299,14 @@ class MessageDetailActivity : ComponentActivity() {
                                                 ) {
                                                     AsyncImage(model = otherUser.avatar, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(36.dp).clip(CircleShape))
                                                     Spacer(Modifier.width(8.dp))
-                                                    Column { Text(otherUser.username, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
+                                                    val typingText by viewModel.typingText.collectAsState()
+                                                    Column { 
+                                                        Text(
+                                                            if (typingText != null) "正在输入中..." else otherUser.username, 
+                                                            fontWeight = FontWeight.Bold, 
+                                                            fontSize = 16.sp
+                                                        ) 
+                                                    }
                                                 }
                                             } else Text("聊天详情")
                                         },
@@ -855,7 +867,7 @@ fun MessageDetailScreen(
                             if (uiState.editingMessage != null) {
                                 viewModel.updateEditingContent(it)
                             } else {
-                                viewModel.updateInputText(it) 
+                                viewModel.onInputTextChanged(it) 
                             }
                         },
                         onSendClick = {

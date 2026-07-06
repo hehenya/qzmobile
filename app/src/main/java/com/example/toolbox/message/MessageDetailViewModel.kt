@@ -47,6 +47,7 @@ import androidx.compose.runtime.DisposableEffect
 import com.example.toolbox.CacheManager
 import com.example.toolbox.MyApplication
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.coroutines.Job
 
 class MessageDetailViewModel(
     private val token: String,
@@ -76,7 +77,9 @@ class MessageDetailViewModel(
 
     private val _backgroundUrl = MutableStateFlow<String?>(null)
     val backgroundUrl: StateFlow<String?> = _backgroundUrl.asStateFlow()
-
+    private var typingJob: Job? = null
+    private val _typingText = MutableStateFlow<String?>(null)
+    val typingText: StateFlow<String?> = _typingText.asStateFlow()
     private val client = OkHttpClient()
     private var currentPage = 1
     private var hasMore = true
@@ -165,6 +168,19 @@ class MessageDetailViewModel(
                                 messages = listOf(message) + state.messages
                             )
                         }
+                    }
+                }
+                "group_typing_status" -> {
+                    _typingText.value = message.content
+                }
+                "group_stop_typing" -> {
+                    _typingText.value = null
+                }
+                "private_typing_status" -> {
+                    if (message.isTyping) {
+                        _typingText.value = "${message.senderUsername} 正在输入..."
+                    } else {
+                        _typingText.value = null
                     }
                 }
             }
@@ -591,6 +607,17 @@ class MessageDetailViewModel(
     fun updateInputText(text: String) {
         _uiState.update { it.copy(inputText = text) }
         DraftManager.saveDraft(chatType, chatId, text)
+    }
+    fun onInputTextChanged(text: String) {
+        updateInputText(text)
+        typingJob?.cancel()
+        if (text.isNotEmpty()) {
+            ChatSocketManager.getInstance().sendTypingStatus(chatType, chatId, true)
+            typingJob = viewModelScope.launch {
+                delay(3000)
+                ChatSocketManager.getInstance().sendTypingStatus(chatType, chatId, false)
+            }
+        }
     }
 
     fun toggleMarkdown() {

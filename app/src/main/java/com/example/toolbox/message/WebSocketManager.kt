@@ -76,7 +76,9 @@ class WebSocketManager internal constructor() {
     fun setOnFriendListUpdateListener(listener: (JSONObject) -> Unit) {
         this.friendListUpdateListener = listener
     }
-
+    private fun emit(event: String, data: JSONObject) {
+        socket?.emit(event, arrayOf(data))
+    }
     private var groupMessageListener: ((JSONObject) -> Unit)? = null
 
     fun setOnGroupMessageListener(listener: (JSONObject) -> Unit) {
@@ -264,7 +266,42 @@ class WebSocketManager internal constructor() {
                     Log.e("WS", "解析 group_list_update 失败: ${e.message}")
                 }
             }
+            socket?.on("private_typing_status") { args ->
+                try {
+                    val data = args[0] as JSONObject
+                    val userId = data.optInt("user_id")
+                    val username = data.optString("username")
+                    val isTyping = data.optBoolean("is_typing")
+                    mainHandler.post {
+                        observers.forEach { observer ->
+                            val msg = Message(
+                                content = if (isTyping) "$username 正在输入..." else "",
+                                senderUsername = username,
+                                isTyping = isTyping
+                            )
+                            observer("private_typing_status", userId.toString(), 1, msg)
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("WS", "解析 typing 失败", e)
+                }
+            }
 
+            socket?.on("group_typing_status") { args ->
+                try {
+                    val data = args[0] as JSONObject
+                    val groupId = data.optInt("group_id")
+                    val typingText = data.optString("typing_text")
+                    mainHandler.post {
+                        observers.forEach { observer ->
+                            val msg = Message(content = typingText)
+                            observer("group_typing_status", groupId.toString(), 2, msg)
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("WS", "解析 group typing 失败", e)
+                }
+            }
             socket?.connect()
         } catch (e: URISyntaxException) {
             Log.e("WS", "连接地址错误", e)
@@ -290,5 +327,26 @@ class WebSocketManager internal constructor() {
         socket?.disconnect()
         socket?.off()
         socket = null
+    }
+    fun sendTypingStatus(chatType: Int, chatId: Int, isTyping: Boolean) {
+        val event = if (chatType == 1) "private_typing" else "group_typing"
+        val data = if (chatType == 1) {
+            JSONObject().apply {
+                put("user_id", chatId)
+                put("is_typing", isTyping)
+            }
+        } else {
+            if (isTyping) {
+                JSONObject().apply {
+                    put("group_id", chatId)
+                    put("is_typing", true)
+                }
+            } else {
+                JSONObject().apply {
+                    put("group_id", chatId)
+                }
+            }
+        }
+        emit(event, data)
     }
 }
