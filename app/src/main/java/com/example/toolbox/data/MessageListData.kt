@@ -43,5 +43,6 @@ data class MessageUiState(
     val isLoadingMore: Boolean = false,      // 加载更多中
     val error: String? = null,
     val pagination: Pagination? = null,
-    val hasMore: Boolean = true
+    val hasMore: Boolean = true,
+    val isOffline: Boolean = false
 )
