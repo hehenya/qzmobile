@@ -125,7 +125,7 @@ class MessageViewModel(
 
             // 先加载缓存
             if (isRefresh) {
-                val cachedStr = CacheManager.load(MyApplication.instance, "friends_list")
+                val cachedStr = CacheManager.load(Application.instance, "friends_list")
                 if (cachedStr != null && _uiState.value.friends.isEmpty()) {
                     try {
                         val cached = AppJson.json.decodeFromString<FriendsResponse>(cachedStr)
@@ -170,12 +170,12 @@ class MessageViewModel(
                         )
                     }
                     // 缓存数据
-                    CacheManager.save(MyApplication.instance, "friends_list", AppJson.json.encodeToString(FriendsResponse::class.java, friendsResponse))
+                    CacheManager.save(Application.instance, "friends_list", AppJson.json.encodeToString(FriendsResponse.serializer(), friendsResponse))
                 } else {
                     _uiState.update { it.copy(isRefreshing = false, isLoadingMore = false, error = "请求失败或数据为空") }
                 }
             }.onFailure { e ->
-                val cachedStr = CacheManager.load(MyApplication.instance, "friends_list")
+                val cachedStr = CacheManager.load(Application.instance, "friends_list")
                 if (cachedStr != null && _uiState.value.friends.isEmpty()) {
                     try {
                         val cached = AppJson.json.decodeFromString<FriendsResponse>(cachedStr)
