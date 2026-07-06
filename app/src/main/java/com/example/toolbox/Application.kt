@@ -29,6 +29,15 @@ object AppJson {
 }
 
 class MyApplication : Application(), SingletonImageLoader.Factory {
+    companion object {
+        lateinit var instance: MyApplication
+    }
+    
+    override fun onCreate() {
+        super.onCreate()
+        instance = this
+    }
+    
     override fun onTerminate() {
         super.onTerminate()
         ChatSocketManager.disconnect()

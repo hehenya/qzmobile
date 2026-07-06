@@ -230,7 +230,7 @@ class MessageDetailViewModel(
                         val cacheKey = "messages_${chatType}_${chatId}"
                         try {
                             val jsonStr = AppJson.json.encodeToString(ListSerializer(Message.serializer()), sortedMessages)
-                            CacheManager.save(Application.instance, cacheKey, jsonStr)
+                            CacheManager.save(MyApplication.instance, cacheKey, jsonStr)
                         } catch (_: Exception) {}
                     msgIdCache.clear()
                     msgIdCache.addAll(sortedMessages.map { it.effectiveMsgId })
@@ -278,7 +278,7 @@ class MessageDetailViewModel(
             } catch (e: Exception) {
                 Log.e("CHAT_LOAD", "loadMessages Exception", e)
                 val cacheKey = "messages_${chatType}_${chatId}"
-                val cachedStr = CacheManager.load(Application.instance, cacheKey)
+                val cachedStr = CacheManager.load(MyApplication.instance, cacheKey)
                 if (cachedStr != null && _uiState.value.messages.isEmpty()) {
                     try {
                         val cached = AppJson.json.decodeFromString<List<Message>>(cachedStr)
