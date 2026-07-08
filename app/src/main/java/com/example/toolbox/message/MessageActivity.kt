@@ -1046,7 +1046,6 @@ fun MessageBubble(
                     contentDescription = null,
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
-                        .width(200.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .clickable { onImageClick(listOf(message.content), 0) }
                 )
