@@ -1043,6 +1043,23 @@ fun MessageBubble(
                 Text(timestampDisplay, color = Color.White, fontSize = 11.sp)
             }
         }
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { onShowMenuChanged?.invoke(null) }
+        ) {
+            DropdownMenuItem(
+                text = { Text("收藏") },
+                onClick = { onShowMenuChanged?.invoke(null); onCollectSticker?.invoke(message) },
+                leadingIcon = { Icon(Icons.Filled.FavoriteBorder, null, Modifier.size(18.dp)) }
+            )
+            if (message.isMine) {
+                DropdownMenuItem(
+                    text = { Text("删除") },
+                    onClick = { onShowMenuChanged?.invoke(null); onDeleteSticker?.invoke(message) },
+                    leadingIcon = { Icon(Icons.Filled.Delete, null, Modifier.size(18.dp)) }
+                )
+            }
+        }
     } else {
         Column(modifier = Modifier.fillMaxWidth()) {
             if (showDate && dateString != null) {
