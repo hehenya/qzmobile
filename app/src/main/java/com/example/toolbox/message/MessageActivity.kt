@@ -1177,7 +1177,11 @@ fun MessageBubble(
                                         Column {
                                             Text(ref.senderUsername, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = quoteNameColor)
                                             if (ref.content.isNotBlank()) Text(ref.content, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, color = quoteTextColor)
-                                            if (ref.images.isNotEmpty()) AsyncImage(model = ref.images.first(), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(8.dp)).padding(top = 4.dp))
+                                            if (ref.contentType == 7) {
+                                                Text("表情消息", fontSize = 12.sp, color = quoteTextColor)
+                                            } else if (ref.images.isNotEmpty()) {
+                                                AsyncImage(model = ref.images.first(), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(8.dp)).padding(top = 4.dp))
+                                            }
                                         }
                                     }
                                 }
