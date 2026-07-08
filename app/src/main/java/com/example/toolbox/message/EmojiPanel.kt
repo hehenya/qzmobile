@@ -15,6 +15,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import androidx.compose.foundation.combinedClickable
 
 data class EmojiItem(
     val id: Int,
@@ -27,6 +28,7 @@ fun EmojiPanel(
     emojis: List<EmojiItem>,
     isLoading: Boolean,
     onEmojiClick: (EmojiItem) -> Unit,
+    onEmojiLongPress: ((EmojiItem) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -57,7 +59,10 @@ fun EmojiPanel(
                         modifier = Modifier
                             .aspectRatio(1f)
                             .clip(RoundedCornerShape(8.dp))
-                            .clickable { onEmojiClick(emoji) }
+                            .combinedClickable(
+                                onClick = { onEmojiClick(emoji) },
+                                onLongClick = { onEmojiLongPress?.invoke(emoji) }
+                            )
                     )
                 }
             }

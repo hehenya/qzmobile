@@ -871,18 +871,7 @@ fun MessageDetailScreen(
                     val emojis by viewModel.emojis.collectAsState()
                     val isLoadingEmojis by viewModel.isLoadingEmojis.collectAsState()
 
-                    AnimatedVisibility(
-                        visible = emojiPanelVisible,
-                        enter = fadeIn() + expandVertically(),
-                        exit = fadeOut() + shrinkVertically()
-                    ) {
-                        EmojiPanel(
-                            emojis = emojis,
-                            isLoading = isLoadingEmojis,
-                            onEmojiClick = { viewModel.sendEmoji(it) },
-                            modifier = Modifier.height(260.dp)
-                        )
-                    }
+                    
 
                     MessageInput(
                         inputText = if (uiState.editingMessage != null) uiState.editingContent else uiState.inputText,
@@ -912,6 +901,19 @@ fun MessageDetailScreen(
                         onEmojiClick = { viewModel.toggleEmojiPanel() }
                         
                     )
+                    AnimatedVisibility(
+                        visible = emojiPanelVisible,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        EmojiPanel(
+                            emojis = emojis,
+                            isLoading = isLoadingEmojis,
+                            onEmojiClick = { viewModel.sendEmoji(it) },
+                            onEmojiLongPress = { viewModel.deleteEmoji(it) },
+                            modifier = Modifier.height(260.dp)
+                        )
+                    }
                 }
             }
         }
@@ -1004,7 +1006,19 @@ fun MessageBubble(
         }
     } else if (message.isSticker || message.contentType == 7) {
         Box(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 2.dp)
+                .combinedClickable(
+                    onClick = {
+                        if (isSelectionMode) onClickInSelectionMode?.invoke()
+                        else onShowMenuChanged?.invoke(message.effectiveMsgId)
+                    },
+                    onLongClick = {
+                        if (!isSelectionMode) onLongPress?.invoke()
+                    }
+                )
+                .then(if (isSelected) Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(8.dp)) else Modifier),
             contentAlignment = if (isMine) Alignment.CenterEnd else Alignment.CenterStart
         ) {
             AsyncImage(
@@ -1012,7 +1026,7 @@ fun MessageBubble(
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
                 modifier = Modifier
-                    .size(80.dp)
+                    .size(200.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .clickable { onImageClick(listOf(message.content), 0) }
             )
@@ -1157,7 +1171,7 @@ fun MessageBubble(
                                 if (message.images.isNotEmpty()) {
                                     Spacer(Modifier.height(4.dp)); val hasText = message.content.isNotBlank(); val imgCount = message.images.size
                                     if (imgCount == 1) {
-                                        Box(modifier = Modifier.widthIn(max = 280.dp).clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, 0) }) {
+                                        Box(modifier = Modifier.widthIn(max = 200.dp).clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, 0) }) {
                                             AsyncImage(model = message.images[0], contentDescription = null, contentScale = ContentScale.FillWidth, modifier = Modifier.fillMaxWidth())
                                             if (!hasText) {
                                                 Text(

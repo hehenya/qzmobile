@@ -885,6 +885,23 @@ class MessageDetailViewModel(
             }
         }
     }
+    fun deleteEmoji(emoji: EmojiItem) {
+        viewModelScope.launch {
+            try {
+                val body = JSONObject().apply { put("sticker_id", emoji.id) }
+                val request = Request.Builder()
+                    .url("${ApiAddress}sticker/delete")
+                    .post(body.toString().toRequestBody("application/json".toMediaType()))
+                    .header("x-access-token", token)
+                    .build()
+                withContext(Dispatchers.IO) { client.newCall(request).execute() }
+                _emojis.value = _emojis.value.filter { it.id != emoji.id }
+                _toastMessage.emit("已删除")
+            } catch (e: Exception) {
+                _toastMessage.emit("删除失败")
+            }
+        }
+    }
     private val _activeDays = MutableStateFlow<List<ActiveDay>>(emptyList())
     val activeDays: StateFlow<List<ActiveDay>> = _activeDays.asStateFlow()
 
