@@ -1008,7 +1008,7 @@ fun MessageBubble(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 2.dp)
+                .padding(8.dp)
                 .combinedClickable(
                     onClick = {
                         if (isSelectionMode) onClickInSelectionMode?.invoke()
@@ -1042,22 +1042,22 @@ fun MessageBubble(
                 Spacer(Modifier.width(2.dp))
                 Text(timestampDisplay, color = Color.White, fontSize = 11.sp)
             }
-        }
-        DropdownMenu(
-            expanded = showMenu,
-            onDismissRequest = { onShowMenuChanged?.invoke(null) }
-        ) {
-            DropdownMenuItem(
-                text = { Text("收藏") },
-                onClick = { onShowMenuChanged?.invoke(null); onCollectSticker?.invoke(message) },
-                leadingIcon = { Icon(Icons.Filled.FavoriteBorder, null, Modifier.size(18.dp)) }
-            )
-            if (message.isMine) {
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { onShowMenuChanged?.invoke(null) }
+            ) {
                 DropdownMenuItem(
-                    text = { Text("删除") },
-                    onClick = { onShowMenuChanged?.invoke(null); onDeleteSticker?.invoke(message) },
-                    leadingIcon = { Icon(Icons.Filled.Delete, null, Modifier.size(18.dp)) }
+                    text = { Text("收藏") },
+                    onClick = { onShowMenuChanged?.invoke(null); onCollectSticker?.invoke(message) },
+                    leadingIcon = { Icon(Icons.Filled.FavoriteBorder, null, Modifier.size(18.dp)) }
                 )
+                if (message.isMine) {
+                    DropdownMenuItem(
+                        text = { Text("删除") },
+                        onClick = { onShowMenuChanged?.invoke(null); onDeleteSticker?.invoke(message) },
+                        leadingIcon = { Icon(Icons.Filled.Delete, null, Modifier.size(18.dp)) }
+                    )
+                }
             }
         }
     } else {
