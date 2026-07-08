@@ -156,6 +156,9 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import com.example.toolbox.data.displayTag
+import androidx.compose.material.icons.filled.EmojiEmotions
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Delete
 
 // ---- Activity ----
 class MessageDetailActivity : ComponentActivity() {
@@ -676,7 +679,9 @@ fun MessageDetailScreen(
                                             putExtra("chat_id", uiState.chatId)
                                             putExtra("date_string", dateString)
                                         }
-                                        context.startActivity(intent)
+                                        context.startActivity(intent),
+                                        onCollectSticker = { viewModel.collectSticker(it) },
+                                        onDeleteSticker = { viewModel.deleteSticker(it) }
                                     }
                                 )
                             }  
@@ -858,6 +863,22 @@ fun MessageDetailScreen(
                             }
                         }
                     }
+                    val emojiPanelVisible by viewModel.emojiPanelVisible.collectAsState()
+                    val emojis by viewModel.emojis.collectAsState()
+                    val isLoadingEmojis by viewModel.isLoadingEmojis.collectAsState()
+
+                    AnimatedVisibility(
+                        visible = emojiPanelVisible,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        EmojiPanel(
+                            emojis = emojis,
+                            isLoading = isLoadingEmojis,
+                            onEmojiClick = { viewModel.sendEmoji(it) },
+                            modifier = Modifier.height(260.dp)
+                        )
+                    }
 
                     MessageInput(
                         inputText = if (uiState.editingMessage != null) uiState.editingContent else uiState.inputText,
@@ -884,6 +905,7 @@ fun MessageDetailScreen(
                         isUploading = isUploading,
                         uploadProgress = uploadProgress,
                         onCancelUpload = { viewModel.cancelUpload() },
+                        onEmojiClick = { viewModel.toggleEmojiPanel() }
                         
                     )
                 }
@@ -951,7 +973,9 @@ fun MessageBubble(
     avatarAlignment: Alignment.Vertical = Alignment.Bottom,
     onTimeClick: (() -> Unit)? = null,
     onDateClick: ((String) -> Unit)? = null,
-    isFirstFromSender: Boolean = true
+    isFirstFromSender: Boolean = true,
+    onCollectSticker: ((Message) -> Unit)? = null,
+    onDeleteSticker: ((Message) -> Unit)? = null
 ) {
     val isMine = message.isMine || message.direction == "right"
     val isRecalledMessage = message.msgDeleteTime != null
@@ -971,6 +995,33 @@ fun MessageBubble(
         Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
             Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), modifier = Modifier.widthIn(max = 300.dp)) {
                 Text(message.content, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
+            }
+        }
+    } else if (message.isSticker || message.contentType == 7) {
+        Box(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+            contentAlignment = if (isMine) Alignment.CenterEnd else Alignment.CenterStart
+        ) {
+            AsyncImage(
+                model = message.content.ifEmpty { message.images.firstOrNull() ?: "" },
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .size(120.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { onImageClick(listOf(message.content), 0) }
+            )
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(4.dp)
+                    .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 5.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Filled.EmojiEmotions, null, tint = Color.White, modifier = Modifier.size(12.dp))
+                Spacer(Modifier.width(2.dp))
+                Text(timestampDisplay, color = Color.White, fontSize = 11.sp)
             }
         }
     } else {
@@ -1208,6 +1259,20 @@ fun MessageBubble(
                                 leadingIcon = { Icon(Icons.Default.Edit, null, Modifier.size(18.dp)) }
                             )
                         }
+                        if (message.isSticker || message.contentType == 7) {
+                            DropdownMenuItem(
+                                text = { Text("收藏") },
+                                onClick = { onShowMenuChanged?.invoke(null); onCollectSticker?.invoke(message) },
+                                leadingIcon = { Icon(Icons.Filled.FavoriteBorder, null, Modifier.size(18.dp)) }
+                            )
+                            if (message.isMine) {
+                                DropdownMenuItem(
+                                    text = { Text("删除") },
+                                    onClick = { onShowMenuChanged?.invoke(null); onDeleteSticker?.invoke(message) },
+                                    leadingIcon = { Icon(Icons.Filled.Delete, null, Modifier.size(18.dp)) }
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -1220,7 +1285,8 @@ fun MessageInput(
     inputText: String, selectedImages: List<String>, isMarkdown: Boolean,
     onTextChange: (String) -> Unit, onSendClick: () -> Unit, onAddImageClick: () -> Unit,
     onRemoveImage: (Int) -> Unit, onToggleMarkdown: () -> Unit, innerPadding: PaddingValues,
-    isUploading: Boolean = false, uploadProgress: Float = 0f, onCancelUpload: () -> Unit = {}
+    isUploading: Boolean = false, uploadProgress: Float = 0f, onCancelUpload: () -> Unit = {},
+    onEmojiClick: () -> Unit = {}
 ) {
     var showAttachmentMenu by remember { mutableStateOf(false) }
     Surface(
@@ -1248,6 +1314,9 @@ fun MessageInput(
                         DropdownMenuItem(text = { Text("发送图片") }, onClick = { showAttachmentMenu = false; onAddImageClick() }, leadingIcon = { Icon(Icons.Default.Image, null) })
                         DropdownMenuItem(text = { Text(if (isMarkdown) "Markdown 模式 (开)" else "Markdown 模式 (关)") }, onClick = { showAttachmentMenu = false; onToggleMarkdown() }, leadingIcon = { Icon(painter = painterResource(R.drawable.markdown), contentDescription = null, modifier = Modifier.size(24.dp)) })
                     }
+                }
+                IconButton(onClick = onEmojiClick, modifier = Modifier.size(40.dp)) {
+                    Icon(Icons.Filled.EmojiEmotions, contentDescription = "表情", tint = MaterialTheme.colorScheme.onSurface)
                 }
                 Spacer(Modifier.width(5.dp))
                 TextField(

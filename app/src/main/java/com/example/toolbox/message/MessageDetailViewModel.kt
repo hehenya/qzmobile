@@ -757,7 +757,118 @@ class MessageDetailViewModel(
             _uiState.update { it.copy(inputText = draft) }
         }
     }
+    private val _emojiPanelVisible = MutableStateFlow(false)
+    val emojiPanelVisible: StateFlow<Boolean> = _emojiPanelVisible.asStateFlow()
 
+    private val _emojis = MutableStateFlow<List<EmojiItem>>(emptyList())
+    val emojis: StateFlow<List<EmojiItem>> = _emojis.asStateFlow()
+
+    private val _isLoadingEmojis = MutableStateFlow(false)
+    val isLoadingEmojis: StateFlow<Boolean> = _isLoadingEmojis.asStateFlow()
+
+    fun toggleEmojiPanel() {
+        _emojiPanelVisible.value = !_emojiPanelVisible.value
+        if (_emojiPanelVisible.value && _emojis.value.isEmpty()) loadEmojis()
+    }
+
+    fun hideEmojiPanel() {
+        _emojiPanelVisible.value = false
+    }
+
+    private fun loadEmojis() {
+        viewModelScope.launch {
+            _isLoadingEmojis.value = true
+            try {
+                val client = OkHttpClient()
+                val request = Request.Builder()
+                    .url("${ApiAddress}sticker/list")
+                    .get()
+                    .header("x-access-token", token)
+                    .build()
+                withContext(Dispatchers.IO) {
+                    client.newCall(request).execute().use { response ->
+                        val body = response.body?.string()
+                        if (response.isSuccessful && body != null) {
+                            val json = JSONObject(body)
+                            if (json.optBoolean("success")) {
+                                val arr = json.optJSONArray("stickers") ?: return@use
+                                val list = mutableListOf<EmojiItem>()
+                                for (i in 0 until arr.length()) {
+                                    val obj = arr.getJSONObject(i)
+                                    list.add(EmojiItem(obj.optInt("id"), obj.optString("url"), obj.optInt("type")))
+                                }
+                                _emojis.value = list
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                _toastMessage.emit("加载表情失败")
+            } finally {
+                _isLoadingEmojis.value = false
+            }
+        }
+    }
+
+    fun sendEmoji(emoji: EmojiItem) {
+        viewModelScope.launch {
+            try {
+                val body = JSONObject().apply {
+                    put("chat_type", chatType)
+                    put("chat_id", chatId)
+                    put("data", JSONObject().apply {
+                        put("is_sticker", true)
+                        put("sticker_id", emoji.id)
+                    })
+                }
+                val request = Request.Builder()
+                    .url("${ApiAddress}chat/send")
+                    .post(body.toString().toRequestBody("application/json".toMediaType()))
+                    .header("x-access-token", token)
+                    .build()
+                withContext(Dispatchers.IO) { client.newCall(request).execute() }
+                hideEmojiPanel()
+            } catch (e: Exception) {
+                _toastMessage.emit("发送表情失败")
+            }
+        }
+    }
+
+    fun collectSticker(message: Message) {
+        viewModelScope.launch {
+            try {
+                val stickerId = message.stickerId ?: return@launch
+                val body = JSONObject().apply { put("sticker_id", stickerId) }
+                val request = Request.Builder()
+                    .url("${ApiAddress}sticker/collect")
+                    .post(body.toString().toRequestBody("application/json".toMediaType()))
+                    .header("x-access-token", token)
+                    .build()
+                withContext(Dispatchers.IO) { client.newCall(request).execute() }
+                _toastMessage.emit("收藏成功")
+            } catch (e: Exception) {
+                _toastMessage.emit("收藏失败")
+            }
+        }
+    }
+
+    fun deleteSticker(message: Message) {
+        viewModelScope.launch {
+            try {
+                val stickerId = message.stickerId ?: return@launch
+                val body = JSONObject().apply { put("sticker_id", stickerId) }
+                val request = Request.Builder()
+                    .url("${ApiAddress}sticker/delete")
+                    .post(body.toString().toRequestBody("application/json".toMediaType()))
+                    .header("x-access-token", token)
+                    .build()
+                withContext(Dispatchers.IO) { client.newCall(request).execute() }
+                _toastMessage.emit("已删除")
+            } catch (e: Exception) {
+                _toastMessage.emit("删除失败")
+            }
+        }
+    }
     private val _activeDays = MutableStateFlow<List<ActiveDay>>(emptyList())
     val activeDays: StateFlow<List<ActiveDay>> = _activeDays.asStateFlow()
 
