@@ -853,8 +853,8 @@ class MessageDetailViewModel(
     fun collectSticker(message: Message) {
         viewModelScope.launch {
             try {
-                val stickerId = message.stickerId ?: return@launch
-                val body = JSONObject().apply { put("sticker_id", stickerId) }
+                val stickerUrl = message.content.ifEmpty { message.images.firstOrNull() ?: return@launch }
+                val body = JSONObject().apply { put("url", stickerUrl) }
                 val request = Request.Builder()
                     .url("${ApiAddress}sticker/collect")
                     .post(body.toString().toRequestBody("application/json".toMediaType()))
@@ -871,8 +871,8 @@ class MessageDetailViewModel(
     fun deleteSticker(message: Message) {
         viewModelScope.launch {
             try {
-                val stickerId = message.stickerId ?: return@launch
-                val body = JSONObject().apply { put("sticker_id", stickerId) }
+                val stickerUrl = message.content.ifEmpty { message.images.firstOrNull() ?: return@launch }
+                val body = JSONObject().apply { put("url", stickerUrl) }
                 val request = Request.Builder()
                     .url("${ApiAddress}sticker/delete")
                     .post(body.toString().toRequestBody("application/json".toMediaType()))
