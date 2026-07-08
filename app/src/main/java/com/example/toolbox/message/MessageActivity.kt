@@ -1013,22 +1013,34 @@ fun MessageBubble(
                     end = 8.dp,
                     top = if (isOlderSameSender) 0.dp else 4.dp,
                     bottom = if (isNewerSameSender) 0.dp else 4.dp
-                ),
-            horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start
+                )
+                .combinedClickable(
+                    onClick = {
+                        if (isSelectionMode) onClickInSelectionMode?.invoke()
+                        else onShowMenuChanged?.invoke(message.effectiveMsgId)
+                    },
+                    onLongClick = {
+                        if (!isSelectionMode) onLongPress?.invoke()
+                    }
+                )
+                .then(if (isSelected) Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(8.dp)) else Modifier),
+            horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start,
+            verticalAlignment = Alignment.Bottom
         ) {
-            Box(
-                modifier = Modifier
-                    .combinedClickable(
-                        onClick = {
-                            if (isSelectionMode) onClickInSelectionMode?.invoke()
-                            else onShowMenuChanged?.invoke(message.effectiveMsgId)
-                        },
-                        onLongClick = {
-                            if (!isSelectionMode) onLongPress?.invoke()
-                        }
+            if (!isMine && chatType == 2) {
+                if (showAvatar) {
+                    AsyncImage(
+                        model = message.displayAvatar,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.size(36.dp).clip(CircleShape)
                     )
-                    .then(if (isSelected) Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(8.dp)) else Modifier)
-            ) {
+                    Spacer(Modifier.width(8.dp))
+                } else {
+                    Spacer(Modifier.width(44.dp))
+                }
+            }
+            Box {
                 AsyncImage(
                     model = message.content.ifEmpty { message.images.firstOrNull() ?: "" },
                     contentDescription = null,
