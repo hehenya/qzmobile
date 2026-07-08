@@ -80,8 +80,7 @@ data class Message(
     val isTyping: Boolean = false,
     @SerialName("link_info") val linkInfo: List<LinkInfo>? = null,
     val tag: List<String> = emptyList(),
-    val stickerId: Int? = null,
-    @SerialName("sticker_id") val stickerId: Int? = null,
+    @SerialName("sticker_id") val stickerId: Int? = null
 
 )
 val Message.displayTag: String

@@ -159,6 +159,9 @@ import com.example.toolbox.data.displayTag
 import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 
 // ---- Activity ----
 class MessageDetailActivity : ComponentActivity() {
@@ -679,10 +682,10 @@ fun MessageDetailScreen(
                                             putExtra("chat_id", uiState.chatId)
                                             putExtra("date_string", dateString)
                                         }
-                                        context.startActivity(intent),
-                                        onCollectSticker = { viewModel.collectSticker(it) },
-                                        onDeleteSticker = { viewModel.deleteSticker(it) }
-                                    }
+                                        context.startActivity(intent)
+                                    },
+                                    onCollectSticker = { viewModel.collectSticker(it) },
+                                    onDeleteSticker = { viewModel.deleteSticker(it) }
                                 )
                             }  
                         }  
