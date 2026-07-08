@@ -685,7 +685,8 @@ fun MessageDetailScreen(
                                         context.startActivity(intent)
                                     },
                                     onCollectSticker = { viewModel.collectSticker(it) },
-                                    onDeleteSticker = { viewModel.deleteSticker(it) }
+                                    onDeleteSticker = { viewModel.deleteSticker(it) },
+                                    onCollectImageAsSticker = { viewModel.collectImageAsSticker(it) },
                                 )
                             }  
                         }  
@@ -978,7 +979,8 @@ fun MessageBubble(
     onDateClick: ((String) -> Unit)? = null,
     isFirstFromSender: Boolean = true,
     onCollectSticker: ((Message) -> Unit)? = null,
-    onDeleteSticker: ((Message) -> Unit)? = null
+    onDeleteSticker: ((Message) -> Unit)? = null,
+    onCollectImageAsSticker: ((Message) -> Unit)? = null
 ) {
     val isMine = message.isMine || message.direction == "right"
     val isRecalledMessage = message.msgDeleteTime != null
@@ -1010,7 +1012,7 @@ fun MessageBubble(
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
                 modifier = Modifier
-                    .size(120.dp)
+                    .size(80.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .clickable { onImageClick(listOf(message.content), 0) }
             )
@@ -1275,6 +1277,16 @@ fun MessageBubble(
                                     leadingIcon = { Icon(Icons.Filled.Delete, null, Modifier.size(18.dp)) }
                                 )
                             }
+                        }
+                        if (message.images.isNotEmpty()) {
+                            DropdownMenuItem(
+                                text = { Text("收藏为表情") },
+                                onClick = {
+                                    onShowMenuChanged?.invoke(null)
+                                    onCollectImageAsSticker?.invoke(message)
+                                },
+                                leadingIcon = { Icon(Icons.Filled.FavoriteBorder, null, Modifier.size(18.dp)) }
+                            )
                         }
                     }
                 }

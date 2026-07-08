@@ -833,7 +833,23 @@ class MessageDetailViewModel(
             }
         }
     }
-
+    fun collectImageAsSticker(message: Message) {
+        viewModelScope.launch {
+            try {
+                val imageUrl = message.images.firstOrNull() ?: return@launch
+                val body = JSONObject().apply { put("url", imageUrl) }
+                val request = Request.Builder()
+                    .url("${ApiAddress}sticker/collect")
+                    .post(body.toString().toRequestBody("application/json".toMediaType()))
+                    .header("x-access-token", token)
+                    .build()
+                withContext(Dispatchers.IO) { client.newCall(request).execute() }
+                _toastMessage.emit("已收藏为表情")
+            } catch (e: Exception) {
+                _toastMessage.emit("收藏失败")
+            }
+        }
+    }
     fun collectSticker(message: Message) {
         viewModelScope.launch {
             try {
