@@ -1047,6 +1047,18 @@ fun MessageBubble(
                 onDismissRequest = { onShowMenuChanged?.invoke(null) }
             ) {
                 DropdownMenuItem(
+                    text = { Text("引用") },
+                    onClick = { onShowMenuChanged?.invoke(null); onReply() },
+                    leadingIcon = { Icon(Icons.Default.FormatQuote, null, Modifier.size(18.dp)) }
+                )
+                if (isMine || isAdmin) {
+                    DropdownMenuItem(
+                        text = { Text("撤回") },
+                        onClick = { onShowMenuChanged?.invoke(null); onRecall() },
+                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.Undo, null, Modifier.size(18.dp)) }
+                    )
+                }
+                DropdownMenuItem(
                     text = { Text("收藏") },
                     onClick = { onShowMenuChanged?.invoke(null); onCollectSticker?.invoke(message) },
                     leadingIcon = { Icon(Icons.Filled.FavoriteBorder, null, Modifier.size(18.dp)) }
@@ -1059,6 +1071,7 @@ fun MessageBubble(
                     )
                 }
             }
+            
         }
     } else {
         Column(modifier = Modifier.fillMaxWidth()) {
