@@ -1005,73 +1005,74 @@ fun MessageBubble(
             }
         }
     } else if (message.isSticker || message.contentType == 7) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp)
-                .combinedClickable(
-                    onClick = {
-                        if (isSelectionMode) onClickInSelectionMode?.invoke()
-                        else onShowMenuChanged?.invoke(message.effectiveMsgId)
-                    },
-                    onLongClick = {
-                        if (!isSelectionMode) onLongPress?.invoke()
-                    }
-                )
-                .then(if (isSelected) Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(8.dp)) else Modifier),
-            contentAlignment = if (isMine) Alignment.CenterEnd else Alignment.CenterStart
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(8.dp),
+            horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start
         ) {
-            AsyncImage(
-                model = message.content.ifEmpty { message.images.firstOrNull() ?: "" },
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
+            Box(
                 modifier = Modifier
-                    .size(200.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable { onImageClick(listOf(message.content), 0) }
-            )
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(4.dp)
-                    .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
-                    .padding(horizontal = 5.dp, vertical = 2.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Filled.EmojiEmotions, null, tint = Color.White, modifier = Modifier.size(12.dp))
-                Spacer(Modifier.width(2.dp))
-                Text(timestampDisplay, color = Color.White, fontSize = 11.sp)
-            }
-            DropdownMenu(
-                expanded = showMenu,
-                onDismissRequest = { onShowMenuChanged?.invoke(null) }
-            ) {
-                DropdownMenuItem(
-                    text = { Text("引用") },
-                    onClick = { onShowMenuChanged?.invoke(null); onReply() },
-                    leadingIcon = { Icon(Icons.Default.FormatQuote, null, Modifier.size(18.dp)) }
-                )
-                if (isMine || isAdmin) {
-                    DropdownMenuItem(
-                        text = { Text("撤回") },
-                        onClick = { onShowMenuChanged?.invoke(null); onRecall() },
-                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.Undo, null, Modifier.size(18.dp)) }
+                    .combinedClickable(
+                        onClick = {
+                            if (isSelectionMode) onClickInSelectionMode?.invoke()
+                            else onShowMenuChanged?.invoke(message.effectiveMsgId)
+                        },
+                        onLongClick = {
+                            if (!isSelectionMode) onLongPress?.invoke()
+                        }
                     )
-                }
-                DropdownMenuItem(
-                    text = { Text("收藏") },
-                    onClick = { onShowMenuChanged?.invoke(null); onCollectSticker?.invoke(message) },
-                    leadingIcon = { Icon(Icons.Filled.FavoriteBorder, null, Modifier.size(18.dp)) }
+                    .then(if (isSelected) Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(8.dp)) else Modifier)
+            ) {
+                AsyncImage(
+                    model = message.content.ifEmpty { message.images.firstOrNull() ?: "" },
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .size(200.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { onImageClick(listOf(message.content), 0) }
                 )
-                if (message.isMine) {
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(4.dp)
+                        .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 5.dp, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Filled.EmojiEmotions, null, tint = Color.White, modifier = Modifier.size(12.dp))
+                    Spacer(Modifier.width(2.dp))
+                    Text(timestampDisplay, color = Color.White, fontSize = 11.sp)
+                }
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { onShowMenuChanged?.invoke(null) }
+                ) {
                     DropdownMenuItem(
-                        text = { Text("删除") },
-                        onClick = { onShowMenuChanged?.invoke(null); onDeleteSticker?.invoke(message) },
-                        leadingIcon = { Icon(Icons.Filled.Delete, null, Modifier.size(18.dp)) }
+                        text = { Text("引用") },
+                        onClick = { onReply(); onShowMenuChanged?.invoke(null) },
+                        leadingIcon = { Icon(Icons.Default.FormatQuote, null, Modifier.size(18.dp)) }
                     )
+                    if (isMine || isAdmin) {
+                        DropdownMenuItem(
+                            text = { Text("撤回") },
+                            onClick = { onRecall(); onShowMenuChanged?.invoke(null) },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.Undo, null, Modifier.size(18.dp)) }
+                        )
+                    }
+                    DropdownMenuItem(
+                        text = { Text("收藏") },
+                        onClick = { onCollectSticker?.invoke(message); onShowMenuChanged?.invoke(null) },
+                        leadingIcon = { Icon(Icons.Filled.FavoriteBorder, null, Modifier.size(18.dp)) }
+                    )
+                    if (message.isMine) {
+                        DropdownMenuItem(
+                            text = { Text("删除") },
+                            onClick = { onDeleteSticker?.invoke(message); onShowMenuChanged?.invoke(null) },
+                            leadingIcon = { Icon(Icons.Filled.Delete, null, Modifier.size(18.dp)) }
+                        )
+                    }
                 }
             }
-            
         }
     } else {
         Column(modifier = Modifier.fillMaxWidth()) {
