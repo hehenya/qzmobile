@@ -1006,7 +1006,14 @@ fun MessageBubble(
         }
     } else if (message.isSticker || message.contentType == 7) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = 8.dp,
+                    end = 8.dp,
+                    top = if (isOlderSameSender) 0.dp else 4.dp,
+                    bottom = if (isNewerSameSender) 0.dp else 4.dp
+                ),
             horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start
         ) {
             Box(
