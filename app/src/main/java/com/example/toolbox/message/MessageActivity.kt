@@ -783,7 +783,10 @@ fun MessageDetailScreen(
                                         color = MaterialTheme.colorScheme.primary
                                     )
                                     Text(
-                                        if (repliedMessage.content.isEmpty()) "消息" else repliedMessage.content,
+                                        if (repliedMessage.contentType == 7 || repliedMessage.isSticker) "表情消息"
+                                        else if (repliedMessage.content.isEmpty() && repliedMessage.images.isNotEmpty()) "[图片]"
+                                        else if (repliedMessage.content.isEmpty()) "消息"
+                                        else repliedMessage.content,
                                         fontSize = 12.sp,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
@@ -1208,11 +1211,11 @@ fun MessageBubble(
                                         Spacer(Modifier.width(8.dp))
                                         Column {
                                             Text(ref.senderUsername, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = quoteNameColor)
-                                            if (ref.content.isNotBlank()) Text(ref.content, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, color = quoteTextColor)
                                             if (ref.contentType == 7) {
                                                 Text("表情消息", fontSize = 12.sp, color = quoteTextColor)
-                                            } else if (ref.images.isNotEmpty()) {
-                                                AsyncImage(model = ref.images.first(), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(8.dp)).padding(top = 4.dp))
+                                            } else {
+                                                if (ref.content.isNotBlank()) Text(ref.content, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, color = quoteTextColor)
+                                                if (ref.images.isNotEmpty()) AsyncImage(model = ref.images.first(), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(8.dp)).padding(top = 4.dp))
                                             }
                                         }
                                     }
