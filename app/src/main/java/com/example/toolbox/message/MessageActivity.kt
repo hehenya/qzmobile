@@ -1001,7 +1001,7 @@ fun MessageBubble(
     val timestampDisplay = message.timestampDisplay ?: message.sendTimeDisplay ?: remember(message.sendTime) {
         try { SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(message.sendTime)) } catch (_: Exception) { "" }
     }
-
+    val forwardColor = if (isMine) Color(0xFF2196F3) else Color(0xFF9C27B0)
     if (isRecalledMessage) {
         Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
             Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), modifier = Modifier.widthIn(max = 250.dp)) {
@@ -1212,10 +1212,10 @@ fun MessageBubble(
                                             context.startActivity(intent)
                                         }
                                     ) {
-                                        Text("转发自 ", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
+                                        Text("转发自 ", fontSize = 12.sp, color = forwardColor, fontWeight = FontWeight.Medium)
                                         AsyncImage(model = fi.avatarUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(20.dp).clip(CircleShape))
                                         Spacer(Modifier.width(4.dp))
-                                        Text(fi.username, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
+                                        Text(fi.username, fontSize = 12.sp, color = forwardColor, fontWeight = FontWeight.Medium)
                                     }
                                 }
                                 if (!isMine && isFirstFromSender && chatType == 2 && message.content.isNotBlank()) {
