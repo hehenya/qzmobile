@@ -162,6 +162,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.material.icons.filled.Share
 
 // ---- Activity ----
 class MessageDetailActivity : ComponentActivity() {
@@ -342,7 +343,7 @@ fun MessageDetailScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     
-
+    val hazeState = remember { HazeState() }
     val scope = rememberCoroutineScope()
     val clipboard = LocalClipboard.current
     var firstMessageId by remember { mutableStateOf<String?>(null) }
@@ -1084,7 +1085,7 @@ fun MessageBubble(
                             }
                             context.startActivity(intent)
                         },
-                        leadingIcon = { Icon(Icons.Filled.Forward, null, Modifier.size(18.dp)) }
+                        leadingIcon = { Icon(Icons.Filled.Share, null, Modifier.size(18.dp)) }
                     )
                     if (isMine || isAdmin) {
                         DropdownMenuItem(
@@ -1363,7 +1364,7 @@ fun MessageBubble(
                                 }
                                 context.startActivity(intent)
                             },
-                            leadingIcon = { Icon(Icons.Filled.Forward, null, Modifier.size(18.dp)) }
+                            leadingIcon = { Icon(Icons.Filled.Share, null, Modifier.size(18.dp)) }
                         )
                         if (isMine && message.content.isNotBlank()) {
                             DropdownMenuItem(
