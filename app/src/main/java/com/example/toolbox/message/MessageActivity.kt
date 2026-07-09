@@ -741,7 +741,7 @@ fun MessageDetailScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surface)
+                        .hazeEffect(state = hazeState, style = HazeMaterials.thin())
                         .padding(12.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
@@ -749,7 +749,9 @@ fun MessageDetailScreen(
                         Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null)
                         Spacer(Modifier.width(4.dp))
                         Text("撤回")
+
                     }
+                    Button(onClick = { /* 转发选中 */ }) { Text("转发") }
                 }
             } else {
                 Column {
@@ -1073,6 +1075,17 @@ fun MessageBubble(
                         onClick = { onReply(); onShowMenuChanged?.invoke(null) },
                         leadingIcon = { Icon(Icons.Default.FormatQuote, null, Modifier.size(18.dp)) }
                     )
+                    DropdownMenuItem(
+                        text = { Text("转发") },
+                        onClick = {
+                            onShowMenuChanged?.invoke(null)
+                            val intent = Intent(context, ForwardActivity::class.java).apply {
+                                putExtra("message_id", message.effectiveMsgId)
+                            }
+                            context.startActivity(intent)
+                        },
+                        leadingIcon = { Icon(Icons.Filled.Forward, null, Modifier.size(18.dp)) }
+                    )
                     if (isMine || isAdmin) {
                         DropdownMenuItem(
                             text = { Text("撤回") },
@@ -1080,6 +1093,7 @@ fun MessageBubble(
                             leadingIcon = { Icon(Icons.AutoMirrored.Filled.Undo, null, Modifier.size(18.dp)) }
                         )
                     }
+
                     DropdownMenuItem(
                         text = { Text("收藏") },
                         onClick = { onCollectSticker?.invoke(message); onShowMenuChanged?.invoke(null) },
@@ -1182,6 +1196,22 @@ fun MessageBubble(
                             elevation = if (message.images.isNotEmpty()) CardDefaults.cardElevation(defaultElevation = 0.dp) else CardDefaults.cardElevation()
                         ) {
                             Column(modifier = Modifier.padding(8.dp)) {
+                                if (message.forwardInfo != null) {
+                                    val fi = message.forwardInfo!!
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(bottom = 4.dp).clickable {
+                                            val intent = Intent(context, UserInfoActivity::class.java).apply {
+                                                putExtra("userId", fi.userId)
+                                            }
+                                            context.startActivity(intent)
+                                        }
+                                    ) {
+                                        AsyncImage(model = fi.avatarUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(20.dp).clip(CircleShape))
+                                        Spacer(Modifier.width(6.dp))
+                                        Text("来自 ${fi.username}", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
+                                    }
+                                }
                                 if (!isMine && isFirstFromSender && chatType == 2 && message.content.isNotBlank()) {
                                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 2.dp)) {
                                         Text(message.displayName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
@@ -1324,6 +1354,17 @@ fun MessageBubble(
                                 leadingIcon = { Icon(Icons.AutoMirrored.Filled.Undo, null, Modifier.size(18.dp)) }
                             )
                         }
+                        DropdownMenuItem(
+                            text = { Text("转发") },
+                            onClick = {
+                                onShowMenuChanged?.invoke(null)
+                                val intent = Intent(context, ForwardActivity::class.java).apply {
+                                    putExtra("message_id", message.effectiveMsgId)
+                                }
+                                context.startActivity(intent)
+                            },
+                            leadingIcon = { Icon(Icons.Filled.Forward, null, Modifier.size(18.dp)) }
+                        )
                         if (isMine && message.content.isNotBlank()) {
                             DropdownMenuItem(
                                 text = { Text("编辑") },

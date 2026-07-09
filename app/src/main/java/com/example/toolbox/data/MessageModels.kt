@@ -34,7 +34,14 @@ data class EditRecord(
     @SerialName("old_is_markdown") val oldIsMarkdown: Boolean = false,
     @SerialName("new_is_markdown") val newIsMarkdown: Boolean = false
 )
-
+@Serializable
+data class ForwardInfo(
+    @SerialName("from_type") val fromType: Int,
+    @SerialName("from_id") val fromId: Int,
+    @SerialName("user_id") val userId: Int,
+    @SerialName("username") val username: String,
+    @SerialName("avatar_url") val avatarUrl: String = ""
+)
 @Serializable
 data class Message(
     val id: Int? = null,
@@ -80,7 +87,8 @@ data class Message(
     val isTyping: Boolean = false,
     @SerialName("link_info") val linkInfo: List<LinkInfo>? = null,
     val tag: List<String> = emptyList(),
-    @SerialName("sticker_id") val stickerId: Int? = null
+    @SerialName("sticker_id") val stickerId: Int? = null,
+    @SerialName("forward_info") val forwardInfo: ForwardInfo? = null
 
 )
 val Message.displayTag: String

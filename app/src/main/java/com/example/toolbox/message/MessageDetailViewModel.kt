@@ -902,6 +902,26 @@ class MessageDetailViewModel(
             }
         }
     }
+    fun forwardMessage(message: Message, targetChatType: Int, targetChatId: Int) {
+        viewModelScope.launch {
+            try {
+                val body = JSONObject().apply {
+                    put("message_id", message.id ?: message.msgId.toIntOrNull() ?: return@launch)
+                    put("target_chat_type", targetChatType)
+                    put("target_chat_id", targetChatId)
+                }
+                val request = Request.Builder()
+                    .url("${ApiAddress}chat/forward")
+                    .post(body.toString().toRequestBody("application/json".toMediaType()))
+                    .header("x-access-token", token)
+                    .build()
+                withContext(Dispatchers.IO) { client.newCall(request).execute() }
+                _toastMessage.emit("转发成功")
+            } catch (e: Exception) {
+                _toastMessage.emit("转发失败")
+            }
+        }
+    }
     private val _activeDays = MutableStateFlow<List<ActiveDay>>(emptyList())
     val activeDays: StateFlow<List<ActiveDay>> = _activeDays.asStateFlow()
 

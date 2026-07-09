@@ -99,13 +99,17 @@
             android:exported="false"
             android:theme="@style/Theme.ToolBox" />
         <activity
-    android:name=".message.HeatmapActivity"
-    android:exported="false"
-    android:theme="@style/Theme.ToolBox" />
+            android:name=".message.HeatmapActivity"
+            android:exported="false"
+            android:theme="@style/Theme.ToolBox" />
         <activity
-    android:name=".message.GroupInfoActivity"
-    android:exported="true"
-    android:theme="@style/Theme.ToolBox">
+            android:name=".message.ForwardActivity"
+            android:exported="false"
+            android:theme="@style/Theme.ToolBox" />
+        <activity
+            android:name=".message.GroupInfoActivity"
+            android:exported="true"
+            android:theme="@style/Theme.ToolBox">
     <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
 
