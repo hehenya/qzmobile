@@ -752,7 +752,11 @@ fun MessageDetailScreen(
                         Text("撤回")
 
                     }
-                    Button(onClick = { /* 转发选中 */ }) { Text("转发") }
+                    Button(onClick = { /* 转发选中 */ }) { 
+                        Icon(Icons.Filled.Share, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("转发") 
+                    }
                 }
             } else {
                 Column {
@@ -1208,9 +1212,10 @@ fun MessageBubble(
                                             context.startActivity(intent)
                                         }
                                     ) {
+                                        Text("转发自 ", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
                                         AsyncImage(model = fi.avatarUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(20.dp).clip(CircleShape))
-                                        Spacer(Modifier.width(6.dp))
-                                        Text("来自 ${fi.username}", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(fi.username, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
                                     }
                                 }
                                 if (!isMine && isFirstFromSender && chatType == 2 && message.content.isNotBlank()) {

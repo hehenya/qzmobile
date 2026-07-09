@@ -183,6 +183,19 @@ class MessageDetailViewModel(
                         _typingText.value = null
                     }
                 }
+                "link_update" -> {
+                    _uiState.update { state ->
+                        state.copy(
+                            messages = state.messages.map {
+                                if (it.effectiveMsgId == message.effectiveMsgId) {
+                                    it.copy(linkInfo = message.linkInfo)
+                                } else {
+                                    it
+                                }
+                            }
+                        )
+                    }
+                }
             }
         }
     
@@ -216,6 +229,7 @@ class MessageDetailViewModel(
                         .header("x-access-token", token)
                         .header("timeis", "true")
                         .header("linkinfo", "true")
+                        .header("isnew", "true")
                         .build()
     
                     client.newCall(request).execute().use { response ->
