@@ -654,46 +654,89 @@ fun SwipeableRow(
     content: @Composable () -> Unit
 ) {
     var offsetX by remember { mutableFloatStateOf(0f) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
     val deleteWidth = 80.dp
     val deleteWidthPx = with(LocalDensity.current) { deleteWidth.toPx() }
+    // 超过1.5倍宽度自动触发删除
+    val autoDeleteThreshold = deleteWidthPx * 1.5f
+
+    // 删除确认弹窗
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false; offsetX = 0f },
+            title = { Text("删除会话") },
+            text = { Text("确定要删除这个会话吗？") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirm = false
+                    offsetX = 0f
+                    onDelete()
+                }) {
+                    Text("确定", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false; offsetX = 0f }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-
+            .height(IntrinsicSize.Min) // 让背景高度跟随内容
     ) {
-        // 红色背景 + 垃圾桶，只在滑动时可见
+        // 红色背景 + 垃圾桶
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .matchParentSize()
                 .background(Color.Red)
-                .clickable { onDelete() },
+                .clickable {
+                    // 点击垃圾桶区域时，如果已完全展开则弹确认框
+                    if (offsetX <= -deleteWidthPx + 1f) {
+                        showDeleteConfirm = true
+                    }
+                },
             contentAlignment = Alignment.CenterEnd
         ) {
             Icon(
                 Icons.Filled.Delete,
-                contentDescription = null,
+                contentDescription = "删除",
                 tint = Color.White,
                 modifier = Modifier.padding(end = 24.dp)
             )
         }
 
-        // 白色前景，可滑动
+        // 前景内容
         Surface(
             modifier = Modifier
+                .fillMaxWidth()
                 .offset { IntOffset(offsetX.roundToInt(), 0) }
                 .pointerInput(Unit) {
                     detectHorizontalDragGestures(
                         onDragEnd = {
-                            if (offsetX < -deleteWidthPx / 2) {
-                                offsetX = -deleteWidthPx
-                            } else {
-                                offsetX = 0f
+                            when {
+                                // 超过自动删除阈值，直接弹确认框
+                                offsetX < -autoDeleteThreshold -> {
+                                    showDeleteConfirm = true
+                                }
+                                // 超过一半，显示删除按钮
+                                offsetX < -deleteWidthPx / 2 -> {
+                                    offsetX = -deleteWidthPx
+                                }
+                                // 回弹
+                                else -> {
+                                    offsetX = 0f
+                                }
                             }
                         },
                         onDragCancel = { offsetX = 0f },
                         onHorizontalDrag = { _, dragAmount ->
-                            offsetX = (offsetX + dragAmount).coerceIn(-deleteWidthPx, 0f)
+                            // 实时判断是否超过自动删除阈值
+                            val newOffset = (offsetX + dragAmount).coerceIn(-autoDeleteThreshold * 1.2f, 0f)
+                            offsetX = newOffset
                         }
                     )
                 }

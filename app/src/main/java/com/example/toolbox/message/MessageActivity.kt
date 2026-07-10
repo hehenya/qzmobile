@@ -1392,15 +1392,16 @@ fun MessageBubble(
                         }
                         if (message.isSticker || message.contentType == 7) {
                             DropdownMenuItem(
+                                text = { Text("删除消息") },
+                                onClick = { onDeleteMessage?.invoke(message); onShowMenuChanged?.invoke(null) },
+                                leadingIcon = { Icon(Icons.Filled.Delete, null, Modifier.size(18.dp)) }
+                            )
+                            DropdownMenuItem(
                                 text = { Text("收藏") },
                                 onClick = { onShowMenuChanged?.invoke(null); onCollectSticker?.invoke(message) },
                                 leadingIcon = { Icon(Icons.Filled.FavoriteBorder, null, Modifier.size(18.dp)) }
                             )
-                            DropdownMenuItem(
-                                    text = { Text("删除消息") },
-                                    onClick = { onDeleteMessage?.invoke(message); onShowMenuChanged?.invoke(null) },
-                                    leadingIcon = { Icon(Icons.Filled.Delete, null, Modifier.size(18.dp)) }
-                                )
+                            
                             if (message.isMine) {
                                 DropdownMenuItem(
                                     text = { Text("删除表情") },
