@@ -657,25 +657,29 @@ fun SwipeableRow(
     val deleteWidth = 80.dp
     val deleteWidthPx = with(LocalDensity.current) { deleteWidth.toPx() }
 
-    Box(modifier = Modifier.fillMaxWidth()) {
-        // 红色背景 + 删除按钮
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RectangleShape)
+    ) {
+        // 红色背景 + 垃圾桶，只在滑动时可见
         Box(
             modifier = Modifier
-                .matchParentSize()
+                .fillMaxSize()
                 .background(Color.Red)
                 .clickable { onDelete() },
             contentAlignment = Alignment.CenterEnd
         ) {
             Icon(
-                Icons.Filled.Delete, 
-                contentDescription = null, 
+                Icons.Filled.Delete,
+                contentDescription = null,
                 tint = Color.White,
-                modifier = Modifier.padding(end = 20.dp)
+                modifier = Modifier.padding(end = 24.dp)
             )
         }
 
-        // 前景内容，可左右滑动
-        Box(
+        // 白色前景，可滑动
+        Surface(
             modifier = Modifier
                 .offset { IntOffset(offsetX.roundToInt(), 0) }
                 .pointerInput(Unit) {

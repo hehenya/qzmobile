@@ -118,13 +118,13 @@ class MessageViewModel(
     fun deleteChat(chatType: Int, chatId: Int) {
         viewModelScope.launch {
             try {
-                val body = FormBody.Builder()
-                    .add("chat_type", chatType.toString())
-                    .add("chat_id", chatId.toString())
-                    .build()
+                val body = JSONObject().apply {
+                    put("chat_type", chatType)
+                    put("chat_id", chatId)
+                }
                 val request = Request.Builder()
                     .url("${ApiAddress}chat/delete_chat")
-                    .post(body)
+                    .post(body.toString().toRequestBody("application/json".toMediaType()))
                     .header("x-access-token", token)
                     .build()
                 withContext(Dispatchers.IO) { client.newCall(request).execute() }
