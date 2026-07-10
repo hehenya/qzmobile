@@ -660,7 +660,7 @@ fun SwipeableRow(
         // 红色背景 + 删除按钮
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .matchParentSize()
                 .background(Color.Red)
                 .clickable { onDelete() },
             contentAlignment = Alignment.CenterEnd
