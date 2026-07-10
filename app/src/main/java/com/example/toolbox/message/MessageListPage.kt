@@ -99,6 +99,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.material.icons.filled.Delete
 import kotlin.math.roundToInt
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.IntrinsicSize
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
