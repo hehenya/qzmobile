@@ -660,7 +660,7 @@ fun SwipeableRow(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RectangleShape)
+
     ) {
         // 红色背景 + 垃圾桶，只在滑动时可见
         Box(
