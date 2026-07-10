@@ -97,6 +97,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.material.icons.filled.Delete
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -659,14 +660,17 @@ fun SwipeableRow(
         // 红色背景 + 删除按钮
         Box(
             modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .fillMaxHeight()
-                .width(deleteWidth)
+                .fillMaxSize()
                 .background(Color.Red)
                 .clickable { onDelete() },
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.CenterEnd
         ) {
-            Icon(Icons.Filled.Delete, contentDescription = null, tint = Color.White)
+            Icon(
+                Icons.Filled.Delete, 
+                contentDescription = null, 
+                tint = Color.White,
+                modifier = Modifier.padding(end = 20.dp)
+            )
         }
 
         // 前景内容，可左右滑动
