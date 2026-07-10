@@ -95,11 +95,6 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.material.icons.filled.Delete
 
@@ -665,7 +660,7 @@ fun SwipeableRow(
         Box(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .Modifier.fillMaxHeight()
+                .fillMaxHeight()
                 .width(deleteWidth)
                 .background(Color.Red)
                 .clickable { onDelete() },
