@@ -91,6 +91,11 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.material.icons.filled.Delete
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -274,7 +279,14 @@ DisposableEffect(lifecycle) {
                         modifier = Modifier.fillMaxSize()
                     ) {
                         items(uiState.friends, key = { "${it.id}_${refreshKey}" }) { friend ->
-                            FriendItem(friend = friend, viewModel = viewModel, refreshKey = refreshKey)
+                            SwipeableRow(
+                                onDelete = {
+                                    val chatType = if (friend.type == "group") 2 else 1
+                                    viewModel.deleteChat(chatType, friend.id)
+                                }
+                            ) {
+                                FriendItem(friend = friend, viewModel = viewModel, refreshKey = refreshKey)
+                            }
                         }
                         if (uiState.isLoadingMore) {
                             item {
@@ -633,7 +645,53 @@ fun FriendItem(friend: Friend, viewModel: MessageViewModel, refreshKey: Long) {
         }
     }
 }
+@Composable
+fun SwipeableRow(
+    onDelete: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    var offsetX by remember { mutableFloatStateOf(0f) }
+    val deleteWidth = 80.dp
+    val deleteWidthPx = with(LocalDensity.current) { deleteWidth.toPx() }
 
+    Box(modifier = Modifier.fillMaxWidth()) {
+        // 红色背景 + 删除按钮
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .fillMaxHeight()
+                .width(deleteWidth)
+                .background(Color.Red)
+                .clickable { onDelete() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Filled.Delete, contentDescription = null, tint = Color.White)
+        }
+
+        // 前景内容，可左右滑动
+        Box(
+            modifier = Modifier
+                .offset { IntOffset(offsetX.roundToInt(), 0) }
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            if (offsetX < -deleteWidthPx / 2) {
+                                offsetX = -deleteWidthPx
+                            } else {
+                                offsetX = 0f
+                            }
+                        },
+                        onDragCancel = { offsetX = 0f },
+                        onHorizontalDrag = { _, dragAmount ->
+                            offsetX = (offsetX + dragAmount).coerceIn(-deleteWidthPx, 0f)
+                        }
+                    )
+                }
+        ) {
+            content()
+        }
+    }
+}
 fun formatRelativeTime(timeStr: String): String {
     if (timeStr.isBlank()) return ""
     

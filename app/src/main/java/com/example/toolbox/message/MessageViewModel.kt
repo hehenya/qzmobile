@@ -115,7 +115,23 @@ class MessageViewModel(
         val nextPage = (currentState.pagination?.currentPage ?: 0) + 1
         loadFriends(page = nextPage, isRefresh = false)
     }
-
+    fun deleteChat(chatType: Int, chatId: Int) {
+        viewModelScope.launch {
+            try {
+                val body = FormBody.Builder()
+                    .add("chat_type", chatType.toString())
+                    .add("chat_id", chatId.toString())
+                    .build()
+                val request = Request.Builder()
+                    .url("${ApiAddress}chat/delete_chat")
+                    .post(body)
+                    .header("x-access-token", token)
+                    .build()
+                withContext(Dispatchers.IO) { client.newCall(request).execute() }
+                _uiState.update { it.copy(friends = it.friends.filter { f -> f.id != chatId || (if (f.type == "group") 2 else 1) != chatType }) }
+            } catch (_: Exception) {}
+        }
+    }
     private fun loadFriends(page: Int, isRefresh: Boolean) {
         viewModelScope.launch {
             _uiState.update {

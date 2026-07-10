@@ -688,6 +688,7 @@ fun MessageDetailScreen(
                                     onCollectSticker = { viewModel.collectSticker(it) },
                                     onDeleteSticker = { viewModel.deleteSticker(it) },
                                     onCollectImageAsSticker = { viewModel.collectImageAsSticker(it) },
+                                    onDeleteMessage = { viewModel.deleteMessage(it) },
                                 )
                             }  
                         }  
@@ -992,7 +993,8 @@ fun MessageBubble(
     isFirstFromSender: Boolean = true,
     onCollectSticker: ((Message) -> Unit)? = null,
     onDeleteSticker: ((Message) -> Unit)? = null,
-    onCollectImageAsSticker: ((Message) -> Unit)? = null
+    onCollectImageAsSticker: ((Message) -> Unit)? = null,
+    onDeleteMessage: ((Message) -> Unit)? = null,
 ) {
     val isMine = message.isMine || message.direction == "right"
     val isRecalledMessage = message.msgDeleteTime != null
@@ -1359,6 +1361,11 @@ fun MessageBubble(
                                 },
                                 leadingIcon = { Icon(Icons.AutoMirrored.Filled.Undo, null, Modifier.size(18.dp)) }
                             )
+                            DropdownMenuItem(
+                                text = { Text("删除消息") },
+                                onClick = { onDeleteMessage?.invoke(message); onShowMenuChanged?.invoke(null) },
+                                leadingIcon = { Icon(Icons.Filled.Delete, null, Modifier.size(18.dp)) }
+                            )
                         }
                         DropdownMenuItem(
                             text = { Text("转发") },
@@ -1379,6 +1386,11 @@ fun MessageBubble(
                                     onEdit()
                                 },
                                 leadingIcon = { Icon(Icons.Default.Edit, null, Modifier.size(18.dp)) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("删除") },
+                                onClick = { onDeleteMessage?.invoke(message); onShowMenuChanged?.invoke(null) },
+                                leadingIcon = { Icon(Icons.Filled.Delete, null, Modifier.size(18.dp)) }
                             )
                         }
                         if (message.isSticker || message.contentType == 7) {

@@ -501,7 +501,26 @@ class MessageDetailViewModel(
             }
         }
     }
-
+    fun deleteMessage(message: Message) {
+        viewModelScope.launch {
+            try {
+                val body = JSONObject().apply {
+                    put("chat_type", chatType)
+                    put("message_id", message.id ?: message.msgId.toIntOrNull() ?: return@launch)
+                }
+                val request = Request.Builder()
+                    .url("${ApiAddress}chat/delete_message")
+                    .post(body.toString().toRequestBody("application/json".toMediaType()))
+                    .header("x-access-token", token)
+                    .build()
+                withContext(Dispatchers.IO) { client.newCall(request).execute() }
+                _uiState.update { it.copy(messages = it.messages.filter { m -> m.effectiveMsgId != message.effectiveMsgId }) }
+                _toastMessage.emit("已删除")
+            } catch (e: Exception) {
+                _toastMessage.emit("删除失败")
+            }
+        }
+    }
     
 
     
