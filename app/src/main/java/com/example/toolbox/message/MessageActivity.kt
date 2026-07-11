@@ -1210,7 +1210,7 @@ fun MessageBubble(
                                 containerColor = when {
                                     message.images.isNotEmpty() && message.content.isBlank() -> Color.Transparent
                                     isMine -> MaterialTheme.colorScheme.primary.copy(alpha = bubbleOpacity)
-                                    else -> MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.8f)
+                                    else -> MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = bubbleOpacity)
                                 }
                             ),
                             elevation = if (message.images.isNotEmpty()) CardDefaults.cardElevation(defaultElevation = 0.dp) else CardDefaults.cardElevation()
