@@ -335,10 +335,21 @@ fun SettingsScreen(
                         {
                             SettingsItemCell(
                                 icon = Icons.Default.Draw,
-                                title = "外观设置",
-                                subtitle = "设置应用外观",
+                                title = "主题设置",
+                                subtitle = "设置应用主题",
                                 onClick = {
                                     val intent = Intent(context, ThemeActivity::class.java)
+                                    context.startActivity(intent)
+                                }
+                            )
+                        },
+                        {
+                            SettingsItemCell(
+                                icon = Icons.Default.RoundedCorner,
+                                title = "气泡样式",
+                                subtitle = "调整消息气泡的圆角和透明度",
+                                onClick = {
+                                    val intent = Intent(context, AppearanceActivity::class.java)
                                     context.startActivity(intent)
                                 }
                             )
