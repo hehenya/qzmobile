@@ -107,6 +107,9 @@
             android:exported="false"
             android:theme="@style/Theme.ToolBox" />
         <activity
+            android:name=".settings.AppearanceActivity"
+            android:exported="false" />
+        <activity
             android:name=".message.GroupInfoActivity"
             android:exported="true"
             android:theme="@style/Theme.ToolBox">

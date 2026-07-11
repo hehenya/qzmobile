@@ -36,6 +36,7 @@ import com.example.toolbox.webview.WebViewActivity
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.toolbox.utils.getAppVersionInfo
+import androidx.compose.material.icons.filled.RoundedCorner
 
 /**
  * 计算目录大小（字节）
@@ -343,6 +344,7 @@ fun SettingsScreen(
                                 }
                             )
                         },
+                        // ✅ 新增
                         {
                             SettingsItemCell(
                                 icon = Icons.Default.RoundedCorner,
