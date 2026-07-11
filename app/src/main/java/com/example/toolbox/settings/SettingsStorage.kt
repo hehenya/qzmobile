@@ -21,7 +21,6 @@ class SettingsStorage(private val context: Context) {
         private val KEY_SHOW_MY_BUBBLE_AVATAR = booleanPreferencesKey("show_my_bubble_avatar")
     }
 
-    // 气泡圆角
     val bubbleCornerRadiusFlow: Flow<Float> = context.dataStore.data.map { prefs ->
         prefs[KEY_BUBBLE_CORNER_RADIUS] ?: 16f
     }
@@ -34,7 +33,6 @@ class SettingsStorage(private val context: Context) {
         context.dataStore.edit { it[KEY_BUBBLE_CORNER_RADIUS] = value }
     }
 
-    // 气泡不透明度
     val bubbleOpacityFlow: Flow<Float> = context.dataStore.data.map { prefs ->
         prefs[KEY_BUBBLE_OPACITY] ?: 0.9f
     }
@@ -47,7 +45,6 @@ class SettingsStorage(private val context: Context) {
         context.dataStore.edit { it[KEY_BUBBLE_OPACITY] = value }
     }
 
-    // 显示我的头像
     val showMyBubbleAvatarFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[KEY_SHOW_MY_BUBBLE_AVATAR] ?: true
     }

@@ -341,7 +341,9 @@ fun MessageDetailScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
-
+    val settingsStorage = remember { com.example.toolbox.settings.SettingsStorage(context) }
+    val bubbleCornerRadius by settingsStorage.bubbleCornerRadiusFlow.collectAsState(initial = 16f)
+    val bubbleOpacity by settingsStorage.bubbleOpacityFlow.collectAsState(initial = 0.9f)
     
     val hazeState = remember { HazeState() }
     val scope = rememberCoroutineScope()
@@ -1195,9 +1197,14 @@ fun MessageBubble(
                     Column(horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
                         Card(
                             shape = RoundedCornerShape(
-                                topStart = bubbleCornerRadius.dp, topEnd = bubbleCornerRadius.dp,
-                                bottomStart = if (isMine) bubbleCornerRadius.dp else if (message.isLastFromSender) bubbleCornerRadius.dp else (bubbleCornerRadius * 0.3f).dp,
-                                bottomEnd = if (isMine) if (message.isLastFromSender) bubbleCornerRadius.dp else (bubbleCornerRadius * 0.3f).dp else bubbleCornerRadius.dp
+                                topStart = bubbleCornerRadius.dp, 
+                                topEnd = bubbleCornerRadius.dp,
+                                bottomStart = if (isMine) bubbleCornerRadius.dp 
+                                            else if (!isNewerSameSender) bubbleCornerRadius.dp 
+                                            else (bubbleCornerRadius * 0.3f).dp,
+                                bottomEnd = if (isMine) if (!isNewerSameSender) bubbleCornerRadius.dp 
+                                            else (bubbleCornerRadius * 0.3f).dp 
+                                            else bubbleCornerRadius.dp
                             ),
                             colors = CardDefaults.cardColors(
                                 containerColor = when {
