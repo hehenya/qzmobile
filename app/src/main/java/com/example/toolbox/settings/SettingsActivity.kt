@@ -339,19 +339,18 @@ fun SettingsScreen(
                                 title = "主题设置",
                                 subtitle = "设置应用主题",
                                 onClick = {
-                                    val intent = Intent(context, ThemeActivity::class.java)
+                                    val intent = Intent(context, ThemeActivity::class.java)  // 主题
                                     context.startActivity(intent)
                                 }
                             )
                         },
-                        // ✅ 新增
                         {
                             SettingsItemCell(
                                 icon = Icons.Default.RoundedCorner,
                                 title = "气泡样式",
                                 subtitle = "调整消息气泡的圆角和透明度",
                                 onClick = {
-                                    val intent = Intent(context, ThemeActivity::class.java)
+                                    val intent = Intent(context, BubbleStyleActivity::class.java)  // 气泡
                                     context.startActivity(intent)
                                 }
                             )
