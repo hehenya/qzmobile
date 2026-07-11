@@ -689,6 +689,8 @@ fun MessageDetailScreen(
                                     onDeleteSticker = { viewModel.deleteSticker(it) },
                                     onCollectImageAsSticker = { viewModel.collectImageAsSticker(it) },
                                     onDeleteMessage = { viewModel.deleteMessage(it) },
+                                    bubbleOpacity = bubbleOpacity,
+                                    bubbleCornerRadius = bubbleCornerRadius,
                                 )
                             }  
                         }  
@@ -995,6 +997,8 @@ fun MessageBubble(
     onDeleteSticker: ((Message) -> Unit)? = null,
     onCollectImageAsSticker: ((Message) -> Unit)? = null,
     onDeleteMessage: ((Message) -> Unit)? = null,
+    bubbleOpacity: Float = 0.9f,
+    bubbleCornerRadius: Float = 16f,
 ) {
     val isMine = message.isMine || message.direction == "right"
     val isRecalledMessage = message.msgDeleteTime != null
@@ -1191,14 +1195,16 @@ fun MessageBubble(
                     Column(horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
                         Card(
                             shape = RoundedCornerShape(
-                                topStart = 20.dp, topEnd = 20.dp,
-                                bottomStart = if (isMine) 20.dp else if (message.isLastFromSender) 20.dp else 6.dp,
-                                bottomEnd = if (isMine) if (message.isLastFromSender) 20.dp else 6.dp else 20.dp
+                                topStart = bubbleCornerRadius.dp, topEnd = bubbleCornerRadius.dp,
+                                bottomStart = if (isMine) bubbleCornerRadius.dp else if (message.isLastFromSender) bubbleCornerRadius.dp else (bubbleCornerRadius * 0.3f).dp,
+                                bottomEnd = if (isMine) if (message.isLastFromSender) bubbleCornerRadius.dp else (bubbleCornerRadius * 0.3f).dp else bubbleCornerRadius.dp
                             ),
                             colors = CardDefaults.cardColors(
-                                containerColor = if (message.images.isNotEmpty() && message.content.isBlank()) Color.Transparent
-                                    else if (isMine) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.surfaceContainer
+                                containerColor = when {
+                                    message.images.isNotEmpty() && message.content.isBlank() -> Color.Transparent
+                                    isMine -> MaterialTheme.colorScheme.primary.copy(alpha = bubbleOpacity)
+                                    else -> MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.8f)
+                                }
                             ),
                             elevation = if (message.images.isNotEmpty()) CardDefaults.cardElevation(defaultElevation = 0.dp) else CardDefaults.cardElevation()
                         ) {
@@ -1260,7 +1266,12 @@ fun MessageBubble(
                                 }
                                 if (message.content.isNotBlank()) {
                                     if (message.isMarkdown) MarkdownRenderer.Render(content = message.content)
-                                    else Text(message.content, fontSize = 14.sp, color = if (isMine) Color.White else Color.Black)
+                                    else Text(
+                                        message.content,
+                                        fontSize = 14.sp,
+                                        color = if (isMine) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.95f)
+                                                else MaterialTheme.colorScheme.onSurface
+                                    )
                                 }
                                 if (message.images.isNotEmpty()) {
                                     Spacer(Modifier.height(4.dp)); val hasText = message.content.isNotBlank(); val imgCount = message.images.size
