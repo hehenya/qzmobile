@@ -351,7 +351,7 @@ fun SettingsScreen(
                                 title = "气泡样式",
                                 subtitle = "调整消息气泡的圆角和透明度",
                                 onClick = {
-                                    val intent = Intent(context, AppearanceActivity::class.java)
+                                    val intent = Intent(context, ThemeActivity::class.java)
                                     context.startActivity(intent)
                                 }
                             )
