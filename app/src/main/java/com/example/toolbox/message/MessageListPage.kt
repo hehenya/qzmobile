@@ -100,6 +100,7 @@ import androidx.compose.material.icons.filled.Delete
 import kotlin.math.roundToInt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.interaction.MutableInteractionSource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -260,15 +261,27 @@ DisposableEffect(lifecycle) {
             if (isOffline) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.errorContainer
+                    shape = RoundedCornerShape(0.dp),
+                    color = Color(0xFFE53935)
                 ) {
                     Row(
-                        Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("无法连接到轻昼服务器，请检查网络配置！", fontSize = 13.sp, color = MaterialTheme.colorScheme.error)
+                        Icon(
+                            Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            "没有网络连接！请检查网络配置",
+                            fontSize = 14.sp,
+                            color = Color.White
+                        )
                     }
                 }
             }
@@ -711,23 +724,35 @@ fun SwipeableRow(
         }
 
         // 前景内容
+// 前景内容
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .offset { IntOffset(offsetX.roundToInt(), 0) }
+                .clickable(
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    indication = null
+                ) {
+                    // 点击内容区域时回弹
+                    if (offsetX < 0) {
+                        offsetX = 0f
+                        showDeleteConfirm = false
+                    }
+                }
                 .pointerInput(Unit) {
                     detectHorizontalDragGestures(
+                        onDragStart = {
+                            // 新拖动开始时先回弹
+                            if (offsetX < 0) offsetX = 0f
+                        },
                         onDragEnd = {
                             when {
-                                // 超过自动删除阈值，直接弹确认框
                                 offsetX < -autoDeleteThreshold -> {
                                     showDeleteConfirm = true
                                 }
-                                // 超过一半，显示删除按钮
                                 offsetX < -deleteWidthPx / 2 -> {
                                     offsetX = -deleteWidthPx
                                 }
-                                // 回弹
                                 else -> {
                                     offsetX = 0f
                                 }
@@ -735,7 +760,6 @@ fun SwipeableRow(
                         },
                         onDragCancel = { offsetX = 0f },
                         onHorizontalDrag = { _, dragAmount ->
-                            // 实时判断是否超过自动删除阈值
                             val newOffset = (offsetX + dragAmount).coerceIn(-autoDeleteThreshold * 1.2f, 0f)
                             offsetX = newOffset
                         }

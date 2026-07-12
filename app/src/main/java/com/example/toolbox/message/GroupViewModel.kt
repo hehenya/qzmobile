@@ -272,6 +272,7 @@ data class GroupInfoUiState(
     val editingAvatarUrl: String = "",
     val editingJoinVerification: Boolean = false,
     val editingShareEnabled: Boolean = false,
+    val editingIsPrivate: Boolean = false,
     val isEditing: Boolean = false,
     
     // 分享链接相关
@@ -973,7 +974,8 @@ class GroupInfoViewModel(
             editingDescription = group.description,
             editingAvatarUrl = group.avatarUrl,
             editingJoinVerification = group.joinVerification,
-            editingShareEnabled = group.shareEnabled
+            editingShareEnabled = group.shareEnabled,
+            editingIsPrivate = group.isPrivate
         ) }
     }
     fun hideEditDialog() { _uiState.update { it.copy(showEditDialog = false) } }
@@ -982,7 +984,7 @@ class GroupInfoViewModel(
     fun updateEditingAvatarUrl(avatarUrl: String) { _uiState.update { it.copy(editingAvatarUrl = avatarUrl) } }
     fun updateEditingJoinVerification(verification: Boolean) { _uiState.update { it.copy(editingJoinVerification = verification) } }
     fun updateEditingShareEnabled(enabled: Boolean) { _uiState.update { it.copy(editingShareEnabled = enabled) } }
-    
+    fun updateEditingIsPrivate(value: Boolean) { _uiState.update { it.copy(editingIsPrivate = value) } } 
     // 创建分享链接
     fun createShareLink(expireHours: Int = 0, onSuccess: ((String) -> Unit)? = null) {
         val group = _uiState.value.group ?: return
@@ -1097,7 +1099,8 @@ class GroupInfoViewModel(
         description: String? = null,
         avatarUrl: String? = null,
         joinVerification: Boolean? = null,
-        shareEnabled: Boolean? = null
+        shareEnabled: Boolean? = null,
+        isPrivate: Boolean? = null
     ) {
         viewModelScope.launch {
             _uiState.update { it.copy(isEditing = true) }
@@ -1110,6 +1113,7 @@ class GroupInfoViewModel(
                     avatarUrl?.let { put("avatar_url", it) }
                     joinVerification?.let { put("join_verification", it) }
                     shareEnabled?.let { put("share_enabled", it) }
+                    isPrivate?.let { put("is_private", it) }
                 }
                 
                 val request = Request.Builder()

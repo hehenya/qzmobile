@@ -230,14 +230,37 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
                     Spacer(Modifier.width(8.dp))
                     Switch(checked = uiState.editingJoinVerification, onCheckedChange = null, thumbContent = { Icon(if (uiState.editingJoinVerification) Icons.Default.Check else Icons.Default.Close, null, Modifier.size(SwitchDefaults.IconSize), tint = if (uiState.editingJoinVerification) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest) })
                 }
-                Row(Modifier.fillMaxWidth().padding(16.dp).clickable { viewModel.updateEditingShareEnabled(!uiState.editingShareEnabled) }, verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Share, "允许分享", Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(16.dp))
-                    Column(Modifier.weight(1f)) { Text("允许分享", style = MaterialTheme.typography.titleMedium); Text("允许成员生成分享链接邀请他人加入", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                    Spacer(Modifier.width(8.dp))
-                    Switch(checked = uiState.editingShareEnabled, onCheckedChange = null, thumbContent = { Icon(if (uiState.editingShareEnabled) Icons.Default.Check else Icons.Default.Close, null, Modifier.size(SwitchDefaults.IconSize), tint = if (uiState.editingShareEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest) })
-                }
+// 允许分享
+Row(Modifier.fillMaxWidth().padding(16.dp).clickable { viewModel.updateEditingShareEnabled(!uiState.editingShareEnabled) }, verticalAlignment = Alignment.CenterVertically) {
+    Icon(Icons.Default.Share, "允许分享", Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
+    Spacer(Modifier.width(16.dp))
+    Column(Modifier.weight(1f)) {
+        Text("允许分享", style = MaterialTheme.typography.titleMedium)
+        Text("允许成员生成分享链接邀请他人加入", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    Spacer(Modifier.width(8.dp))
+    Switch(checked = uiState.editingShareEnabled, onCheckedChange = null, thumbContent = {
+        Icon(if (uiState.editingShareEnabled) Icons.Default.Check else Icons.Default.Close, null, Modifier.size(SwitchDefaults.IconSize),
+            tint = if (uiState.editingShareEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest)
+    })
+}
+
+// 私有/公开
+Row(Modifier.fillMaxWidth().padding(16.dp).clickable { viewModel.updateEditingIsPrivate(!uiState.editingIsPrivate) }, verticalAlignment = Alignment.CenterVertically) {
+    Icon(if (uiState.editingIsPrivate) Icons.Default.Lock else Icons.Default.Public, "群类型", Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
+    Spacer(Modifier.width(16.dp))
+    Column(Modifier.weight(1f)) {
+        Text("私有群", style = MaterialTheme.typography.titleMedium)
+        Text(if (uiState.editingIsPrivate) "仅群成员可查看和搜索" else "所有人可搜索和加入", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    Spacer(Modifier.width(8.dp))
+    Switch(checked = uiState.editingIsPrivate, onCheckedChange = null, thumbContent = {
+        Icon(if (uiState.editingIsPrivate) Icons.Default.Check else Icons.Default.Close, null, Modifier.size(SwitchDefaults.IconSize),
+            tint = if (uiState.editingIsPrivate) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest)
+    })
+}
             }
-        }, confirmButton = { Button(onClick = { viewModel.editGroupInfo(uiState.editingName, uiState.editingDescription, uiState.editingAvatarUrl, uiState.editingJoinVerification, uiState.editingShareEnabled); viewModel.hideEditDialog() }, enabled = !uiState.isEditing) { if (uiState.isEditing) CircularProgressIndicator(Modifier.size(16.dp)) else Text("保存") } },
+        }, confirmButton = { Button(onClick = { viewModel.editGroupInfo(uiState.editingName, uiState.editingDescription, uiState.editingAvatarUrl, uiState.editingJoinVerification, uiState.editingShareEnabled, uiState.editingIsPrivate); viewModel.hideEditDialog() }, enabled = !uiState.isEditing) { if (uiState.isEditing) CircularProgressIndicator(Modifier.size(16.dp)) else Text("保存") } },
             dismissButton = { TextButton(onClick = { viewModel.hideEditDialog() }) { Text("取消") } })
     }
 
@@ -322,7 +345,9 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
                 var showShareDialog by remember { mutableStateOf(false) }
                 if (uiState.isJoined) {
                     if (uiState.myRole > 0) { IconButton(onClick = { viewModel.showEditDialog() }) { Icon(Icons.Default.Edit, contentDescription = "编辑群信息") } }
-                    IconButton(onClick = { showShareDialog = true }) { Icon(Icons.Default.Share, contentDescription = "分享群聊") }
+                    if (uiState.group?.shareEnabled != false) { 
+                        IconButton(onClick = { showShareDialog = true }) { Icon(Icons.Default.Share, contentDescription = "分享群聊") }
+                    }
                     Box {
                         IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, contentDescription = "更多") }
                         DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
