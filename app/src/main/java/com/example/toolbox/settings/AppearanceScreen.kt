@@ -14,11 +14,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import com.example.toolbox.data.Message
+import com.example.toolbox.message.MessageBubble
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,6 +29,7 @@ fun AppearanceScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val clipboard = LocalClipboard.current
     val settingsStorage = remember { SettingsStorage(context) }
     val scope = rememberCoroutineScope()
 
@@ -37,11 +41,33 @@ fun AppearanceScreen(
         bubbleOpacity = settingsStorage.getBubbleOpacity()
     }
 
-    val isDark = androidx.compose.foundation.isSystemInDarkTheme()
-    val myBubbleColor = MaterialTheme.colorScheme.primary.copy(alpha = bubbleOpacity)
-    val otherBubbleColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.8f)
-    val myTextColor = MaterialTheme.colorScheme.onPrimary
-    val otherTextColor = MaterialTheme.colorScheme.onSurface
+    val previewMessages = listOf(
+        Message(
+            msgId = "preview_1",
+            direction = "left",
+            isMine = false,
+            content = "明天去哪里玩",
+            timestampDisplay = "12:30",
+            isOlderSameSender = false,
+            isNewerSameSender = true
+        ),
+        Message(
+            msgId = "preview_2",
+            direction = "left",
+            isMine = false,
+            content = "要不去上海吧",
+            timestampDisplay = "12:31",
+            isOlderSameSender = true,
+            isNewerSameSender = false
+        ),
+        Message(
+            msgId = "preview_3",
+            direction = "right",
+            isMine = true,
+            content = "好",
+            timestampDisplay = "12:32"
+        )
+    )
 
     Scaffold(
         topBar = {
@@ -80,81 +106,23 @@ fun AppearanceScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
-                    // 别人的消息1（不是第一条）
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Start
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(
-                                topStart = bubbleCornerRadius.dp,
-                                topEnd = bubbleCornerRadius.dp,
-                                bottomStart = (bubbleCornerRadius * 0.3f).dp,
-                                bottomEnd = bubbleCornerRadius.dp
-                            ),
-                            color = otherBubbleColor
-                        ) {
-                            Text(
-                                "明天去哪里玩",
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                color = otherTextColor,
-                                fontSize = 14.sp
-                            )
-                        }
-                    }
-
-                    // 别人的消息2（最后一条，带头像缩进）
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Start
-                    ) {
-                        // 头像占位
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(RoundedCornerShape(bubbleCornerRadius.dp))
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+                    previewMessages.forEach { previewMessage ->
+                        MessageBubble(
+                            context = context,
+                            clipboard = clipboard,
+                            message = previewMessage,
+                            onRecall = {},
+                            onEdit = {},
+                            onImageClick = { _, _ -> },
+                            onReply = {},
+                            isSelectionMode = false,
+                            isSelected = false,
+                            showMenu = false,
+                            onShowMenuChanged = {},
+                            chatType = 1,
+                            bubbleOpacity = bubbleOpacity,
+                            bubbleCornerRadius = bubbleCornerRadius
                         )
-                        Spacer(Modifier.width(8.dp))
-                        Surface(
-                            shape = RoundedCornerShape(
-                                topStart = bubbleCornerRadius.dp,
-                                topEnd = bubbleCornerRadius.dp,
-                                bottomStart = bubbleCornerRadius.dp,
-                                bottomEnd = bubbleCornerRadius.dp
-                            ),
-                            color = otherBubbleColor
-                        ) {
-                            Text(
-                                "要不去上海吧",
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                color = otherTextColor,
-                                fontSize = 14.sp
-                            )
-                        }
-                    }
-
-                    // 自己的消息
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(
-                                topStart = bubbleCornerRadius.dp,
-                                topEnd = bubbleCornerRadius.dp,
-                                bottomStart = bubbleCornerRadius.dp,
-                                bottomEnd = (bubbleCornerRadius * 0.3f).dp
-                            ),
-                            color = myBubbleColor
-                        ) {
-                            Text(
-                                "好",
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                color = myTextColor,
-                                fontSize = 14.sp
-                            )
-                        }
                     }
                 }
             }
