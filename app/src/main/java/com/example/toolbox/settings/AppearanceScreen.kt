@@ -47,18 +47,14 @@ fun AppearanceScreen(
             direction = "left",
             isMine = false,
             content = "明天去哪里玩",
-            timestampDisplay = "12:30",
-            isOlderSameSender = false,
-            isNewerSameSender = true
+            timestampDisplay = "12:30"
         ),
         Message(
             msgId = "preview_2",
             direction = "left",
             isMine = false,
             content = "要不去上海吧",
-            timestampDisplay = "12:31",
-            isOlderSameSender = true,
-            isNewerSameSender = false
+            timestampDisplay = "12:31"
         ),
         Message(
             msgId = "preview_3",
