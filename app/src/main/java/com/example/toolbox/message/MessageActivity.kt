@@ -1592,42 +1592,41 @@ private fun MessageShareBottomSheet(
                 )
             }
 
-            Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
                     Text("取消")
                 }
                 OutlinedButton(
-                    OutlinedButton(
-                        onClick = {
-                            kotlinx.coroutines.MainScope().launch {
-                                val imageBitmap = graphicsLayer.toImageBitmap()
-                                val bitmap = android.graphics.Bitmap.createBitmap(imageBitmap.width, imageBitmap.height, android.graphics.Bitmap.Config.ARGB_8888)
-                                val canvas = android.graphics.Canvas(bitmap)
-                                canvas.drawBitmap(imageBitmap.asAndroidBitmap(), 0f, 0f, null)
-                                onShareImage(bitmap)
-                                onDismiss()
-                            }
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("分享")
-                    }
-                    Button(
-                        onClick = {
-                            kotlinx.coroutines.MainScope().launch {
-                                val imageBitmap = graphicsLayer.toImageBitmap()
-                                val bitmap = android.graphics.Bitmap.createBitmap(imageBitmap.width, imageBitmap.height, android.graphics.Bitmap.Config.ARGB_8888)
-                                val canvas = android.graphics.Canvas(bitmap)
-                                canvas.drawBitmap(imageBitmap.asAndroidBitmap(), 0f, 0f, null)
-                                onSaveImage(bitmap)
-                                onDismiss()
-                            }
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("保存")
-                    }
+                    onClick = {
+                        kotlinx.coroutines.MainScope().launch {
+                            val imageBitmap = graphicsLayer.toImageBitmap()
+                            val bitmap = android.graphics.Bitmap.createBitmap(imageBitmap.width, imageBitmap.height, android.graphics.Bitmap.Config.ARGB_8888)
+                            val canvas = android.graphics.Canvas(bitmap)
+                            canvas.drawBitmap(imageBitmap.asAndroidBitmap(), 0f, 0f, null)
+                            onShareImage(bitmap)
+                            onDismiss()
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("分享")
+                }
+                Button(
+                    onClick = {
+                        kotlinx.coroutines.MainScope().launch {
+                            val imageBitmap = graphicsLayer.toImageBitmap()
+                            val bitmap = android.graphics.Bitmap.createBitmap(imageBitmap.width, imageBitmap.height, android.graphics.Bitmap.Config.ARGB_8888)
+                            val canvas = android.graphics.Canvas(bitmap)
+                            canvas.drawBitmap(imageBitmap.asAndroidBitmap(), 0f, 0f, null)
+                            onSaveImage(bitmap)
+                            onDismiss()
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("保存")
+                }
             }
             Spacer(Modifier.height(16.dp))
         }
