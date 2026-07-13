@@ -1610,7 +1610,7 @@ private fun MessageShareBottomSheet(
                 // 保存
                 Column(
                     modifier = Modifier.clickable {
-                        scope.launch {
+                                                scope.launch {
                             val view = screenshotView ?: return@launch
                             val bitmap = android.graphics.Bitmap.createBitmap(view.width.coerceAtLeast(1), view.height.coerceAtLeast(1), android.graphics.Bitmap.Config.ARGB_8888)
                             val location = IntArray(2)
@@ -1622,8 +1622,8 @@ private fun MessageShareBottomSheet(
                                 { copyResult ->
                                     if (copyResult == android.view.PixelCopy.SUCCESS) {
                                         onSaveImage(bitmap)
+                                        onDismiss()
                                     }
-                                    onDismiss()
                                 },
                                 android.os.Handler(android.os.Looper.getMainLooper())
                             )
@@ -1649,7 +1649,7 @@ private fun MessageShareBottomSheet(
                 // 分享
                 Column(
                     modifier = Modifier.clickable {
-                        scope.launch {
+                                                scope.launch {
                             val view = screenshotView ?: return@launch
                             val bitmap = android.graphics.Bitmap.createBitmap(view.width.coerceAtLeast(1), view.height.coerceAtLeast(1), android.graphics.Bitmap.Config.ARGB_8888)
                             val location = IntArray(2)
@@ -1661,8 +1661,8 @@ private fun MessageShareBottomSheet(
                                 { copyResult ->
                                     if (copyResult == android.view.PixelCopy.SUCCESS) {
                                         onShareImage(bitmap)
+                                        onDismiss()
                                     }
-                                    onDismiss()
                                 },
                                 android.os.Handler(android.os.Looper.getMainLooper())
                             )
