@@ -1552,7 +1552,7 @@ private fun MessageShareBottomSheet(
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("分享面板", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text("分享消息", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(8.dp))
             Text("点击图片、用户、会话区域可切换是否隐藏", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(12.dp))
@@ -1576,7 +1576,6 @@ private fun MessageShareBottomSheet(
             AndroidView(
                 factory = {
                     ComposeView(context).apply {
-                        setLayerType(android.view.View.LAYER_TYPE_SOFTWARE, null)
                         setContent {
                             ToolBoxTheme {
                                 MessageSharePreviewCard(
@@ -1614,10 +1613,20 @@ private fun MessageShareBottomSheet(
                         scope.launch {
                             val view = screenshotView ?: return@launch
                             val bitmap = android.graphics.Bitmap.createBitmap(view.width.coerceAtLeast(1), view.height.coerceAtLeast(1), android.graphics.Bitmap.Config.ARGB_8888)
-                            val canvas = android.graphics.Canvas(bitmap)
-                            view.draw(canvas)
-                            onSaveImage(bitmap)
-                            onDismiss()
+                            val location = IntArray(2)
+                            view.getLocationInWindow(location)
+                            android.view.PixelCopy.request(
+                                (context as android.app.Activity).window,
+                                android.graphics.Rect(location[0], location[1], location[0] + view.width, location[1] + view.height),
+                                bitmap,
+                                { copyResult ->
+                                    if (copyResult == android.view.PixelCopy.SUCCESS) {
+                                        onSaveImage(bitmap)
+                                    }
+                                    onDismiss()
+                                },
+                                android.os.Handler(android.os.Looper.getMainLooper())
+                            )
                         }
                     },
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -1640,15 +1649,26 @@ private fun MessageShareBottomSheet(
                 // 分享
                 Column(
                     modifier = Modifier.clickable {
-                        scope.launch {
+                            scope.launch {
                             val view = screenshotView ?: return@launch
                             val bitmap = android.graphics.Bitmap.createBitmap(view.width.coerceAtLeast(1), view.height.coerceAtLeast(1), android.graphics.Bitmap.Config.ARGB_8888)
-                            val canvas = android.graphics.Canvas(bitmap)
-                            view.draw(canvas)
-                            onShareImage(bitmap)
-                            onDismiss()
+                            val location = IntArray(2)
+                            view.getLocationInWindow(location)
+                            android.view.PixelCopy.request(
+                                (context as android.app.Activity).window,
+                                android.graphics.Rect(location[0], location[1], location[0] + view.width, location[1] + view.height),
+                                bitmap,
+                                { copyResult ->
+                                    if (copyResult == android.view.PixelCopy.SUCCESS) {
+                                        onShareImage(bitmap)
+                                    }
+                                    onDismiss()
+                                },
+                                android.os.Handler(android.os.Looper.getMainLooper())
+                            )
                         }
                     },
+
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Surface(
