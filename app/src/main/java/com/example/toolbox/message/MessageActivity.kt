@@ -206,7 +206,7 @@ class MessageDetailActivity : ComponentActivity() {
 
                 val hazeState = remember { HazeState() }
                 var showShareSheet by remember { mutableStateOf(false) }
-                var shareSheetMessage by remember { mutableStateOf<Message?>(null) }
+                var shareSheetMessages by remember { mutableStateOf<List<Message>>(emptyList()) }
 
                 LaunchedEffect(uiState.messages.size) {
                     
@@ -251,10 +251,20 @@ class MessageDetailActivity : ComponentActivity() {
                                             }
                                         },
                                         actions = {
-                                            if (uiState.selectedMessages.size == 1) {
-                                                val msgId = uiState.selectedMessages.first()
-                                                val msg = uiState.messages.find { it.effectiveMsgId == msgId }
-                                                if (msg != null) {
+                                            if (uiState.selectedMessages.isNotEmpty()) {
+                                                val selectedIds = uiState.selectedMessages.toSet()
+                                                val selectedMsgs = uiState.messages.filter { it.effectiveMsgId in selectedIds }
+                                                if (selectedMsgs.isNotEmpty()) {
+                                                    IconButton(onClick = {
+                                                        shareSheetMessages = selectedMsgs
+                                                        showShareSheet = true
+                                                        viewModel.exitSelectionMode()
+                                                    }) {
+                                                        Icon(Icons.Default.Image, contentDescription = "分享面板")
+                                                    }
+                                                }
+                                                if (selectedMsgs.size == 1) {
+                                                    val msg = selectedMsgs.first()
                                                     if (msg.content.isNotBlank()) {
                                                         IconButton(onClick = {
                                                             val clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -269,13 +279,6 @@ class MessageDetailActivity : ComponentActivity() {
                                                         viewModel.exitSelectionMode()
                                                     }) {
                                                         Icon(Icons.Default.FormatQuote, contentDescription = "引用")
-                                                    }
-                                                    IconButton(onClick = {
-                                                        shareSheetMessage = msg
-                                                        showShareSheet = true
-                                                        viewModel.exitSelectionMode()
-                                                    }) {
-                                                        Icon(Icons.Default.Image, contentDescription = "分享面板")
                                                     }
                                                     if (msg.isMine && msg.content.isNotBlank()) {
                                                         IconButton(onClick = {
@@ -358,14 +361,25 @@ class MessageDetailActivity : ComponentActivity() {
                 ) { innerPadding ->
                     Box(modifier = Modifier.fillMaxSize().hazeSource(hazeState)) {
                         MessageDetailScreen(PaddingValues(0.dp), viewModel)
-                        if (showShareSheet && shareSheetMessage != null) {
+                        if (showShareSheet && shareSheetMessages.isNotEmpty()) {
+                            val shareChatName = when {
+                                chatType == 2 && uiState.groupInfo != null -> uiState.groupInfo!!.name
+                                uiState.otherUser != null -> uiState.otherUser!!.username
+                                else -> "会话"
+                            }
+                            val shareChatAvatar = when {
+                                chatType == 2 && uiState.groupInfo != null -> uiState.groupInfo!!.avatarUrl
+                                uiState.otherUser != null -> uiState.otherUser!!.avatar
+                                else -> ""
+                            }
                             MessageShareBottomSheet(
-                                message = shareSheetMessage!!,
-                                chatName = uiState.otherUser?.username ?: "会话",
-                                chatAvatar = uiState.otherUser?.avatar ?: "",
+                                messages = shareSheetMessages,
+                                chatName = shareChatName,
+                                chatAvatar = shareChatAvatar,
+                                chatType = chatType,
                                 onDismiss = {
                                     showShareSheet = false
-                                    shareSheetMessage = null
+                                    shareSheetMessages = emptyList()
                                 },
                                 onSaveImage = { bitmap ->
                                     kotlinx.coroutines.MainScope().launch { saveBitmapToGallery(this@MessageDetailActivity, bitmap) }
@@ -1501,9 +1515,10 @@ fun MessageBubble(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MessageShareBottomSheet(
-    message: Message,
+    messages: List<Message>,
     chatName: String,
     chatAvatar: String,
+    chatType: Int,
     onDismiss: () -> Unit,
     onSaveImage: (android.graphics.Bitmap) -> Unit,
     onShareImage: (android.graphics.Bitmap) -> Unit
@@ -1557,9 +1572,10 @@ private fun MessageShareBottomSheet(
                         setContent {
                             ToolBoxTheme {
                                 MessageSharePreviewCard(
-                                    message = message,
+                                    messages = messages,
                                     chatName = chatName,
                                     chatAvatar = chatAvatar,
+                                    chatType = chatType,
                                     hideSenderInfo = localHideSenderInfo,
                                     hideMyInfo = localHideMyInfo,
                                     hideSessionInfo = localHideSessionInfo,
@@ -1667,9 +1683,10 @@ private fun MessageShareBottomSheet(
 
 @Composable
 private fun MessageSharePreviewCard(
-    message: Message,
+    messages: List<Message>,
     chatName: String,
     chatAvatar: String,
+    chatType: Int,
     hideSenderInfo: Boolean,
     hideMyInfo: Boolean,
     hideSessionInfo: Boolean,
@@ -1679,6 +1696,9 @@ private fun MessageSharePreviewCard(
     onToggleSession: () -> Unit,
     onToggleImages: () -> Unit
 ) {
+    val context = LocalContext.current
+    val clipboard = LocalClipboard.current
+
     Surface(
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
@@ -1713,7 +1733,7 @@ private fun MessageSharePreviewCard(
                         modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("会", color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        Text(chatName.firstOrNull()?.toString()?.uppercase() ?: "会", color = MaterialTheme.colorScheme.onPrimaryContainer)
                     }
                 }
                 Spacer(Modifier.width(12.dp))
@@ -1724,7 +1744,7 @@ private fun MessageSharePreviewCard(
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        text = "消息分享预览",
+                        text = "共 ${messages.size} 条消息",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1737,80 +1757,57 @@ private fun MessageSharePreviewCard(
                 color = MaterialTheme.colorScheme.surface,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onToggleSender() }
-                    ) {
-                        Text(
-                            text = if (hideSenderInfo) {
-                                if (message.isMine && hideMyInfo) "对方" else "匿名用户"
-                            } else if (message.isMine && hideMyInfo) {
-                                "对方"
-                            } else {
-                                message.displayName.ifBlank { "未知用户" }
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = message.sendTimeDisplay ?: message.timestampDisplay ?: "",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    Spacer(Modifier.height(8.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onToggleImages() }
-                    ) {
-                        if (hideImages) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp)
+                        .clickable { onToggleImages() },
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    messages.forEachIndexed { index, message ->
+                        val shouldHideContent = hideImages && (message.images.isNotEmpty() || message.isSticker || message.contentType == 7)
+                        if (shouldHideContent) {
                             Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(96.dp)
-                                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)),
-                                contentAlignment = Alignment.Center
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = if (message.isMine || message.direction == "right") Alignment.CenterEnd else Alignment.CenterStart
                             ) {
-                                Text("图片/表情已隐藏", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Surface(
+                                    shape = RoundedCornerShape(14.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
+                                    modifier = Modifier.widthIn(max = 260.dp)
+                                ) {
+                                    Text(
+                                        text = "图片/表情已隐藏",
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
-                        } else if (message.images.isNotEmpty()) {
-                            AsyncImage(
-                                model = message.images.firstOrNull().orEmpty(),
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(140.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                            )
                         } else {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
-                                    .padding(12.dp)
-                            ) {
-                                Text(
-                                    text = message.content.ifBlank { if (message.isSticker || message.contentType == 7) "[表情消息]" else "[消息]" },
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
+                            MessageBubble(
+                                context = context,
+                                clipboard = clipboard,
+                                message = message,
+                                onRecall = {},
+                                onEdit = {},
+                                onImageClick = { _, _ -> },
+                                onReply = {},
+                                isAdmin = false,
+                                isOlderSameSender = index > 0 && messages[index - 1].senderId == message.senderId,
+                                isNewerSameSender = index < messages.lastIndex && messages[index + 1].senderId == message.senderId,
+                                showAvatar = !message.isMine && !message.isSystem && chatType == 2,
+                                chatType = chatType,
+                                showDate = false,
+                                isSelectionMode = false,
+                                isSelected = false,
+                                showMenu = false,
+                                onShowMenuChanged = null,
+                                avatarAlignment = Alignment.Bottom,
+                                bubbleOpacity = 0.95f,
+                                bubbleCornerRadius = 16f
+                            )
                         }
-                    }
-
-                    if (!hideImages || message.content.isNotBlank()) {
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            text = if (hideImages) "内容已隐藏" else message.content.ifBlank { if (message.isSticker || message.contentType == 7) "[表情消息]" else "[消息]" },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
                 }
             }
@@ -1851,7 +1848,7 @@ private fun shareBitmap(context: Context, bitmap: Bitmap) {
                 val shareIntent = Intent(Intent.ACTION_SEND).apply {
                     type = "image/png"
                     putExtra(Intent.EXTRA_STREAM, uri)
-                    putExtra(Intent.EXTRA_TEXT, "分享一条消息")
+                    putExtra(Intent.EXTRA_TEXT, "分享多条消息")
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
                 context.startActivity(Intent.createChooser(shareIntent, "分享消息截图"))
@@ -2074,7 +2071,7 @@ private fun shareMessageAsBitmap(context: Context, message: Message) {
                 val shareIntent = Intent(Intent.ACTION_SEND).apply {
                     type = "image/png"
                     putExtra(Intent.EXTRA_STREAM, uri)
-                    putExtra(Intent.EXTRA_TEXT, "分享一条消息")
+                    putExtra(Intent.EXTRA_TEXT, "分享多条消息")
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
                 context.startActivity(Intent.createChooser(shareIntent, "分享消息截图"))
