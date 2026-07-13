@@ -205,6 +205,8 @@ class MessageDetailActivity : ComponentActivity() {
                 val uiState by viewModel.uiState.collectAsState()
 
                 val hazeState = remember { HazeState() }
+                var showShareSheet by remember { mutableStateOf(false) }
+                var shareSheetMessage by remember { mutableStateOf<Message?>(null) }
 
                 LaunchedEffect(uiState.messages.size) {
                     
@@ -356,6 +358,21 @@ class MessageDetailActivity : ComponentActivity() {
                 ) { innerPadding ->
                     Box(modifier = Modifier.fillMaxSize().hazeSource(hazeState)) {
                         MessageDetailScreen(PaddingValues(0.dp), viewModel)
+                        if (showShareSheet && shareSheetMessage != null) {
+                            MessageShareBottomSheet(
+                                message = shareSheetMessage!!,
+                                chatName = uiState.otherUser?.username ?: "会话",
+                                chatAvatar = uiState.otherUser?.avatar ?: "",
+                                onDismiss = {
+                                    showShareSheet = false
+                                    shareSheetMessage = null
+                                },
+                                onSaveImage = { bitmap ->
+                                    kotlinx.coroutines.MainScope().launch { saveBitmapToGallery(this@MessageDetailActivity, bitmap) }
+                                },
+                                onShareImage = { bitmap -> shareBitmap(this@MessageDetailActivity, bitmap) }
+                            )
+                        }
                     }
                 }
             }
@@ -415,8 +432,7 @@ fun MessageDetailScreen(
     val selectionMode = uiState.selectionMode
     val selectedMessages = uiState.selectedMessages
     var showMenuMsgId by remember { mutableStateOf<String?>(null) }
-    var showShareSheet by remember { mutableStateOf(false) }
-    var shareSheetMessage by remember { mutableStateOf<Message?>(null) }
+
 
     val floatingAvatarState by remember {
         derivedStateOf {
@@ -567,21 +583,7 @@ fun MessageDetailScreen(
         )
     }
 
-    if (showShareSheet && shareSheetMessage != null) {
-        MessageShareBottomSheet(
-            message = shareSheetMessage!!,
-            chatName = uiState.otherUser?.username ?: "会话",
-            chatAvatar = uiState.otherUser?.avatar ?: "",
-            onDismiss = {
-                showShareSheet = false
-                shareSheetMessage = null
-            },
-            onSaveImage = { bitmap ->
-                scope.launch { saveBitmapToGallery(context, bitmap) }
-            },
-            onShareImage = { bitmap -> shareBitmap(context, bitmap) }
-        )
-    }
+    
 
     BackHandler(enabled = selectionMode) {
         viewModel.exitSelectionMode()
