@@ -268,7 +268,13 @@ class MessageDetailActivity : ComponentActivity() {
                                                     }) {
                                                         Icon(Icons.Default.FormatQuote, contentDescription = "引用")
                                                     }
-                                                
+                                                    IconButton(onClick = {
+                                                        shareSheetMessage = msg
+                                                        showShareSheet = true
+                                                        viewModel.exitSelectionMode()
+                                                    }) {
+                                                        Icon(Icons.Default.Image, contentDescription = "分享面板")
+                                                    }
                                                     if (msg.isMine && msg.content.isNotBlank()) {
                                                         IconButton(onClick = {
                                                             viewModel.startEditMessage(msg)
@@ -802,19 +808,7 @@ fun MessageDetailScreen(
                         Spacer(Modifier.width(4.dp))
                         Text("撤回")
                     }
-                    Button(onClick = {
-                        val msgId = selectedMessages.firstOrNull()
-                        val msg = uiState.messages.find { it.effectiveMsgId == msgId }
-                        if (msg != null) {
-                            shareSheetMessage = msg
-                            showShareSheet = true
-                            viewModel.exitSelectionMode()
-                        }
-                    }) {
-                        Icon(Icons.Default.Image, null, Modifier.size(18.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("分享面板")
-                    }
+                    
                     Button(onClick = { /* 转发选中 */ }) {
                         Icon(Icons.Filled.Share, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
@@ -1517,7 +1511,6 @@ private fun MessageShareBottomSheet(
     onShareImage: (android.graphics.Bitmap) -> Unit
 ) {
     val context = LocalContext.current
-    val activity = context as? android.app.Activity
     val scope = rememberCoroutineScope()
     var screenshotView by remember { mutableStateOf<android.view.View?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
