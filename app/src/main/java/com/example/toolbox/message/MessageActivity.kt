@@ -184,6 +184,9 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.filled.SaveAlt
 
 // ---- Activity ----
 class MessageDetailActivity : ComponentActivity() {
@@ -1509,24 +1512,20 @@ private fun MessageShareBottomSheet(
     chatName: String,
     chatAvatar: String,
     onDismiss: () -> Unit,
-    onSaveImage: (Bitmap) -> Unit,
-    onShareImage: (Bitmap) -> Unit
+    onSaveImage: (android.graphics.Bitmap) -> Unit,
+    onShareImage: (android.graphics.Bitmap) -> Unit
 ) {
     val context = LocalContext.current
+    val activity = context as? android.app.Activity
+    val scope = rememberCoroutineScope()
+    var screenshotView by remember { mutableStateOf<android.view.View?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
     val settingsStorage = remember { com.example.toolbox.settings.SettingsStorage(context) }
     val hideSenderInfo by settingsStorage.screenshotHideSenderInfoFlow.collectAsState(initial = false)
     val hideMyInfo by settingsStorage.screenshotHideMyInfoFlow.collectAsState(initial = false)
     val hideSessionInfo by settingsStorage.screenshotHideSessionInfoFlow.collectAsState(initial = false)
     val hideImages by settingsStorage.screenshotHideImagesFlow.collectAsState(initial = false)
-    var localHideSenderInfo by remember(hideSenderInfo) { mutableStateOf(hideSenderInfo) }
-    var localHideMyInfo by remember(hideMyInfo) { mutableStateOf(hideMyInfo) }
-    var localHideSessionInfo by remember(hideSessionInfo) { mutableStateOf(hideSessionInfo) }
-    var localHideImages by remember(hideImages) { mutableStateOf(hideImages) }
-
-    // 用 graphicsLayer 截图
-    val graphicsLayer = androidx.compose.ui.graphics.rememberGraphicsLayer()
-    var capturedBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -1535,97 +1534,138 @@ private fun MessageShareBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = "分享面板",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
+            Text("分享面板", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(8.dp))
-            Text(
-                text = "点击图片、用户、会话区域可切换是否隐藏",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Text("点击图片、用户、会话区域可切换是否隐藏", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(12.dp))
+
+            // FilterChips
+            var localHideSenderInfo by remember(hideSenderInfo) { mutableStateOf(hideSenderInfo) }
+            var localHideMyInfo by remember(hideMyInfo) { mutableStateOf(hideMyInfo) }
+            var localHideSessionInfo by remember(hideSessionInfo) { mutableStateOf(hideSessionInfo) }
+            var localHideImages by remember(hideImages) { mutableStateOf(hideImages) }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(
-                    selected = localHideSenderInfo,
-                    onClick = { localHideSenderInfo = !localHideSenderInfo },
-                    label = { Text("隐藏用户") }
-                )
-                FilterChip(
-                    selected = localHideMyInfo,
-                    onClick = { localHideMyInfo = !localHideMyInfo },
-                    label = { Text("匿名我方") }
-                )
-                FilterChip(
-                    selected = localHideSessionInfo,
-                    onClick = { localHideSessionInfo = !localHideSessionInfo },
-                    label = { Text("隐藏会话") }
-                )
-                FilterChip(
-                    selected = localHideImages,
-                    onClick = { localHideImages = !localHideImages },
-                    label = { Text("隐藏图片") }
-                )
+                FilterChip(selected = localHideSenderInfo, onClick = { localHideSenderInfo = !localHideSenderInfo }, label = { Text("隐藏用户") })
+                FilterChip(selected = localHideMyInfo, onClick = { localHideMyInfo = !localHideMyInfo }, label = { Text("匿名我方") })
+                FilterChip(selected = localHideSessionInfo, onClick = { localHideSessionInfo = !localHideSessionInfo }, label = { Text("隐藏会话") })
+                FilterChip(selected = localHideImages, onClick = { localHideImages = !localHideImages }, label = { Text("隐藏图片") })
             }
 
             Spacer(Modifier.height(12.dp))
 
-            // 预览卡片
-            Box(modifier = Modifier.fillMaxWidth()) {
-                MessageSharePreviewCard(
-                    message = message,
-                    chatName = chatName,
-                    chatAvatar = chatAvatar,
-                    hideSenderInfo = localHideSenderInfo,
-                    hideMyInfo = localHideMyInfo,
-                    hideSessionInfo = localHideSessionInfo,
-                    hideImages = localHideImages,
-                    onToggleSender = { localHideSenderInfo = !localHideSenderInfo },
-                    onToggleMyInfo = { localHideMyInfo = !localHideMyInfo },
-                    onToggleSession = { localHideSessionInfo = !localHideSessionInfo },
-                    onToggleImages = { localHideImages = !localHideImages }
-                )
-            }
-
-                        Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
-                    Text("取消")
-                }
-                OutlinedButton(
-                    onClick = {
-                        kotlinx.coroutines.MainScope().launch {
-                            val imageBitmap = graphicsLayer.toImageBitmap()
-                            val bitmap = android.graphics.Bitmap.createBitmap(imageBitmap.width, imageBitmap.height, android.graphics.Bitmap.Config.ARGB_8888)
-                            val canvas = android.graphics.Canvas(bitmap)
-                            canvas.drawBitmap(imageBitmap.asAndroidBitmap(), 0f, 0f, null)
-                            onShareImage(bitmap)
-                            onDismiss()
+            // AndroidView 截图
+            AndroidView(
+                factory = { ctx ->
+                    ComposeView(ctx).apply {
+                        setContent {
+                            ToolBoxTheme {
+                                MessageSharePreviewCard(
+                                    message = message,
+                                    chatName = chatName,
+                                    chatAvatar = chatAvatar,
+                                    hideSenderInfo = localHideSenderInfo,
+                                    hideMyInfo = localHideMyInfo,
+                                    hideSessionInfo = localHideSessionInfo,
+                                    hideImages = localHideImages,
+                                    onToggleSender = { localHideSenderInfo = !localHideSenderInfo },
+                                    onToggleMyInfo = { localHideMyInfo = !localHideMyInfo },
+                                    onToggleSession = { localHideSessionInfo = !localHideSessionInfo },
+                                    onToggleImages = { localHideImages = !localHideImages }
+                                )
+                            }
                         }
-                    },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("分享")
-                }
-                Button(
-                    onClick = {
-                        kotlinx.coroutines.MainScope().launch {
-                            val imageBitmap = graphicsLayer.toImageBitmap()
-                            val bitmap = android.graphics.Bitmap.createBitmap(imageBitmap.width, imageBitmap.height, android.graphics.Bitmap.Config.ARGB_8888)
+                        screenshotView = this
+                    }
+                },
+                modifier = Modifier.wrapContentSize()
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 保存
+                Column(
+                    modifier = Modifier.clickable {
+                        scope.launch {
+                            val view = screenshotView ?: return@launch
+                            val bitmap = android.graphics.Bitmap.createBitmap(view.width.coerceAtLeast(1), view.height.coerceAtLeast(1), android.graphics.Bitmap.Config.ARGB_8888)
                             val canvas = android.graphics.Canvas(bitmap)
-                            canvas.drawBitmap(imageBitmap.asAndroidBitmap(), 0f, 0f, null)
+                            view.draw(canvas)
                             onSaveImage(bitmap)
                             onDismiss()
                         }
                     },
-                    modifier = Modifier.weight(1f)
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("保存")
+                    Surface(
+                        modifier = Modifier.size(44.dp),
+                        shape = RoundedCornerShape(22.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.SaveAlt, null, Modifier.size(22.dp))
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text("保存图片", fontSize = 12.sp)
+                }
+
+                Spacer(Modifier.width(32.dp))
+
+                // 分享
+                Column(
+                    modifier = Modifier.clickable {
+                        scope.launch {
+                            val view = screenshotView ?: return@launch
+                            val bitmap = android.graphics.Bitmap.createBitmap(view.width.coerceAtLeast(1), view.height.coerceAtLeast(1), android.graphics.Bitmap.Config.ARGB_8888)
+                            val canvas = android.graphics.Canvas(bitmap)
+                            view.draw(canvas)
+                            onShareImage(bitmap)
+                            onDismiss()
+                        }
+                    },
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Surface(
+                        modifier = Modifier.size(44.dp),
+                        shape = RoundedCornerShape(22.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.Share, null, Modifier.size(22.dp))
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text("分享", fontSize = 12.sp)
+                }
+
+                Spacer(Modifier.width(32.dp))
+
+                // 取消
+                Column(
+                    modifier = Modifier.clickable { onDismiss() },
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Surface(
+                        modifier = Modifier.size(44.dp),
+                        shape = RoundedCornerShape(22.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.Close, null, Modifier.size(22.dp))
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text("取消", fontSize = 12.sp)
                 }
             }
             Spacer(Modifier.height(16.dp))
