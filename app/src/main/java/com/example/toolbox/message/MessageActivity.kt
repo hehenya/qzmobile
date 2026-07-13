@@ -1247,7 +1247,7 @@ fun MessageBubble(
                 if (!isMine && chatType == 2) {
                     if (showAvatar) {
                         AsyncImage(
-                            model = message.displayAvatar,
+                            model = previewAvatar ?: message.displayAvatar,
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
@@ -1306,21 +1306,22 @@ fun MessageBubble(
                                         Text(fi.username, fontSize = 12.sp, color = forwardColor, fontWeight = FontWeight.Medium)
                                     }
                                 }
-                                                                if (!isMine && isFirstFromSender && chatType == 2 && message.content.isNotBlank()) {
+                                if (!isMine && isFirstFromSender && chatType == 2 && message.content.isNotBlank()) {
                                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 2.dp)) {
-                                        Text(message.displayName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                                        if (message.displayTag.isNotBlank()) {
+                                        Text(
+                                            previewDisplayName ?: message.displayName,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        val tag = previewDisplayTag ?: message.displayTag
+                                        if (tag.isNotBlank()) {
                                             Spacer(Modifier.width(4.dp))
                                             Surface(
                                                 shape = RoundedCornerShape(8.dp),
                                                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                                             ) {
-                                                Text(
-                                                    message.displayTag,
-                                                    fontSize = 10.sp,
-                                                    color = MaterialTheme.colorScheme.primary,
-                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                                                )
+                                                Text(tag, fontSize = 10.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp))
                                             }
                                         }
                                     }
