@@ -1246,29 +1246,20 @@ fun MessageBubble(
             ) {
                 if (!isMine && chatType == 2) {
                     if (showAvatar) {
-                        if (hideSenderInfo) {
-                            AsyncImage(
-                                model = SHARE_PREVIEW_PLACEHOLDER_AVATAR,
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.size(36.dp).clip(CircleShape)
-                            )
-                        } else {
-                            AsyncImage(
-                                model = previewAvatar ?: message.displayAvatar,
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .clickable {
-                                        val intent = Intent(context, UserInfoActivity::class.java).apply {
-                                            putExtra("userId", message.senderId ?: return@clickable)
-                                        }
-                                        context.startActivity(intent)
+                        AsyncImage(
+                            model = message.displayAvatar,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .clickable {
+                                    val intent = Intent(context, UserInfoActivity::class.java).apply {
+                                        putExtra("userId", message.senderId ?: return@clickable)
                                     }
-                            )
-                        }
+                                    context.startActivity(intent)
+                                }
+                        )
                         Spacer(Modifier.width(8.dp))
                     } else {
                         Spacer(Modifier.width(44.dp))
@@ -1315,7 +1306,7 @@ fun MessageBubble(
                                         Text(fi.username, fontSize = 12.sp, color = forwardColor, fontWeight = FontWeight.Medium)
                                     }
                                 }
-                                if (isFirstFromSender && chatType == 2 && message.content.isNotBlank()) {
+                                                                if (!isMine && isFirstFromSender && chatType == 2 && message.content.isNotBlank()) {
                                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 2.dp)) {
                                         Text(message.displayName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                                         if (message.displayTag.isNotBlank()) {
