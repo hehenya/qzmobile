@@ -179,7 +179,6 @@ import android.text.Layout
 import android.text.StaticLayout
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.graphics.rememberGraphicsLayer
-import androidx.compose.ui.graphics.toAndroidBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import android.graphics.Bitmap
 import android.graphics.Canvas
