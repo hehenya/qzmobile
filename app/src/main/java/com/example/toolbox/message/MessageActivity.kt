@@ -268,6 +268,13 @@ class MessageDetailActivity : ComponentActivity() {
                                                     }) {
                                                         Icon(Icons.Default.FormatQuote, contentDescription = "引用")
                                                     }
+                                                    IconButton(onClick = {
+                                                        shareSheetMessage = msg
+                                                        showShareSheet = true
+                                                        viewModel.exitSelectionMode()
+                                                    }) {
+                                                        Icon(Icons.Default.Image, contentDescription = "分享面板")
+                                                    }
                                                     if (msg.isMine && msg.content.isNotBlank()) {
                                                         IconButton(onClick = {
                                                             viewModel.startEditMessage(msg)
@@ -732,6 +739,10 @@ fun MessageDetailScreen(
                                     onDeleteSticker = { viewModel.deleteSticker(it) },
                                     onCollectImageAsSticker = { viewModel.collectImageAsSticker(it) },
                                     onDeleteMessage = { viewModel.deleteMessage(it) },
+                                    onShareClick = { message ->
+                                        shareSheetMessage = message
+                                        showShareSheet = true
+                                    },
                                     bubbleOpacity = bubbleOpacity,
                                     bubbleCornerRadius = bubbleCornerRadius,
                                 )
@@ -796,14 +807,27 @@ fun MessageDetailScreen(
                         Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null)
                         Spacer(Modifier.width(4.dp))
                         Text("撤回")
-
                     }
-                    Button(onClick = { /* 转发选中 */ }) { 
+                    Button(onClick = {
+                        val msgId = selectedMessages.firstOrNull()
+                        val msg = uiState.messages.find { it.effectiveMsgId == msgId }
+                        if (msg != null) {
+                            shareSheetMessage = msg
+                            showShareSheet = true
+                            viewModel.exitSelectionMode()
+                        }
+                    }) {
+                        Icon(Icons.Default.Image, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("分享面板")
+                    }
+                    Button(onClick = { /* 转发选中 */ }) {
                         Icon(Icons.Filled.Share, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("转发") 
+                        Text("转发")
                     }
                 }
+            
             } else {
                 Column {
                     replyTo?.let { repliedMessage ->
@@ -1126,14 +1150,6 @@ fun MessageBubble(
                     onDismissRequest = { onShowMenuChanged?.invoke(null) }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("分享面板") },
-                        onClick = {
-                            onShowMenuChanged?.invoke(null)
-                            onShareClick?.invoke(message)
-                        },
-                        leadingIcon = { Icon(Icons.Default.Image, null, Modifier.size(18.dp)) }
-                    )
-                    DropdownMenuItem(
                         text = { Text("引用") },
                         onClick = { onReply(); onShowMenuChanged?.invoke(null) },
                         leadingIcon = { Icon(Icons.Default.FormatQuote, null, Modifier.size(18.dp)) }
@@ -1401,14 +1417,6 @@ fun MessageBubble(
                         onDismissRequest = { onShowMenuChanged?.invoke(null) },
                         modifier = Modifier.align(if (isMine) Alignment.TopStart else Alignment.TopEnd)
                     ) {
-                        DropdownMenuItem(
-                            text = { Text("分享面板") },
-                            onClick = {
-                                onShowMenuChanged?.invoke(null)
-                                onShareClick?.invoke(message)
-                            },
-                            leadingIcon = { Icon(Icons.Default.Image, null, Modifier.size(18.dp)) }
-                        )
                         if (message.content.isNotBlank()) {
                             DropdownMenuItem(
                                 text = { Text("复制") },
