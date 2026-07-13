@@ -1316,27 +1316,20 @@ fun MessageBubble(
                                     }
                                 }
                                 if (isFirstFromSender && chatType == 2 && message.content.isNotBlank()) {
-                                    if (hideSenderInfo && !isMine) {
-                                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 2.dp)) {
-                                            Text(previewDisplayName ?: "匿名用户", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                                        }
-                                    } else if (!(isMine && hideMyInfo)) {
-                                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 2.dp)) {
-                                            Text((previewDisplayName ?: message.displayName).ifBlank { "匿名用户" }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                                            val previewTag = (previewDisplayTag ?: message.displayTag).ifBlank { "" }
-                                            if (previewTag.isNotBlank()) {
-                                                Spacer(Modifier.width(4.dp))
-                                                Surface(
-                                                    shape = RoundedCornerShape(8.dp),
-                                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                                                ) {
-                                                    Text(
-                                                        previewTag,
-                                                        fontSize = 10.sp,
-                                                        color = MaterialTheme.colorScheme.primary,
-                                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                                                    )
-                                                }
+                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 2.dp)) {
+                                        Text(message.displayName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                        if (message.displayTag.isNotBlank()) {
+                                            Spacer(Modifier.width(4.dp))
+                                            Surface(
+                                                shape = RoundedCornerShape(8.dp),
+                                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                            ) {
+                                                Text(
+                                                    message.displayTag,
+                                                    fontSize = 10.sp,
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                )
                                             }
                                         }
                                     }
@@ -1641,7 +1634,7 @@ private fun MessageShareBottomSheet(
                             }
                             view.isDrawingCacheEnabled = false
                             view.destroyDrawingCache()
-                            onShareImage(bitmap)
+                            onSaveImage(bitmap)
                             onDismiss()
                         }
                     },
@@ -1680,7 +1673,7 @@ private fun MessageShareBottomSheet(
                             }
                             view.isDrawingCacheEnabled = false
                             view.destroyDrawingCache()
-                            onSaveImage(bitmap)
+                            onShareImage(bitmap)
                             onDismiss()
                         }
                     },
