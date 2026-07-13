@@ -1071,6 +1071,7 @@ fun MessageBubble(
     previewDisplayTag: String? = null,
     previewAvatar: String? = null,
     forceIsMine: Boolean? = null,
+    hideMyInfo: Boolean = false,
 ) {
     val effectiveIsMine = forceIsMine ?: (message.isMine || message.direction == "right")
     val isMine = effectiveIsMine
@@ -1855,7 +1856,9 @@ private fun MessageSharePreviewCard(
                                 previewDisplayName = previewName,
                                 previewDisplayTag = previewTag,
                                 previewAvatar = previewAvatar,
-                                forceIsMine = previewForceIsMine
+                                forceIsMine = previewForceIsMine,
+                                hideMyInfo = hideMyInfo,
+
                             )
                         }
                     }
