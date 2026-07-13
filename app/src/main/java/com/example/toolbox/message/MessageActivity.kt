@@ -7,8 +7,6 @@ import android.content.ClipboardManager
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
@@ -1600,35 +1598,36 @@ private fun MessageShareBottomSheet(
                     Text("取消")
                 }
                 OutlinedButton(
-                    onClick = {
-                        kotlinx.coroutines.MainScope().launch {
-                            val imageBitmap = graphicsLayer.toImageBitmap()
-                            val bitmap = Bitmap.createBitmap(imageBitmap.width, imageBitmap.height, Bitmap.Config.ARGB_8888)
-                            val canvas = Canvas(bitmap)
-                            canvas.drawBitmap(imageBitmap.asAndroidBitmap(), 0f, 0f, null)
-                            onShareImage(bitmap)
-                            onDismiss()
-                        }
-                    },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("分享")
-                }
-                Button(
-                    onClick = {
-                        kotlinx.coroutines.MainScope().launch {
-                            val imageBitmap = graphicsLayer.toImageBitmap()
-                            val bitmap = Bitmap.createBitmap(imageBitmap.width, imageBitmap.height, Bitmap.Config.ARGB_8888)
-                            val canvas = Canvas(bitmap)
-                            canvas.drawBitmap(imageBitmap.asAndroidBitmap(), 0f, 0f, null)
-                            onSaveImage(bitmap)
-                            onDismiss()
-                        }
-                    },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("保存")
-                }
+                    OutlinedButton(
+                        onClick = {
+                            kotlinx.coroutines.MainScope().launch {
+                                val imageBitmap = graphicsLayer.toImageBitmap()
+                                val bitmap = android.graphics.Bitmap.createBitmap(imageBitmap.width, imageBitmap.height, android.graphics.Bitmap.Config.ARGB_8888)
+                                val canvas = android.graphics.Canvas(bitmap)
+                                canvas.drawBitmap(imageBitmap.asAndroidBitmap(), 0f, 0f, null)
+                                onShareImage(bitmap)
+                                onDismiss()
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("分享")
+                    }
+                    Button(
+                        onClick = {
+                            kotlinx.coroutines.MainScope().launch {
+                                val imageBitmap = graphicsLayer.toImageBitmap()
+                                val bitmap = android.graphics.Bitmap.createBitmap(imageBitmap.width, imageBitmap.height, android.graphics.Bitmap.Config.ARGB_8888)
+                                val canvas = android.graphics.Canvas(bitmap)
+                                canvas.drawBitmap(imageBitmap.asAndroidBitmap(), 0f, 0f, null)
+                                onSaveImage(bitmap)
+                                onDismiss()
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("保存")
+                    }
             }
             Spacer(Modifier.height(16.dp))
         }
