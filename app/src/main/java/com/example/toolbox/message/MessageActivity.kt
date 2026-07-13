@@ -4,9 +4,16 @@ package com.example.toolbox.message
 
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.MediaStore
+import android.view.View
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -75,12 +82,14 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -93,6 +102,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -112,9 +122,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.Clipboard
+import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -385,6 +397,8 @@ fun MessageDetailScreen(
     val selectionMode = uiState.selectionMode
     val selectedMessages = uiState.selectedMessages
     var showMenuMsgId by remember { mutableStateOf<String?>(null) }
+    var showShareSheet by remember { mutableStateOf(false) }
+    var shareSheetMessage by remember { mutableStateOf<Message?>(null) }
 
     val floatingAvatarState by remember {
         derivedStateOf {
@@ -532,6 +546,22 @@ fun MessageDetailScreen(
             initialPage = imageViewerInitialPage,
             isVisible = showImageViewer,
             onDismiss = { showImageViewer = false }
+        )
+    }
+
+    if (showShareSheet && shareSheetMessage != null) {
+        MessageShareBottomSheet(
+            message = shareSheetMessage!!,
+            chatName = uiState.otherUser?.username ?: "会话",
+            chatAvatar = uiState.otherUser?.avatar ?: "",
+            onDismiss = {
+                showShareSheet = false
+                shareSheetMessage = null
+            },
+            onSaveImage = { bitmap ->
+                scope.launch { saveBitmapToGallery(context, bitmap) }
+            },
+            onShareImage = { bitmap -> shareBitmap(context, bitmap) }
         )
     }
 
@@ -999,6 +1029,7 @@ fun MessageBubble(
     onDeleteSticker: ((Message) -> Unit)? = null,
     onCollectImageAsSticker: ((Message) -> Unit)? = null,
     onDeleteMessage: ((Message) -> Unit)? = null,
+    onShareClick: ((Message) -> Unit)? = null,
     bubbleOpacity: Float = 0.9f,
     bubbleCornerRadius: Float = 16f,
 ) {
@@ -1083,6 +1114,14 @@ fun MessageBubble(
                     expanded = showMenu,
                     onDismissRequest = { onShowMenuChanged?.invoke(null) }
                 ) {
+                    DropdownMenuItem(
+                        text = { Text("分享面板") },
+                        onClick = {
+                            onShowMenuChanged?.invoke(null)
+                            onShareClick?.invoke(message)
+                        },
+                        leadingIcon = { Icon(Icons.Default.Image, null, Modifier.size(18.dp)) }
+                    )
                     DropdownMenuItem(
                         text = { Text("引用") },
                         onClick = { onReply(); onShowMenuChanged?.invoke(null) },
@@ -1351,6 +1390,14 @@ fun MessageBubble(
                         onDismissRequest = { onShowMenuChanged?.invoke(null) },
                         modifier = Modifier.align(if (isMine) Alignment.TopStart else Alignment.TopEnd)
                     ) {
+                        DropdownMenuItem(
+                            text = { Text("分享面板") },
+                            onClick = {
+                                onShowMenuChanged?.invoke(null)
+                                onShareClick?.invoke(message)
+                            },
+                            leadingIcon = { Icon(Icons.Default.Image, null, Modifier.size(18.dp)) }
+                        )
                         if (message.content.isNotBlank()) {
                             DropdownMenuItem(
                                 text = { Text("复制") },
@@ -1443,6 +1490,360 @@ fun MessageBubble(
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MessageShareBottomSheet(
+    message: Message,
+    chatName: String,
+    chatAvatar: String,
+    onDismiss: () -> Unit,
+    onSaveImage: (Bitmap) -> Unit,
+    onShareImage: (Bitmap) -> Unit
+) {
+    val context = LocalContext.current
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val settingsStorage = remember { com.example.toolbox.settings.SettingsStorage(context) }
+    val hideSenderInfo by settingsStorage.screenshotHideSenderInfoFlow.collectAsState(initial = false)
+    val hideMyInfo by settingsStorage.screenshotHideMyInfoFlow.collectAsState(initial = false)
+    val hideSessionInfo by settingsStorage.screenshotHideSessionInfoFlow.collectAsState(initial = false)
+    val hideImages by settingsStorage.screenshotHideImagesFlow.collectAsState(initial = false)
+    var shareView by remember { mutableStateOf<View?>(null) }
+    var localHideSenderInfo by remember(hideSenderInfo) { mutableStateOf(hideSenderInfo) }
+    var localHideMyInfo by remember(hideMyInfo) { mutableStateOf(hideMyInfo) }
+    var localHideSessionInfo by remember(hideSessionInfo) { mutableStateOf(hideSessionInfo) }
+    var localHideImages by remember(hideImages) { mutableStateOf(hideImages) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            Text(
+                text = "分享面板",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "点击图片、用户、会话区域可切换是否隐藏",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(12.dp))
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = localHideSenderInfo,
+                    onClick = { localHideSenderInfo = !localHideSenderInfo },
+                    label = { Text("隐藏用户") }
+                )
+                FilterChip(
+                    selected = localHideMyInfo,
+                    onClick = { localHideMyInfo = !localHideMyInfo },
+                    label = { Text("匿名我方") }
+                )
+                FilterChip(
+                    selected = localHideSessionInfo,
+                    onClick = { localHideSessionInfo = !localHideSessionInfo },
+                    label = { Text("隐藏会话") }
+                )
+                FilterChip(
+                    selected = localHideImages,
+                    onClick = { localHideImages = !localHideImages },
+                    label = { Text("隐藏图片") }
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            AndroidView(
+                factory = { ctx ->
+                    ComposeView(ctx).apply {
+                        setContent {
+                            MessageSharePreviewCard(
+                                message = message,
+                                chatName = chatName,
+                                chatAvatar = chatAvatar,
+                                hideSenderInfo = localHideSenderInfo,
+                                hideMyInfo = localHideMyInfo,
+                                hideSessionInfo = localHideSessionInfo,
+                                hideImages = localHideImages,
+                                onToggleSender = { localHideSenderInfo = !localHideSenderInfo },
+                                onToggleMyInfo = { localHideMyInfo = !localHideMyInfo },
+                                onToggleSession = { localHideSessionInfo = !localHideSessionInfo },
+                                onToggleImages = { localHideImages = !localHideImages }
+                            )
+                        }
+                        shareView = this
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentSize()
+            )
+
+            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
+                    Text("取消")
+                }
+                OutlinedButton(
+                    onClick = {
+                        shareView?.let { view ->
+                            val bitmap = createShareBitmap(view)
+                            onShareImage(bitmap)
+                        }
+                        onDismiss()
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("分享")
+                }
+                Button(
+                    onClick = {
+                        shareView?.let { view ->
+                            val bitmap = createShareBitmap(view)
+                            onSaveImage(bitmap)
+                        }
+                        onDismiss()
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("保存")
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+@Composable
+private fun MessageSharePreviewCard(
+    message: Message,
+    chatName: String,
+    chatAvatar: String,
+    hideSenderInfo: Boolean,
+    hideMyInfo: Boolean,
+    hideSessionInfo: Boolean,
+    hideImages: Boolean,
+    onToggleSender: () -> Unit,
+    onToggleMyInfo: () -> Unit,
+    onToggleSession: () -> Unit,
+    onToggleImages: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        tonalElevation = 2.dp,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onToggleSession() }
+            ) {
+                if (hideSessionInfo) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(20.dp))
+                    }
+                } else if (chatAvatar.isNotBlank()) {
+                    AsyncImage(
+                        model = chatAvatar,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.size(40.dp).clip(CircleShape)
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("会", color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    }
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (hideSessionInfo) "已隐藏会话" else chatName.ifBlank { "会话" },
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "消息分享预览",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onToggleSender() }
+                    ) {
+                        Text(
+                            text = if (hideSenderInfo) {
+                                if (message.isMine && hideMyInfo) "对方" else "匿名用户"
+                            } else if (message.isMine && hideMyInfo) {
+                                "对方"
+                            } else {
+                                message.displayName.ifBlank { "未知用户" }
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = message.sendTimeDisplay ?: message.timestampDisplay ?: "",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onToggleImages() }
+                    ) {
+                        if (hideImages) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(96.dp)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("图片/表情已隐藏", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        } else if (message.images.isNotEmpty()) {
+                            AsyncImage(
+                                model = message.images.firstOrNull().orEmpty(),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(140.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
+                                    .padding(12.dp)
+                            ) {
+                                Text(
+                                    text = message.content.ifBlank { if (message.isSticker || message.contentType == 7) "[表情消息]" else "[消息]" },
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                    }
+
+                    if (!hideImages || message.content.isNotBlank()) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = if (hideImages) "内容已隐藏" else message.content.ifBlank { if (message.isSticker || message.contentType == 7) "[表情消息]" else "[消息]" },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun createShareBitmap(view: View): Bitmap {
+    val bitmap = Bitmap.createBitmap(view.width.coerceAtLeast(1), view.height.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    view.draw(canvas)
+    return bitmap
+}
+
+private fun shareBitmap(context: Context, bitmap: Bitmap) {
+    kotlinx.coroutines.MainScope().launch {
+        val filename = "message_share_${System.currentTimeMillis()}.png"
+        val contentValues = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, filename)
+            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
+            }
+        }
+
+        val uri = withContext(Dispatchers.IO) {
+            context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+        }
+
+        if (uri != null) {
+            withContext(Dispatchers.IO) {
+                context.contentResolver.openOutputStream(uri)?.use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                    out.flush()
+                }
+            }
+            withContext(Dispatchers.Main) {
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "image/png"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    putExtra(Intent.EXTRA_TEXT, "分享一条消息")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(shareIntent, "分享消息截图"))
+            }
+        } else {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "生成分享图片失败", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+}
+
+private suspend fun saveBitmapToGallery(context: Context, bitmap: Bitmap) = withContext(Dispatchers.IO) {
+    val filename = "message_share_${System.currentTimeMillis()}.png"
+    val contentValues = ContentValues().apply {
+        put(MediaStore.Images.Media.DISPLAY_NAME, filename)
+        put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
+        }
+    }
+
+    val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+    uri?.let {
+        context.contentResolver.openOutputStream(it)?.use { out ->
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+            out.flush()
+        }
+        withContext(Dispatchers.Main) {
+            Toast.makeText(context, "截图已保存到相册", Toast.LENGTH_SHORT).show()
+        }
+    } ?: withContext(Dispatchers.Main) {
+        Toast.makeText(context, "保存失败", Toast.LENGTH_SHORT).show()
     }
 }
 
@@ -1603,6 +2004,112 @@ fun EditMessageDialog(state: EditDialogState, onDismiss: () -> Unit, onContentCh
             }
         }
     }, confirmButton = { Button(onClick = onSave) { Text("保存") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } })
+}
+
+private fun shareMessageAsBitmap(context: Context, message: Message) {
+    kotlinx.coroutines.MainScope().launch {
+        val bitmap = withContext(Dispatchers.Default) { buildMessageShareBitmap(message) }
+        val filename = "message_share_${System.currentTimeMillis()}.png"
+        val contentValues = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, filename)
+            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
+            }
+        }
+
+        val uri = withContext(Dispatchers.IO) {
+            context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+        }
+
+        if (uri != null) {
+            withContext(Dispatchers.IO) {
+                context.contentResolver.openOutputStream(uri)?.use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                    out.flush()
+                }
+            }
+            withContext(Dispatchers.Main) {
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "image/png"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    putExtra(Intent.EXTRA_TEXT, "分享一条消息")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(shareIntent, "分享消息截图"))
+            }
+        } else {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "生成分享图片失败", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+}
+
+private fun buildMessageShareBitmap(message: Message): Bitmap {
+    val width = 720
+    val height = 1080
+    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+
+    val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFFFFFFFF.toInt()
+    }
+    canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), backgroundPaint)
+
+    val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFF1F2937.toInt()
+        textSize = 30f
+        isFakeBoldText = true
+    }
+    val bodyPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFF111827.toInt()
+        textSize = 24f
+    }
+    val subPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFF6B7280.toInt()
+        textSize = 18f
+    }
+    val bubblePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFFF3F4F6.toInt()
+    }
+
+    canvas.drawRoundRect(36f, 72f, width - 36f, height - 72f, 28f, 28f, bubblePaint)
+    canvas.drawText("消息截图", 72f, 140f, titlePaint)
+
+    val senderText = message.displayName.ifBlank { "未知用户" }
+    val timeText = message.sendTimeDisplay ?: message.timestampDisplay ?: ""
+    canvas.drawText(senderText, 72f, 200f, subPaint)
+    if (timeText.isNotBlank()) {
+        canvas.drawText(timeText, width - 72f, 200f, subPaint)
+    }
+
+    val contentText = message.content.ifBlank {
+        when {
+            message.images.isNotEmpty() -> "[图片消息]"
+            message.isSticker || message.contentType == 7 -> "[表情消息]"
+            else -> "[消息]"
+        }
+    }
+
+    val textWidth = width - 144
+    val contentLayout = StaticLayout.Builder.obtain(
+        contentText,
+        0,
+        contentText.length,
+        bodyPaint,
+        textWidth
+    ).setAlignment(Layout.Alignment.ALIGN_NORMAL)
+        .setLineSpacing(0f, 1.1f)
+        .setIncludePad(false)
+        .build()
+
+    canvas.save()
+    canvas.translate(72f, 240f)
+    contentLayout.draw(canvas)
+    canvas.restore()
+
+    return bitmap
 }
 
 // ---- 好友请求 ----

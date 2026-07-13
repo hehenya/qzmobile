@@ -19,6 +19,10 @@ class SettingsStorage(private val context: Context) {
         private val KEY_BUBBLE_CORNER_RADIUS = floatPreferencesKey("bubble_corner_radius")
         private val KEY_BUBBLE_OPACITY = floatPreferencesKey("bubble_opacity")
         private val KEY_SHOW_MY_BUBBLE_AVATAR = booleanPreferencesKey("show_my_bubble_avatar")
+        private val KEY_SCREENSHOT_HIDE_SENDER_INFO = booleanPreferencesKey("screenshot_hide_sender_info")
+        private val KEY_SCREENSHOT_HIDE_MY_INFO = booleanPreferencesKey("screenshot_hide_my_info")
+        private val KEY_SCREENSHOT_HIDE_SESSION_INFO = booleanPreferencesKey("screenshot_hide_session_info")
+        private val KEY_SCREENSHOT_HIDE_IMAGES = booleanPreferencesKey("screenshot_hide_images")
     }
 
     val bubbleCornerRadiusFlow: Flow<Float> = context.dataStore.data.map { prefs ->
@@ -51,5 +55,45 @@ class SettingsStorage(private val context: Context) {
 
     suspend fun setShowMyBubbleAvatar(value: Boolean) {
         context.dataStore.edit { it[KEY_SHOW_MY_BUBBLE_AVATAR] = value }
+    }
+
+    val screenshotHideSenderInfoFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_SCREENSHOT_HIDE_SENDER_INFO] ?: false
+    }
+
+    suspend fun getScreenshotHideSenderInfo(): Boolean = context.dataStore.data.first()[KEY_SCREENSHOT_HIDE_SENDER_INFO] ?: false
+
+    suspend fun setScreenshotHideSenderInfo(value: Boolean) {
+        context.dataStore.edit { it[KEY_SCREENSHOT_HIDE_SENDER_INFO] = value }
+    }
+
+    val screenshotHideMyInfoFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_SCREENSHOT_HIDE_MY_INFO] ?: false
+    }
+
+    suspend fun getScreenshotHideMyInfo(): Boolean = context.dataStore.data.first()[KEY_SCREENSHOT_HIDE_MY_INFO] ?: false
+
+    suspend fun setScreenshotHideMyInfo(value: Boolean) {
+        context.dataStore.edit { it[KEY_SCREENSHOT_HIDE_MY_INFO] = value }
+    }
+
+    val screenshotHideSessionInfoFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_SCREENSHOT_HIDE_SESSION_INFO] ?: false
+    }
+
+    suspend fun getScreenshotHideSessionInfo(): Boolean = context.dataStore.data.first()[KEY_SCREENSHOT_HIDE_SESSION_INFO] ?: false
+
+    suspend fun setScreenshotHideSessionInfo(value: Boolean) {
+        context.dataStore.edit { it[KEY_SCREENSHOT_HIDE_SESSION_INFO] = value }
+    }
+
+    val screenshotHideImagesFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_SCREENSHOT_HIDE_IMAGES] ?: false
+    }
+
+    suspend fun getScreenshotHideImages(): Boolean = context.dataStore.data.first()[KEY_SCREENSHOT_HIDE_IMAGES] ?: false
+
+    suspend fun setScreenshotHideImages(value: Boolean) {
+        context.dataStore.edit { it[KEY_SCREENSHOT_HIDE_IMAGES] = value }
     }
 }
