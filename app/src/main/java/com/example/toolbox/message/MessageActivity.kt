@@ -175,7 +175,13 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.material.icons.filled.Share
-
+import android.graphics.Paint
+import android.text.TextPaint
+import android.text.Layout
+import android.text.StaticLayout
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.graphics.toAndroidBitmap
 // ---- Activity ----
 class MessageDetailActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class, ExperimentalHazeMaterialsApi::class)
@@ -1510,11 +1516,14 @@ private fun MessageShareBottomSheet(
     val hideMyInfo by settingsStorage.screenshotHideMyInfoFlow.collectAsState(initial = false)
     val hideSessionInfo by settingsStorage.screenshotHideSessionInfoFlow.collectAsState(initial = false)
     val hideImages by settingsStorage.screenshotHideImagesFlow.collectAsState(initial = false)
-    var shareView by remember { mutableStateOf<View?>(null) }
     var localHideSenderInfo by remember(hideSenderInfo) { mutableStateOf(hideSenderInfo) }
     var localHideMyInfo by remember(hideMyInfo) { mutableStateOf(hideMyInfo) }
     var localHideSessionInfo by remember(hideSessionInfo) { mutableStateOf(hideSessionInfo) }
     var localHideImages by remember(hideImages) { mutableStateOf(hideImages) }
+
+    // 用 graphicsLayer 截图
+    val graphicsLayer = androidx.compose.ui.graphics.rememberGraphicsLayer()
+    var capturedBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -1563,31 +1572,22 @@ private fun MessageShareBottomSheet(
 
             Spacer(Modifier.height(12.dp))
 
-            AndroidView(
-                factory = { ctx ->
-                    ComposeView(ctx).apply {
-                        setContent {
-                            MessageSharePreviewCard(
-                                message = message,
-                                chatName = chatName,
-                                chatAvatar = chatAvatar,
-                                hideSenderInfo = localHideSenderInfo,
-                                hideMyInfo = localHideMyInfo,
-                                hideSessionInfo = localHideSessionInfo,
-                                hideImages = localHideImages,
-                                onToggleSender = { localHideSenderInfo = !localHideSenderInfo },
-                                onToggleMyInfo = { localHideMyInfo = !localHideMyInfo },
-                                onToggleSession = { localHideSessionInfo = !localHideSessionInfo },
-                                onToggleImages = { localHideImages = !localHideImages }
-                            )
-                        }
-                        shareView = this
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentSize()
-            )
+            // 预览卡片
+            Box(modifier = Modifier.fillMaxWidth()) {
+                MessageSharePreviewCard(
+                    message = message,
+                    chatName = chatName,
+                    chatAvatar = chatAvatar,
+                    hideSenderInfo = localHideSenderInfo,
+                    hideMyInfo = localHideMyInfo,
+                    hideSessionInfo = localHideSessionInfo,
+                    hideImages = localHideImages,
+                    onToggleSender = { localHideSenderInfo = !localHideSenderInfo },
+                    onToggleMyInfo = { localHideMyInfo = !localHideMyInfo },
+                    onToggleSession = { localHideSessionInfo = !localHideSessionInfo },
+                    onToggleImages = { localHideImages = !localHideImages }
+                )
+            }
 
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1596,10 +1596,8 @@ private fun MessageShareBottomSheet(
                 }
                 OutlinedButton(
                     onClick = {
-                        shareView?.let { view ->
-                            val bitmap = createShareBitmap(view)
-                            onShareImage(bitmap)
-                        }
+                        val bitmap = graphicsLayer.toImageBitmap().asAndroidBitmap()
+                        onShareImage(bitmap)
                         onDismiss()
                     },
                     modifier = Modifier.weight(1f)
@@ -1608,10 +1606,8 @@ private fun MessageShareBottomSheet(
                 }
                 Button(
                     onClick = {
-                        shareView?.let { view ->
-                            val bitmap = createShareBitmap(view)
-                            onSaveImage(bitmap)
-                        }
+                        val bitmap = graphicsLayer.toImageBitmap().asAndroidBitmap()
+                        onSaveImage(bitmap)
                         onDismiss()
                     },
                     modifier = Modifier.weight(1f)
