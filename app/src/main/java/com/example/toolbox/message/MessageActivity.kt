@@ -182,6 +182,11 @@ import android.text.StaticLayout
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.graphics.toAndroidBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import kotlinx.coroutines.launch
+
 // ---- Activity ----
 class MessageDetailActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class, ExperimentalHazeMaterialsApi::class)
@@ -1596,9 +1601,14 @@ private fun MessageShareBottomSheet(
                 }
                 OutlinedButton(
                     onClick = {
-                        val bitmap = graphicsLayer.toImageBitmap().asAndroidBitmap()
-                        onShareImage(bitmap)
-                        onDismiss()
+                        kotlinx.coroutines.MainScope().launch {
+                            val imageBitmap = graphicsLayer.toImageBitmap()
+                            val bitmap = Bitmap.createBitmap(imageBitmap.width, imageBitmap.height, Bitmap.Config.ARGB_8888)
+                            val canvas = Canvas(bitmap)
+                            canvas.drawBitmap(imageBitmap.asAndroidBitmap(), 0f, 0f, null)
+                            onShareImage(bitmap)
+                            onDismiss()
+                        }
                     },
                     modifier = Modifier.weight(1f)
                 ) {
@@ -1606,9 +1616,14 @@ private fun MessageShareBottomSheet(
                 }
                 Button(
                     onClick = {
-                        val bitmap = graphicsLayer.toImageBitmap().asAndroidBitmap()
-                        onSaveImage(bitmap)
-                        onDismiss()
+                        kotlinx.coroutines.MainScope().launch {
+                            val imageBitmap = graphicsLayer.toImageBitmap()
+                            val bitmap = Bitmap.createBitmap(imageBitmap.width, imageBitmap.height, Bitmap.Config.ARGB_8888)
+                            val canvas = Canvas(bitmap)
+                            canvas.drawBitmap(imageBitmap.asAndroidBitmap(), 0f, 0f, null)
+                            onSaveImage(bitmap)
+                            onDismiss()
+                        }
                     },
                     modifier = Modifier.weight(1f)
                 ) {
