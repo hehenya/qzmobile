@@ -1243,7 +1243,7 @@ fun MessageBubble(
                 horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start
             ) {
                 if (!isMine && chatType == 2) {
-                    if (showAvatar && showSenderInfo) {
+                    if (showAvatar && showSenderInfo && !hideMyInfo) {
                         AsyncImage(
                             model = previewAvatar ?: message.displayAvatar,
                             contentDescription = null,
@@ -1262,6 +1262,8 @@ fun MessageBubble(
                     } else {
                         Spacer(Modifier.width(44.dp))
                     }
+                } else if (isMine && chatType == 2 && hideMyInfo) {
+                    Spacer(Modifier.width(44.dp))
                 }
 
                 Box(modifier = Modifier.weight(1f, fill = false)) {
@@ -1304,7 +1306,7 @@ fun MessageBubble(
                                         Text(fi.username, fontSize = 12.sp, color = forwardColor, fontWeight = FontWeight.Medium)
                                     }
                                 }
-                                if (showSenderInfo && !isMine && isFirstFromSender && chatType == 2 && message.content.isNotBlank()) {
+                                if (showSenderInfo && !isMine && isFirstFromSender && chatType == 2 && message.content.isNotBlank() && !hideMyInfo) {
                                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 2.dp)) {
                                         Text((previewDisplayName ?: message.displayName).ifBlank { "匿名用户" }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                                         val previewTag = (previewDisplayTag ?: message.displayTag).ifBlank { "" }
@@ -1783,10 +1785,10 @@ private fun MessageSharePreviewCard(
                         val assignedPlaceholderName = if (hideSenderInfo && !isMineMessage) {
                             placeholderNamesBySender.getOrPut(senderKey) {
                                 val placeholderName = when (placeholderIndex) {
-                                    0 -> "用户"
-                                    1 -> "用户1"
-                                    2 -> "用户2"
-                                    else -> "用户$placeholderIndex"
+                                    0 -> "匿名用户"
+                                    1 -> "匿名用户2"
+                                    2 -> "匿名用户3"
+                                    else -> "匿名用户${placeholderIndex + 1}"
                                 }
                                 placeholderIndex += 1
                                 placeholderName
