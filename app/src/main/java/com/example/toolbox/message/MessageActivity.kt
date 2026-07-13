@@ -138,6 +138,9 @@ import com.example.toolbox.R
 import com.example.toolbox.TokenManager
 import com.example.toolbox.community.UserInfoActivity
 import com.example.toolbox.data.EditDialogState
+
+private const val SHARE_PREVIEW_PLACEHOLDER_AVATAR = "https://www.helloimg.com/i/2025/03/30/67e8e4d5ec8b9.png"
+private const val SHARE_PREVIEW_FOOTER_TEXT = "由轻昼ce生成"
 import com.example.toolbox.data.Message
 import com.example.toolbox.data.displayAvatar
 import com.example.toolbox.data.displayName
@@ -1774,21 +1777,37 @@ private fun MessageSharePreviewCard(
                     val orderedMessages = messages.sortedBy {
                         it.sendTime.takeIf { time -> time > 0 } ?: it.timestamp?.toLongOrNull() ?: 0L
                     }
+                    val placeholderNamesBySender = linkedMapOf<String, String>()
+                    var placeholderIndex = 0
                     orderedMessages.forEachIndexed { index, message ->
                         val isMineMessage = message.isMine || message.direction == "right"
                         val shouldHideContent = hideImages && (message.images.isNotEmpty() || message.isSticker || message.contentType == 7)
+                        val senderKey = message.senderId?.toString()
+                            ?: message.displayName.ifBlank { message.effectiveMsgId.ifBlank { "sender_$index" } }
+                        val assignedPlaceholderName = if (hideSenderInfo && !isMineMessage) {
+                            placeholderNamesBySender.getOrPut(senderKey) {
+                                val placeholderName = when (placeholderIndex) {
+                                    0 -> "用户"
+                                    1 -> "用户1"
+                                    2 -> "用户2"
+                                    else -> "用户$placeholderIndex"
+                                }
+                                placeholderIndex += 1
+                                placeholderName
+                            }
+                        } else null
                         val previewName = when {
-                            hideMyInfo && isMineMessage -> chatName
-                            hideSenderInfo && !isMineMessage -> ""
+                            hideMyInfo && isMineMessage -> message.displayName.ifBlank { "我" }
+                            hideSenderInfo && !isMineMessage -> assignedPlaceholderName
                             else -> null
                         }
                         val previewAvatar = when {
-                            hideMyInfo && isMineMessage -> chatAvatar
-                            hideSenderInfo && !isMineMessage -> ""
+                            hideMyInfo && isMineMessage -> message.displayAvatar
+                            hideSenderInfo && !isMineMessage -> SHARE_PREVIEW_PLACEHOLDER_AVATAR
                             else -> null
                         }
                         val previewTag = when {
-                            hideMyInfo && isMineMessage -> ""
+                            hideMyInfo && isMineMessage -> message.displayTag.ifBlank { "" }
                             hideSenderInfo && !isMineMessage -> ""
                             else -> null
                         }
@@ -1841,6 +1860,17 @@ private fun MessageSharePreviewCard(
                                 forceIsMine = previewForceIsMine
                             )
                         }
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = SHARE_PREVIEW_FOOTER_TEXT,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 }
             }
