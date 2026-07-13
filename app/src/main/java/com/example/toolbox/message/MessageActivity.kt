@@ -1588,10 +1588,11 @@ private fun MessageShareBottomSheet(
 
             Spacer(Modifier.height(12.dp))
 
-            // AndroidView 截
+            // AndroidView 截图
             AndroidView(
                 factory = {
                     ComposeView(context).apply {
+                        setLayerType(android.view.View.LAYER_TYPE_SOFTWARE, null)
                         setContent {
                             ToolBoxTheme {
                                 MessageSharePreviewCard(
