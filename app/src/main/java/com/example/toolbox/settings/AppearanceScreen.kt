@@ -46,14 +46,17 @@ fun AppearanceScreen(
             msgId = "preview_1",
             direction = "left",
             isMine = false,
+            senderUsername = "演示用户",
             senderAvatar = "https://www.helloimg.com/i/2025/03/30/67e8e4d5ec8b9.png",
             content = "轻昼支持自定义气泡圆角和透明度设置，快来试试吧！",
-            timestampDisplay = "12:30"
+            timestampDisplay = "12:30",
+            isFirstFromSender = true
         ),
         Message(
             msgId = "preview_2",
             direction = "left",
             isMine = false,
+            senderUsername = "演示用户",
             senderAvatar = "https://www.helloimg.com/i/2025/03/30/67e8e4d5ec8b9.png",
             content = "可以自定义圆角和透明度",
             timestampDisplay = "12:31"

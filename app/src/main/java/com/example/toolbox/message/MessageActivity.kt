@@ -1067,8 +1067,14 @@ fun MessageBubble(
     onShareClick: ((Message) -> Unit)? = null,
     bubbleOpacity: Float = 0.9f,
     bubbleCornerRadius: Float = 16f,
+    showSenderInfo: Boolean = true,
+    previewDisplayName: String? = null,
+    previewDisplayTag: String? = null,
+    previewAvatar: String? = null,
+    forceIsMine: Boolean? = null,
 ) {
-    val isMine = message.isMine || message.direction == "right"
+    val effectiveIsMine = forceIsMine ?: (message.isMine || message.direction == "right")
+    val isMine = effectiveIsMine
     val isRecalledMessage = message.msgDeleteTime != null
     val isSystemMessage = message.isSystem
 
@@ -1238,9 +1244,9 @@ fun MessageBubble(
                 horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start
             ) {
                 if (!isMine && chatType == 2) {
-                    if (showAvatar) {
+                    if (showAvatar && showSenderInfo) {
                         AsyncImage(
-                            model = message.displayAvatar,
+                            model = previewAvatar ?: message.displayAvatar,
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
@@ -1299,17 +1305,18 @@ fun MessageBubble(
                                         Text(fi.username, fontSize = 12.sp, color = forwardColor, fontWeight = FontWeight.Medium)
                                     }
                                 }
-                                if (!isMine && isFirstFromSender && chatType == 2 && message.content.isNotBlank()) {
+                                if (showSenderInfo && !isMine && isFirstFromSender && chatType == 2 && message.content.isNotBlank()) {
                                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 2.dp)) {
-                                        Text(message.displayName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                                        if (message.displayTag.isNotBlank()) {
+                                        Text((previewDisplayName ?: message.displayName).ifBlank { "匿名用户" }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                        val previewTag = (previewDisplayTag ?: message.displayTag).ifBlank { "" }
+                                        if (previewTag.isNotBlank()) {
                                             Spacer(Modifier.width(4.dp))
                                             Surface(
                                                 shape = RoundedCornerShape(8.dp),
                                                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                                             ) {
                                                 Text(
-                                                    message.displayTag,
+                                                    previewTag,
                                                     fontSize = 10.sp,
                                                     color = MaterialTheme.colorScheme.primary,
                                                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
@@ -1764,8 +1771,29 @@ private fun MessageSharePreviewCard(
                         .clickable { onToggleImages() },
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    messages.forEachIndexed { index, message ->
+                    val orderedMessages = messages.sortedBy {
+                        it.sendTime.takeIf { time -> time > 0 } ?: it.timestamp?.toLongOrNull() ?: 0L
+                    }
+                    orderedMessages.forEachIndexed { index, message ->
+                        val isMineMessage = message.isMine || message.direction == "right"
                         val shouldHideContent = hideImages && (message.images.isNotEmpty() || message.isSticker || message.contentType == 7)
+                        val previewName = when {
+                            hideMyInfo && isMineMessage -> chatName
+                            hideSenderInfo && !isMineMessage -> ""
+                            else -> null
+                        }
+                        val previewAvatar = when {
+                            hideMyInfo && isMineMessage -> chatAvatar
+                            hideSenderInfo && !isMineMessage -> ""
+                            else -> null
+                        }
+                        val previewTag = when {
+                            hideMyInfo && isMineMessage -> ""
+                            hideSenderInfo && !isMineMessage -> ""
+                            else -> null
+                        }
+                        val previewShowSenderInfo = !(hideSenderInfo && !isMineMessage)
+                        val previewForceIsMine = if (hideMyInfo && isMineMessage) false else null
                         if (shouldHideContent) {
                             Box(
                                 modifier = Modifier.fillMaxWidth(),
@@ -1794,9 +1822,9 @@ private fun MessageSharePreviewCard(
                                 onImageClick = { _, _ -> },
                                 onReply = {},
                                 isAdmin = false,
-                                isOlderSameSender = index > 0 && messages[index - 1].senderId == message.senderId,
-                                isNewerSameSender = index < messages.lastIndex && messages[index + 1].senderId == message.senderId,
-                                showAvatar = !message.isMine && !message.isSystem && chatType == 2,
+                                isOlderSameSender = index > 0 && orderedMessages[index - 1].senderId == message.senderId,
+                                isNewerSameSender = index < orderedMessages.lastIndex && orderedMessages[index + 1].senderId == message.senderId,
+                                showAvatar = (!isMineMessage && !message.isSystem && chatType == 2) || (hideMyInfo && isMineMessage && chatType == 2),
                                 chatType = chatType,
                                 showDate = false,
                                 isSelectionMode = false,
@@ -1805,7 +1833,12 @@ private fun MessageSharePreviewCard(
                                 onShowMenuChanged = null,
                                 avatarAlignment = Alignment.Bottom,
                                 bubbleOpacity = 0.95f,
-                                bubbleCornerRadius = 16f
+                                bubbleCornerRadius = 16f,
+                                showSenderInfo = previewShowSenderInfo,
+                                previewDisplayName = previewName,
+                                previewDisplayTag = previewTag,
+                                previewAvatar = previewAvatar,
+                                forceIsMine = previewForceIsMine
                             )
                         }
                     }
