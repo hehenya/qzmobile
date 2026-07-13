@@ -153,7 +153,6 @@ import dev.chrisbanes.haze.materials.HazeMaterials
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -165,9 +164,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import com.example.toolbox.data.displayTag
-
-private const val SHARE_PREVIEW_PLACEHOLDER_AVATAR = "https://www.helloimg.com/i/2025/03/30/67e8e4d5ec8b9.png"
-private const val SHARE_PREVIEW_FOOTER_TEXT = "由轻昼ce生成"
+import com.example.toolbox.data.Message
 import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Delete
@@ -2211,7 +2208,8 @@ private fun buildMessageShareBitmap(message: Message): Bitmap {
 
     return bitmap
 }
-
+private const val SHARE_PREVIEW_PLACEHOLDER_AVATAR = "https://www.helloimg.com/i/2025/03/30/67e8e4d5ec8b9.png"
+private const val SHARE_PREVIEW_FOOTER_TEXT = "由轻昼ce生成"
 // ---- 好友请求 ----
 private suspend fun sendFriendRequest(token: String, friendId: Int): Boolean {
     val client = OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(10, TimeUnit.SECONDS).build()
