@@ -138,9 +138,6 @@ import com.example.toolbox.R
 import com.example.toolbox.TokenManager
 import com.example.toolbox.community.UserInfoActivity
 import com.example.toolbox.data.EditDialogState
-
-private const val SHARE_PREVIEW_PLACEHOLDER_AVATAR = "https://www.helloimg.com/i/2025/03/30/67e8e4d5ec8b9.png"
-private const val SHARE_PREVIEW_FOOTER_TEXT = "由轻昼ce生成"
 import com.example.toolbox.data.Message
 import com.example.toolbox.data.displayAvatar
 import com.example.toolbox.data.displayName
