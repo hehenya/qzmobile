@@ -1592,7 +1592,6 @@ private fun MessageShareBottomSheet(
             AndroidView(
                 factory = {
                     ComposeView(context).apply {
-                        setLayerType(android.view.View.LAYER_TYPE_SOFTWARE, null)
                         setContent {
                             ToolBoxTheme {
                                 MessageSharePreviewCard(
@@ -1629,10 +1628,20 @@ private fun MessageShareBottomSheet(
                     modifier = Modifier.clickable {
                         scope.launch {
                             val view = screenshotView ?: return@launch
-                            val bitmap = android.graphics.Bitmap.createBitmap(view.width.coerceAtLeast(1), view.height.coerceAtLeast(1), android.graphics.Bitmap.Config.ARGB_8888)
-                            val canvas = android.graphics.Canvas(bitmap)
-                            view.draw(canvas)
-                            onSaveImage(bitmap)
+                            view.isDrawingCacheEnabled = true
+                            view.buildDrawingCache()
+                            val cache = view.drawingCache
+                            val bitmap = if (cache != null) {
+                                cache.copy(android.graphics.Bitmap.Config.ARGB_8888, false)
+                            } else {
+                                val bmp = android.graphics.Bitmap.createBitmap(view.width.coerceAtLeast(1), view.height.coerceAtLeast(1), android.graphics.Bitmap.Config.ARGB_8888)
+                                val canvas = android.graphics.Canvas(bmp)
+                                view.draw(canvas)
+                                bmp
+                            }
+                            view.isDrawingCacheEnabled = false
+                            view.destroyDrawingCache()
+                            onShareImage(bitmap)
                             onDismiss()
                         }
                     },
@@ -1658,10 +1667,20 @@ private fun MessageShareBottomSheet(
                     modifier = Modifier.clickable {
                         scope.launch {
                             val view = screenshotView ?: return@launch
-                            val bitmap = android.graphics.Bitmap.createBitmap(view.width.coerceAtLeast(1), view.height.coerceAtLeast(1), android.graphics.Bitmap.Config.ARGB_8888)
-                            val canvas = android.graphics.Canvas(bitmap)
-                            view.draw(canvas)
-                            onShareImage(bitmap)
+                            view.isDrawingCacheEnabled = true
+                            view.buildDrawingCache()
+                            val cache = view.drawingCache
+                            val bitmap = if (cache != null) {
+                                cache.copy(android.graphics.Bitmap.Config.ARGB_8888, false)
+                            } else {
+                                val bmp = android.graphics.Bitmap.createBitmap(view.width.coerceAtLeast(1), view.height.coerceAtLeast(1), android.graphics.Bitmap.Config.ARGB_8888)
+                                val canvas = android.graphics.Canvas(bmp)
+                                view.draw(canvas)
+                                bmp
+                            }
+                            view.isDrawingCacheEnabled = false
+                            view.destroyDrawingCache()
+                            onSaveImage(bitmap)
                             onDismiss()
                         }
                     },
