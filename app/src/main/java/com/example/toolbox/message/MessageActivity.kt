@@ -268,13 +268,7 @@ class MessageDetailActivity : ComponentActivity() {
                                                     }) {
                                                         Icon(Icons.Default.FormatQuote, contentDescription = "引用")
                                                     }
-                                                    IconButton(onClick = {
-                                                        shareSheetMessage = msg
-                                                        showShareSheet = true
-                                                        viewModel.exitSelectionMode()
-                                                    }) {
-                                                        Icon(Icons.Default.Image, contentDescription = "分享面板")
-                                                    }
+                                                
                                                     if (msg.isMine && msg.content.isNotBlank()) {
                                                         IconButton(onClick = {
                                                             viewModel.startEditMessage(msg)
