@@ -407,12 +407,6 @@ fun MessageDetailScreen(
     
     val hazeState = remember { HazeState() }
     val scope = rememberCoroutineScope()
-    val softwareImageLoader = remember {
-    coil3.ImageLoader.Builder(context)
-        .bitmapConfig(android.graphics.Bitmap.Config.ARGB_8888)
-        .crossfade(true)
-        .build()
-    }
     val clipboard = LocalClipboard.current
     var firstMessageId by remember { mutableStateOf<String?>(null) }
     val density = LocalDensity.current
