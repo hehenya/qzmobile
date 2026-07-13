@@ -741,10 +741,6 @@ fun MessageDetailScreen(
                                     onDeleteSticker = { viewModel.deleteSticker(it) },
                                     onCollectImageAsSticker = { viewModel.collectImageAsSticker(it) },
                                     onDeleteMessage = { viewModel.deleteMessage(it) },
-                                    onShareClick = { message ->
-                                        shareSheetMessage = message
-                                        showShareSheet = true
-                                    },
                                     bubbleOpacity = bubbleOpacity,
                                     bubbleCornerRadius = bubbleCornerRadius,
                                 )
