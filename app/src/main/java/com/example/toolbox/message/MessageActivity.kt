@@ -30,22 +30,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -56,63 +41,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.FormatQuote
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.filled.Public
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ContainedLoadingIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -296,94 +228,96 @@ class MessageDetailActivity : ComponentActivity() {
                                         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
                                     )
                                 } else {
-                                    TopAppBar(
-                                        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-                                        title = {
-                                            if (chatType == 2 && uiState.groupInfo != null) {
-                                                val group = uiState.groupInfo!!
-                                                Row(
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .clickable {
-                                                            startActivity(Intent(this@MessageDetailActivity, GroupInfoActivity::class.java).apply {
-                                                                putExtra("group_id", chatId)
-                                                                putExtra("is_joined", true)
-                                                                putExtra("group_name", group.name)
-                                                                putExtra("group_avatar", group.avatarUrl)
-                                                                putExtra("group_description", group.description)
-                                                                putExtra("group_members_count", group.membersCount)
-                                                                putExtra("group_created_at", group.createdAt)
-                                                                putExtra("group_is_private", group.isPrivate)
-                                                            })
+                                    Column {
+                                        TopAppBar(
+                                            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+                                            title = {
+                                                if (chatType == 2 && uiState.groupInfo != null) {
+                                                    val group = uiState.groupInfo!!
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .clickable {
+                                                                startActivity(Intent(this@MessageDetailActivity, GroupInfoActivity::class.java).apply {
+                                                                    putExtra("group_id", chatId)
+                                                                    putExtra("is_joined", true)
+                                                                    putExtra("group_name", group.name)
+                                                                    putExtra("group_avatar", group.avatarUrl)
+                                                                    putExtra("group_description", group.description)
+                                                                    putExtra("group_members_count", group.membersCount)
+                                                                    putExtra("group_created_at", group.createdAt)
+                                                                    putExtra("group_is_private", group.isPrivate)
+                                                                })
+                                                            }
+                                                    ) {
+                                                        AsyncImage(
+                                                            model = if (group.avatarUrl.startsWith("http")) group.avatarUrl else "${ApiAddress}uploads/${group.avatarUrl}",
+                                                            contentDescription = null,
+                                                            contentScale = ContentScale.Crop,
+                                                            modifier = Modifier.size(36.dp).clip(CircleShape)
+                                                        )
+                                                        Spacer(Modifier.width(8.dp))
+                                                        Column {
+                                                            Text(group.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                                            val typingText by viewModel.typingText.collectAsState()
+                                                            Text(
+                                                                typingText ?: "${group.membersCount} 名成员",
+                                                                fontSize = 12.sp,
+                                                                color = if (typingText != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                                            )
                                                         }
-                                                ) {
-                                                    AsyncImage(
-                                                        model = if (group.avatarUrl.startsWith("http")) group.avatarUrl else "${ApiAddress}uploads/${group.avatarUrl}",
-                                                        contentDescription = null,
-                                                        contentScale = ContentScale.Crop,
-                                                        modifier = Modifier.size(36.dp).clip(CircleShape)
-                                                    )
-                                                    Spacer(Modifier.width(8.dp))
-                                                    Column {
-                                                        Text(group.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                                    }
+                                                } else if (uiState.otherUser != null) {
+                                                    val otherUser = uiState.otherUser!!
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .clickable {
+                                                                startActivity(Intent(this@MessageDetailActivity, UserInfoActivity::class.java).apply { putExtra("userId", otherUser.id) })
+                                                            }
+                                                    ) {
+                                                        AsyncImage(model = otherUser.avatar, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(36.dp).clip(CircleShape))
+                                                        Spacer(Modifier.width(8.dp))
                                                         val typingText by viewModel.typingText.collectAsState()
-                                                        Text(
-                                                            typingText ?: "${group.membersCount} 名成员",
-                                                            fontSize = 12.sp,
-                                                            color = if (typingText != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                                        )
-                                                    }
-                                                }
-                                            } else if (uiState.otherUser != null) {
-                                                val otherUser = uiState.otherUser!!
-                                                Row(
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .clickable {
-                                                            startActivity(Intent(this@MessageDetailActivity, UserInfoActivity::class.java).apply { putExtra("userId", otherUser.id) })
+                                                        Column {
+                                                            Text(
+                                                                if (typingText != null) "正在输入中..." else otherUser.username,
+                                                                fontWeight = FontWeight.Bold,
+                                                                fontSize = 16.sp
+                                                            )
                                                         }
-                                                ) {
-                                                    AsyncImage(model = otherUser.avatar, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(36.dp).clip(CircleShape))
-                                                    Spacer(Modifier.width(8.dp))
-                                                    val typingText by viewModel.typingText.collectAsState()
-                                                    Column {
-                                                        Text(
-                                                            if (typingText != null) "正在输入中..." else otherUser.username,
-                                                            fontWeight = FontWeight.Bold,
-                                                            fontSize = 16.sp
-                                                        )
                                                     }
+                                                } else Text("聊天详情")
+                                            },
+                                            navigationIcon = { FilledTonalIconButton(onClick = { finish() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回") } }
+                                        )
+                                        
+                                        if (announcementMessage != null && uiState.chatType == 2) {
+                                            AnnouncementBanner(
+                                                message = announcementMessage!!,
+                                                onClick = {
+                                                    val intent = Intent(context, AnnouncementDetailActivity::class.java).apply {
+                                                        putExtra("group_id", uiState.chatId)
+                                                        putExtra("is_admin", uiState.isAdmin)
+                                                    }
+                                                    context.startActivity(intent)
                                                 }
-                                            } else Text("聊天详情")
-                                        },
-                                        navigationIcon = { FilledTonalIconButton(onClick = { finish() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回") } }
-                                    )
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 ) { innerPadding ->
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        if (announcementMessage != null && uiState.chatType == 2) {
-                            AnnouncementBanner(
-                                message = announcementMessage!!,
-                                onClick = {
-                                    val intent = Intent(context, AnnouncementDetailActivity::class.java).apply {
-                                        putExtra("group_id", uiState.chatId)
-                                        putExtra("is_admin", uiState.isAdmin)
-                                    }
-                                    context.startActivity(intent)
-                                }
-                            )
-                        }
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .hazeSource(hazeState)
-                        ) {
-                            MessageDetailScreen(innerPadding, viewModel)
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .hazeSource(hazeState)
+                    ) {
+                        MessageDetailScreen(innerPadding, viewModel)
                         if (showShareSheet && shareSheetMessages.isNotEmpty()) {
                             val shareChatName = when {
                                 chatType == 2 && uiState.groupInfo != null -> uiState.groupInfo!!.name
@@ -1599,6 +1533,20 @@ fun MessageBubble(
     }
 }
 
+object AppImageLoaders {
+    private var _coil3Loader: coil3.ImageLoader? = null
+
+    fun getCoil3Loader(context: Context): coil3.ImageLoader {
+        return _coil3Loader ?: synchronized(this) {
+            _coil3Loader ?: coil3.ImageLoader.Builder(context)
+                .bitmapConfig(Bitmap.Config.ARGB_8888)
+                .crossfade(true)
+                .allowHardware(false)
+                .build().also { _coil3Loader = it }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MessageShareBottomSheet(
@@ -1614,6 +1562,8 @@ private fun MessageShareBottomSheet(
     val scope = rememberCoroutineScope()
     var screenshotView by remember { mutableStateOf<android.view.View?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    
+    val softwareImageLoader = remember { AppImageLoaders.getCoil3Loader(context) }
 
     val settingsStorage = remember { com.example.toolbox.settings.SettingsStorage(context) }
     val hideSenderInfo by settingsStorage.screenshotHideSenderInfoFlow.collectAsState(initial = false)
@@ -1657,21 +1607,25 @@ private fun MessageShareBottomSheet(
                 factory = {
                     ComposeView(context).apply {
                         setContent {
-                            ToolBoxTheme {
-                                MessageSharePreviewCard(
-                                    messages = messages,
-                                    chatName = chatName,
-                                    chatAvatar = chatAvatar,
-                                    chatType = chatType,
-                                    hideSenderInfo = localHideSenderInfo,
-                                    hideMyInfo = localHideMyInfo,
-                                    hideSessionInfo = localHideSessionInfo,
-                                    hideImages = localHideImages,
-                                    onToggleSender = { localHideSenderInfo = !localHideSenderInfo },
-                                    onToggleMyInfo = { localHideMyInfo = !localHideMyInfo },
-                                    onToggleSession = { localHideSessionInfo = !localHideSessionInfo },
-                                    onToggleImages = { localHideImages = !localHideImages }
-                                )
+                            CompositionLocalProvider(
+                                coil3.compose.LocalImageLoader provides softwareImageLoader
+                            ) {
+                                ToolBoxTheme {
+                                    MessageSharePreviewCard(
+                                        messages = messages,
+                                        chatName = chatName,
+                                        chatAvatar = chatAvatar,
+                                        chatType = chatType,
+                                        hideSenderInfo = localHideSenderInfo,
+                                        hideMyInfo = localHideMyInfo,
+                                        hideSessionInfo = localHideSessionInfo,
+                                        hideImages = localHideImages,
+                                        onToggleSender = { localHideSenderInfo = !localHideSenderInfo },
+                                        onToggleMyInfo = { localHideMyInfo = !localHideMyInfo },
+                                        onToggleSession = { localHideSessionInfo = !localHideSessionInfo },
+                                        onToggleImages = { localHideImages = !localHideImages }
+                                    )
+                                }
                             }
                         }
                         screenshotView = this
@@ -1692,21 +1646,13 @@ private fun MessageShareBottomSheet(
                     modifier = Modifier.clickable {
                         scope.launch {
                             val view = screenshotView ?: return@launch
-                            val bitmap = android.graphics.Bitmap.createBitmap(view.width.coerceAtLeast(1), view.height.coerceAtLeast(1), android.graphics.Bitmap.Config.ARGB_8888)
-                            val location = IntArray(2)
-                            view.getLocationInWindow(location)
-                            android.view.PixelCopy.request(
-                                (context as android.app.Activity).window,
-                                android.graphics.Rect(location[0], location[1], location[0] + view.width, location[1] + view.height),
-                                bitmap,
-                                { copyResult ->
-                                    if (copyResult == android.view.PixelCopy.SUCCESS) {
-                                        onDismiss()
-                                        onSaveImage(bitmap)
-                                    }
-                                },
-                                android.os.Handler(android.os.Looper.getMainLooper())
-                            )
+                            view.post {
+                                val bitmap = android.graphics.Bitmap.createBitmap(view.width, view.height, android.graphics.Bitmap.Config.ARGB_8888)
+                                val canvas = android.graphics.Canvas(bitmap)
+                                view.draw(canvas)
+                                onSaveImage(bitmap)
+                                onDismiss()
+                            }
                         }
                     },
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -1731,21 +1677,13 @@ private fun MessageShareBottomSheet(
                     modifier = Modifier.clickable {
                         scope.launch {
                             val view = screenshotView ?: return@launch
-                            val bitmap = android.graphics.Bitmap.createBitmap(view.width.coerceAtLeast(1), view.height.coerceAtLeast(1), android.graphics.Bitmap.Config.ARGB_8888)
-                            val location = IntArray(2)
-                            view.getLocationInWindow(location)
-                            android.view.PixelCopy.request(
-                                (context as android.app.Activity).window,
-                                android.graphics.Rect(location[0], location[1], location[0] + view.width, location[1] + view.height),
-                                bitmap,
-                                { copyResult ->
-                                    if (copyResult == android.view.PixelCopy.SUCCESS) {
-                                        onDismiss()
-                                        onShareImage(bitmap)
-                                    }
-                                },
-                                android.os.Handler(android.os.Looper.getMainLooper())
-                            )
+                            view.post {
+                                val bitmap = android.graphics.Bitmap.createBitmap(view.width, view.height, android.graphics.Bitmap.Config.ARGB_8888)
+                                val canvas = android.graphics.Canvas(bitmap)
+                                view.draw(canvas)
+                                onShareImage(bitmap)
+                                onDismiss()
+                            }
                         }
                     },
 
