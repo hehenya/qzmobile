@@ -192,6 +192,50 @@ class MessageDetailViewModel(
                         _typingText.value = null
                     }
                 }
+                "announcement" -> {
+                Log.d("ANNOUNCEMENT_WS", "收到公告推送: isAnnouncement=${message.isAnnouncement}")
+                
+                _uiState.update { state ->
+                    // 更新消息列表中的公告状态
+                    val updatedMessages = state.messages.map { msg ->
+                        if (msg.effectiveMsgId == message.effectiveMsgId) {
+                            msg.copy(
+                                isAnnouncement = message.isAnnouncement,
+                                announcementSetAt = message.announcementSetAt,
+                                announcementSetBy = message.announcementSetBy
+                            )
+                        } else {
+                            msg
+                        }
+                    }
+                    
+                    // 更新最新公告
+                    val latestAnnouncement = if (message.isAnnouncement == true) {
+                        // 如果是设置公告，使用推送的消息
+                        message
+                    } else {
+                        // 如果是取消公告，从消息列表中重新找最新的公告
+                        updatedMessages
+                            .filter { it.isAnnouncement == true }
+                            .sortedByDescending { it.sendTime }
+                            .firstOrNull()
+                    }
+                    
+                    state.copy(
+                        messages = updatedMessages,
+                        latestAnnouncement = latestAnnouncement
+                    )
+                }
+                
+                // 显示提示
+                val hint = if (message.isAnnouncement == true) {
+                    val setBy = message.announcementSetBy?.username ?: "管理员"
+                    "$setBy 设置了新公告"
+                } else {
+                    "公告已取消"
+                }
+                viewModelScope.launch { _toastMessage.emit(hint) }
+            }
                 "link_update" -> {
                     _uiState.update { state ->
                         state.copy(
