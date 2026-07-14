@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import coil3.request.bitmapConfig
+import coil3.request.crossfade
 import com.example.toolbox.ApiAddress
 import com.example.toolbox.DraftManager
 import com.example.toolbox.R
