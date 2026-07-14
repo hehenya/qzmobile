@@ -48,7 +48,7 @@ import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
-
+import androidx.compose.ui.draw.alpha
 class AnnouncementDetailActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -267,7 +267,7 @@ fun AnnouncementDetailScreen(
                             state = listState,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .alpha(0f), 
+                                .alpha(0f),  
                             reverseLayout = false,
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
