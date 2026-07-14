@@ -2318,7 +2318,7 @@ fun AnnouncementBanner(
             )
             Spacer(Modifier.width(8.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text("群公告", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                Text("已置顶消息", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 Text(
                     message.content.take(50),
                     style = MaterialTheme.typography.bodySmall,
