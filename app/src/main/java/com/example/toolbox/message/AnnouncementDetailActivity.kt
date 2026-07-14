@@ -206,12 +206,12 @@ fun AnnouncementDetailScreen(
                         )
                 )
 
-                Box(
+                Divider(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(0.5.dp)
-                        .align(Alignment.BottomCenter)
-                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                        .align(Alignment.BottomCenter),
+                    thickness = 0.5.dp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                 )
 
                 TopAppBar(
