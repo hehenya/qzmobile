@@ -605,6 +605,18 @@ fun MessageDetailScreen(
         viewModel.exitSelectionMode()
     }
     
+    // 公告状态
+    var announcementMessage by remember { mutableStateOf<Message?>(null) }
+
+    // 加载公告
+    LaunchedEffect(uiState.chatId, uiState.groupInfo) {
+        if (uiState.chatType == 2 && uiState.isAdmin) {
+            viewModel.loadLatestAnnouncement(uiState.chatId) { msg ->
+                announcementMessage = msg
+            }
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         val backgroundUrl by viewModel.backgroundUrl.collectAsState()
         backgroundUrl?.takeIf { it.isNotEmpty() }?.let { bgUrl ->
@@ -615,20 +627,9 @@ fun MessageDetailScreen(
                 modifier = Modifier.fillMaxSize()
             )
         }
-                // 公告状态
-        var announcementMessage by remember { mutableStateOf<Message?>(null) }
-
-        // 加载公告
-        LaunchedEffect(uiState.chatId, uiState.groupInfo) {
-            if (uiState.chatType == 2 && uiState.isAdmin) {
-                viewModel.loadLatestAnnouncement(uiState.chatId) { msg ->
-                    announcementMessage = msg
-                }
-            }
-        }
 
         Column(modifier = Modifier.fillMaxSize()) {
-            // 公告横幅
+            // 公告横幅 - 显示在顶栏下方
             if (announcementMessage != null && uiState.chatType == 2) {
                 AnnouncementBanner(
                     message = announcementMessage!!,
