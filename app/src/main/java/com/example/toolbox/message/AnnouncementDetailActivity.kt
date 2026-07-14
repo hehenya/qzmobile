@@ -42,7 +42,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import androidx.compose.ui.layout.ContentScale
 import android.util.Log
-
+import androidx.compose.ui.res.painterResource
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
@@ -242,7 +242,7 @@ fun AnnouncementDetailScreen(
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
-                    error = painterResource(R.drawable.ic_launcher_foreground)
+                    error = painterResource(android.R.drawable.ic_menu_gallery)
                 )
             }
 
@@ -282,7 +282,7 @@ fun AnnouncementDetailScreen(
                                     !previousMessage.isRecalled &&
                                     !previousMessage.isSystem
 
-                            val shouldShowAvatar = (index == messages.size - 1) || !isSameSenderAsPrevious
+                            val shouldShowAvatar = true
 
                             MessageBubble(
                                 context = context,
