@@ -36,6 +36,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import androidx.compose.ui.layout.ContentScale
 
 class AnnouncementDetailActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

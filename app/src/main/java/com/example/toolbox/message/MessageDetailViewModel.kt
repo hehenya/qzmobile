@@ -48,6 +48,9 @@ import com.example.toolbox.CacheManager
 import com.example.toolbox.MyApplication
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.coroutines.Job
+import com.example.toolbox.AppJson
+import com.example.toolbox.data.AnnouncementResponse
+import kotlinx.serialization.json.Json
 
 class MessageDetailViewModel(
     private val token: String,
@@ -551,30 +554,30 @@ class MessageDetailViewModel(
 
     // 获取最新公告
     fun loadLatestAnnouncement(groupId: Int, onResult: (Message?) -> Unit) {
-        viewModelScope.launch {
-            try {
-                val url = "${ApiAddress}group/latest_announcement"
-                val json = JSONObject().apply { put("group_id", groupId) }
-                val request = Request.Builder()
-                    .url(url)
-                    .header("x-access-token", token)
-                    .post(json.toString().toRequestBody("application/json".toMediaType()))
-                    .build()
-                
-                withContext(Dispatchers.IO) {
-                    client.newCall(request).execute().use { response ->
-                        val body = response.body?.string() ?: ""
-                        val result = AppJson.json.decodeFromString<AnnouncementResponse>(body)
-                        withContext(Dispatchers.Main) {
-                            onResult(result.announcement)
-                        }
+    viewModelScope.launch {
+        try {
+            val url = "${ApiAddress}group/latest_announcement"
+            val json = JSONObject().apply { put("group_id", groupId) }
+            val request = Request.Builder()
+                .url(url)
+                .header("x-access-token", token)
+                .post(json.toString().toRequestBody("application/json".toMediaType()))
+                .build()
+
+            withContext(Dispatchers.IO) {
+                client.newCall(request).execute().use { response ->
+                    val body = response.body?.string() ?: ""
+                    val result = AppJson.json.decodeFromString<AnnouncementResponse>(body)
+                    withContext(Dispatchers.Main) {
+                        onResult(result.announcement)
                     }
                 }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) { onResult(null) }
             }
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) { onResult(null) }
         }
     }
+}
 
     
     
