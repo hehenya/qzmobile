@@ -782,6 +782,24 @@ fun MessageDetailScreen(
                                     onDeleteSticker = { viewModel.deleteSticker(it) },
                                     onCollectImageAsSticker = { viewModel.collectImageAsSticker(it) },
                                     onDeleteMessage = { viewModel.deleteMessage(it) },
+                                    onShareClick = { msg ->
+                                        // 分享消息的实现（如果需要）
+                                    },
+                                    onToggleAnnouncement = { msg ->
+                                        viewModel.toggleAnnouncement(msg.effectiveMsgId) { success ->
+                                            if (success) {
+                                                Toast.makeText(
+                                                    context,
+                                                    if (msg.isAnnouncement == true) "已取消公告" else "已设置公告",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                                // 刷新消息列表以更新公告状态
+                                                viewModel.refresh()
+                                            } else {
+                                                Toast.makeText(context, "操作失败，请重试", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    },
                                     bubbleOpacity = bubbleOpacity,
                                     bubbleCornerRadius = bubbleCornerRadius,
                                 )

@@ -539,12 +539,32 @@ class MessageDetailViewModel(
                     client.newCall(request).execute().use { response ->
                         val body = response.body?.string() ?: ""
                         val result = JSONObject(body)
+                        val success = result.optBoolean("success")
+                        
                         withContext(Dispatchers.Main) {
-                            onResult(result.optBoolean("success"))
+                            if (success) {
+                                // 更新UI状态：先取消所有消息的公告标记，再设置新公告
+                                _uiState.update { state ->
+                                    val updatedMessages = state.messages.map { msg ->
+                                        if (msg.effectiveMsgId == messageId) {
+                                            // 切换这条消息的公告状态
+                                            msg.copy(isAnnouncement = !(msg.isAnnouncement == true))
+                                        } else if (msg.isAnnouncement == true) {
+                                            // 取消其他消息的公告状态
+                                            msg.copy(isAnnouncement = false)
+                                        } else {
+                                            msg
+                                        }
+                                    }
+                                    state.copy(messages = updatedMessages)
+                                }
+                            }
+                            onResult(success)
                         }
                     }
                 }
             } catch (e: Exception) {
+                Log.e("ToggleAnnouncement", "Error toggling announcement", e)
                 withContext(Dispatchers.Main) { onResult(false) }
             }
         }
