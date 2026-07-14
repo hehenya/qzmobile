@@ -2,6 +2,7 @@
 
 package com.example.toolbox.message
 
+import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.ContentValues
@@ -1548,6 +1549,7 @@ private fun MessageShareBottomSheet(
     onShareImage: (android.graphics.Bitmap) -> Unit
 ) {
     val context = LocalContext.current
+    val activity = context as? Activity ?: return
     val scope = rememberCoroutineScope()
     var screenshotView by remember { mutableStateOf<android.view.View?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -1592,7 +1594,7 @@ private fun MessageShareBottomSheet(
             // AndroidView 截图
             AndroidView(
                 factory = {
-                    ComposeView(context).apply {
+                    ComposeView(activity).apply {
                         setContent {
                             ToolBoxTheme {
                                 MessageSharePreviewCard(
@@ -1818,17 +1820,17 @@ private fun MessageSharePreviewCard(
                         } else null
                         val previewName = when {
                             hideMyInfo && isMineMessage -> message.displayName.ifBlank { "我" }
-                            hideSenderInfo && !isMineMessage -> assignedPlaceholderName
+                            hideSenderInfo -> assignedPlaceholderName
                             else -> null
                         }
                         val previewAvatar = when {
                             hideMyInfo && isMineMessage -> message.displayAvatar
-                            hideSenderInfo && !isMineMessage -> SHARE_PREVIEW_PLACEHOLDER_AVATAR
+                            hideSenderInfo -> SHARE_PREVIEW_PLACEHOLDER_AVATAR
                             else -> null
                         }
                         val previewTag = when {
                             hideMyInfo && isMineMessage -> message.displayTag.ifBlank { "" }
-                            hideSenderInfo && !isMineMessage -> ""
+                            hideSenderInfo -> ""
                             else -> null
                         }
                         val previewShowSenderInfo = !(hideSenderInfo && !isMineMessage)
