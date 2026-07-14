@@ -227,7 +227,6 @@ class MessageDetailViewModel(
                     )
                 }
                 
-                // 显示提示
                 val hint = if (message.isAnnouncement == true) {
                     val setBy = message.announcementSetBy?.username ?: "管理员"
                     "$setBy 设置了新公告"

@@ -229,6 +229,7 @@ data class MessageDetailUiState(
     val editingContent: String = "",
     val editingImages: List<String> = emptyList(),
     val editingIsMarkdown: Boolean = false,
+    val latestAnnouncement: Message? = null,
 )
 
 // 撤回确认弹窗状态
@@ -469,4 +470,10 @@ data class AnnouncementResponse(
     val success: Boolean,
     val announcement: Message? = null,
     val message: String? = null
+)
+@Serializable
+data class AnnouncementListResponse(
+    val success: Boolean,
+    val messages: List<Message> = emptyList(),
+    val pagination: MessagePagination? = null
 )

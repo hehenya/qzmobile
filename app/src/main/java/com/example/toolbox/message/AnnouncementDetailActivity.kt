@@ -79,38 +79,44 @@ fun AnnouncementDetailScreen(
     val bubbleOpacity by settingsStorage.bubbleOpacityFlow.collectAsState(initial = 0.9f)
 
     // 加载公告历史
-    LaunchedEffect(Unit) {
-        try {
-            val client = OkHttpClient()
-            val url = "${ApiAddress}group/announcements"
-            val json = JSONObject().apply {
-                put("group_id", groupId)
-                put("page", 1)
-                put("per_page", 50)
-            }
-            val request = Request.Builder()
-                .url(url)
-                .header("x-access-token", token)
-                .post(json.toString().toRequestBody("application/json".toMediaType()))
-                .build()
+    // 加载公告历史
+LaunchedEffect(Unit) {
+    try {
+        val client = OkHttpClient()
+        val url = "${ApiAddress}group/announcements"
+        val json = JSONObject().apply {
+            put("group_id", groupId)
+            put("page", 1)
+            put("per_page", 50)
+        }
+        val request = Request.Builder()
+            .url(url)
+            .header("x-access-token", token)
+            .post(json.toString().toRequestBody("application/json".toMediaType()))
+            .build()
 
-            withContext(Dispatchers.IO) {
-                client.newCall(request).execute().use { response ->
-                    val body = response.body?.string() ?: ""
-                    val result = AppJson.json.decodeFromString<GetMessagesResponse>(body)
-                    withContext(Dispatchers.Main) {
+        withContext(Dispatchers.IO) {
+            client.newCall(request).execute().use { response ->
+                val body = response.body?.string() ?: ""
+                Log.d("ANNOUNCEMENT_LIST", "响应体: $body") // 调试用
+                val result = AppJson.json.decodeFromString<AnnouncementListResponse>(body)  // ✅ 改用专用数据类
+                withContext(Dispatchers.Main) {
+                    if (result.success) {  // ✅ 改用 success 判断
                         messages = result.messages
-                        isLoading = false
+                    } else {
+                        Toast.makeText(context, "加载公告失败", Toast.LENGTH_SHORT).show()
                     }
+                    isLoading = false
                 }
             }
-        } catch (e: Exception) {
-            withContext(Dispatchers.Main) {
-                isLoading = false
-                Toast.makeText(context, "加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
+        }
+    } catch (e: Exception) {
+        withContext(Dispatchers.Main) {
+            isLoading = false
+            Toast.makeText(context, "加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
+}
 
     // 加载聊天背景
     LaunchedEffect(Unit) {
@@ -175,7 +181,7 @@ fun AnnouncementDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("群公告") },
+                title = { Text("历史置顶消息") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
