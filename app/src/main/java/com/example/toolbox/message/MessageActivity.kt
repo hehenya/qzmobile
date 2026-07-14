@@ -140,23 +140,16 @@ class MessageDetailActivity : ComponentActivity() {
                 val viewModel: MessageDetailViewModel = viewModel(
                     factory = token?.let { MessageDetailViewModelFactory(it, chatType, finalChatId) }
                 )
-                val uiState by viewModel.uiState.collectAsState()
 
                 val hazeState = remember { HazeState() }
                 var showShareSheet by remember { mutableStateOf(false) }
                 var shareSheetMessages by remember { mutableStateOf<List<Message>>(emptyList()) }
 
                 // 公告状态
-                var announcementMessage by remember { mutableStateOf<Message?>(null) }
+                val uiState by viewModel.uiState.collectAsState()
+                val announcementMessage = uiState.latestAnnouncement
 
-                // 加载公告
-                LaunchedEffect(uiState.chatId, uiState.groupInfo) {
-                    if (uiState.chatType == 2 && uiState.isAdmin) {
-                        viewModel.loadLatestAnnouncement(uiState.chatId) { msg ->
-                            announcementMessage = msg
-                        }
-                    }
-                }
+                
                 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),

@@ -89,14 +89,21 @@ class MessageDetailViewModel(
     private var wsObserver: ((String, String, Int, Message) -> Unit)? = null
 
     init {
-        loadMessages()
-        connectWebSocket()
-        loadBackground()
-        if (chatType == 2) {
-            loadGroupInfo()
+    loadMessages()
+    connectWebSocket()
+    loadBackground()
+    if (chatType == 2) {
+        loadGroupInfo()
+        loadLatestAnnouncement(chatId) { announcement ->
+            _uiState.update { state ->
+                state.copy(
+                    latestAnnouncement = announcement
+                )
+            }
         }
-        loadDraft()
     }
+    loadDraft()
+}
 
     fun connectWebSocket() {
         val manager = ChatSocketManager.getInstance()
