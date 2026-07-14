@@ -264,13 +264,13 @@ fun AnnouncementDetailScreen(
                 }
                 else -> {
                     LazyColumn(
-                            state = listState,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .alpha(0f),  
-                            reverseLayout = false,
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
+                        state = listState,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .then(Modifier.background(Color.Transparent)),
+                        reverseLayout = false,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
                         items(
                             items = messages,
                             key = { it.effectiveMsgId }
@@ -313,8 +313,3 @@ fun AnnouncementDetailScreen(
                             )
                         }
                     }
-                }
-            }
-        }
-    }
-}
