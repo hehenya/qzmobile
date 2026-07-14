@@ -267,7 +267,7 @@ fun AnnouncementDetailScreen(
                         state = listState,
                         modifier = Modifier
                             .fillMaxSize()
-                            .then(Modifier.background(Color.Transparent)),
+                            .alpha(0f),  // ✅ 改用 alpha，彻底避开 background 问题
                         reverseLayout = false,
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
