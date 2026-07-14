@@ -17,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color  // ✅ 关键导入
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -24,8 +25,11 @@ import coil3.compose.AsyncImage
 import com.example.toolbox.ApiAddress
 import com.example.toolbox.AppJson
 import com.example.toolbox.TokenManager
-import com.example.toolbox.data.GetMessagesResponse
+import com.example.toolbox.data.AnnouncementListResponse
 import com.example.toolbox.data.Message
+import com.example.toolbox.data.displayName  // ✅ 关键导入
+import com.example.toolbox.data.displayTag  // ✅ 关键导入
+import com.example.toolbox.data.displayAvatar  // ✅ 关键导入
 import com.example.toolbox.data.effectiveMsgId
 import com.example.toolbox.ui.theme.ToolBoxTheme
 import kotlinx.coroutines.Dispatchers
@@ -38,7 +42,6 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import androidx.compose.ui.layout.ContentScale
 import android.util.Log
-import com.example.toolbox.data.AnnouncementListResponse
 
 class AnnouncementDetailActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
