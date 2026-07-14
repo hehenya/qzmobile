@@ -266,7 +266,7 @@ fun AnnouncementDetailScreen(
                         state = listState,
                         modifier = Modifier
                             .fillMaxSize(),
-                        reverseLayout = false,
+                        reverseLayout = true,
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         items(
