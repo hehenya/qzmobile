@@ -142,10 +142,18 @@ class MessageDetailActivity : ComponentActivity() {
                 var showShareSheet by remember { mutableStateOf(false) }
                 var shareSheetMessages by remember { mutableStateOf<List<Message>>(emptyList()) }
 
-                LaunchedEffect(uiState.messages.size) {
-                    
-                }
+                // 公告状态
+                var announcementMessage by remember { mutableStateOf<Message?>(null) }
 
+                // 加载公告
+                LaunchedEffect(uiState.chatId, uiState.groupInfo) {
+                    if (uiState.chatType == 2 && uiState.isAdmin) {
+                        viewModel.loadLatestAnnouncement(uiState.chatId) { msg ->
+                            announcementMessage = msg
+                        }
+                    }
+                }
+                
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     contentWindowInsets = WindowInsets(0.dp),
@@ -298,11 +306,11 @@ class MessageDetailActivity : ComponentActivity() {
                                             AnnouncementBanner(
                                                 message = announcementMessage!!,
                                                 onClick = {
-                                                    val intent = Intent(context, AnnouncementDetailActivity::class.java).apply {
+                                                    val intent = Intent(this@MessageDetailActivity, AnnouncementDetailActivity::class.java).apply {
                                                         putExtra("group_id", uiState.chatId)
                                                         putExtra("is_admin", uiState.isAdmin)
                                                     }
-                                                    context.startActivity(intent)
+                                                    startActivity(intent)
                                                 }
                                             )
                                         }
@@ -559,18 +567,6 @@ fun MessageDetailScreen(
     BackHandler(enabled = selectionMode) {
         viewModel.exitSelectionMode()
     }
-    
-    // 公告状态
-    var announcementMessage by remember { mutableStateOf<Message?>(null) }
-
-    // 加载公告
-    LaunchedEffect(uiState.chatId, uiState.groupInfo) {
-        if (uiState.chatType == 2 && uiState.isAdmin) {
-            viewModel.loadLatestAnnouncement(uiState.chatId) { msg ->
-                announcementMessage = msg
-            }
-        }
-    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         val backgroundUrl by viewModel.backgroundUrl.collectAsState()
@@ -584,20 +580,6 @@ fun MessageDetailScreen(
         }
 
         Column(modifier = Modifier.fillMaxSize()) {
-            // 公告横幅 - 显示在顶栏下方
-            if (announcementMessage != null && uiState.chatType == 2) {
-                AnnouncementBanner(
-                    message = announcementMessage!!,
-                    onClick = {
-                        val intent = Intent(context, AnnouncementDetailActivity::class.java).apply {
-                            putExtra("group_id", uiState.chatId)
-                            putExtra("is_admin", uiState.isAdmin)
-                        }
-                        context.startActivity(intent)
-                    }
-                )
-            }
-
             if (uiState.chatType == 1 && uiState.relationship != "friend") {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
@@ -1076,9 +1058,10 @@ fun MessageBubble(
     hideMyInfo: Boolean = false,
     hideSenderInfo: Boolean = false,
     onToggleAnnouncement: ((Message) -> Unit)? = null,
+    imageLoader: coil3.ImageLoader = coil3.ImageLoader
 ) {
     val effectiveIsMine = forceIsMine ?: (message.isMine || message.direction == "right")
-    val isMine = effectiveIsMine
+    val isMine = effectiveIsMine && !hideMyInfo
     val isRecalledMessage = message.msgDeleteTime != null
     val isSystemMessage = message.isSystem
 
@@ -1127,6 +1110,7 @@ fun MessageBubble(
                         model = message.displayAvatar,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
+                        imageLoader = imageLoader,
                         modifier = Modifier.size(36.dp).clip(CircleShape)
                     )
                     Spacer(Modifier.width(8.dp))
@@ -1138,6 +1122,7 @@ fun MessageBubble(
                 AsyncImage(
                     model = message.content.ifEmpty { message.images.firstOrNull() ?: "" },
                     contentDescription = null,
+                    imageLoader = imageLoader,
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
@@ -1253,6 +1238,7 @@ fun MessageBubble(
                             model = previewAvatar ?: message.displayAvatar,
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
+                            imageLoader = imageLoader,
                             modifier = Modifier
                                 .size(36.dp)
                                 .clip(CircleShape)
@@ -1304,7 +1290,7 @@ fun MessageBubble(
                                         }
                                     ) {
                                         Text("转发自 ", fontSize = 12.sp, color = forwardColor, fontWeight = FontWeight.Medium)
-                                        AsyncImage(model = fi.avatarUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(20.dp).clip(CircleShape))
+                                        AsyncImage(model = fi.avatarUrl, imageLoader = imageLoader, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(20.dp).clip(CircleShape))
                                         Spacer(Modifier.width(4.dp))
                                         Text(fi.username, fontSize = 12.sp, color = forwardColor, fontWeight = FontWeight.Medium)
                                     }
@@ -1343,7 +1329,7 @@ fun MessageBubble(
                                                 Text("表情消息", fontSize = 12.sp, color = quoteTextColor)
                                             } else {
                                                 if (ref.content.isNotBlank()) Text(ref.content, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, color = quoteTextColor)
-                                                if (ref.images.isNotEmpty()) AsyncImage(model = ref.images.first(), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(8.dp)).padding(top = 4.dp))
+                                                if (ref.images.isNotEmpty()) AsyncImage(model = ref.images.first(), imageLoader = imageLoader, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(8.dp)).padding(top = 4.dp))
                                             }
                                         }
                                     }
@@ -1361,7 +1347,7 @@ fun MessageBubble(
                                     Spacer(Modifier.height(4.dp)); val hasText = message.content.isNotBlank(); val imgCount = message.images.size
                                     if (imgCount == 1) {
                                         Box(modifier = Modifier.widthIn(max = 200.dp).clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, 0) }) {
-                                            AsyncImage(model = message.images[0], contentDescription = null, contentScale = ContentScale.FillWidth, modifier = Modifier.fillMaxWidth())
+                                            AsyncImage(model = message.images[0], imageLoader = imageLoader, contentDescription = null, contentScale = ContentScale.FillWidth, modifier = Modifier.fillMaxWidth())
                                             if (!hasText) {
                                                 Text(
                                                     timestampDisplay,
@@ -1377,15 +1363,15 @@ fun MessageBubble(
                                         }
                                     } else if (imgCount == 2) {
                                         Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.height(180.dp).widthIn(max = 280.dp)) {
-                                            message.images.forEachIndexed { index, url -> AsyncImage(model = url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, index) }) }
+                                            message.images.forEachIndexed { index, url -> AsyncImage(model = url, imageLoader = imageLoader, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, index) }) }
                                         }
                                         if (!hasText) { Spacer(Modifier.height(2.dp)); Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) { Text(timestampDisplay, color = Color.White, fontSize = 11.sp, modifier = Modifier.background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(8.dp)).padding(horizontal = 5.dp, vertical = 2.dp)) } }
                                     } else if (imgCount == 3) {
                                         Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.height(200.dp).widthIn(max = 280.dp)) {
-                                            AsyncImage(model = message.images[0], contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, 0) })
+                                            AsyncImage(model = message.images[0], imageLoader = imageLoader, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, 0) })
                                             Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f).fillMaxHeight()) {
-                                                AsyncImage(model = message.images[1], contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, 1) })
-                                                AsyncImage(model = message.images[2], contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, 2) })
+                                                AsyncImage(model = message.images[1], imageLoader = imageLoader, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, 1) })
+                                                AsyncImage(model = message.images[2], imageLoader = imageLoader, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, 2) })
                                             }
                                         }
                                         if (!hasText) { Spacer(Modifier.height(2.dp)); Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) { Text(timestampDisplay, color = Color.White, fontSize = 11.sp, modifier = Modifier.background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(8.dp)).padding(horizontal = 5.dp, vertical = 2.dp)) } }
@@ -1394,7 +1380,7 @@ fun MessageBubble(
                                         Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.widthIn(max = 280.dp)) {
                                             for (row in 0 until rows) {
                                                 Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.height(120.dp)) {
-                                                    for (col in 0..1) { val idx = row * 2 + col; if (idx < imgCount) AsyncImage(model = message.images[idx], contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, idx) }) else Spacer(Modifier.weight(1f)) }
+                                                    for (col in 0..1) { val idx = row * 2 + col; if (idx < imgCount) AsyncImage(model = message.images[idx], imageLoader = imageLoader, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, idx) }) else Spacer(Modifier.weight(1f)) }
                                                 }
                                             }
                                         }
@@ -1562,8 +1548,6 @@ private fun MessageShareBottomSheet(
     val scope = rememberCoroutineScope()
     var screenshotView by remember { mutableStateOf<android.view.View?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    
-    val softwareImageLoader = remember { AppImageLoaders.getCoil3Loader(context) }
 
     val settingsStorage = remember { com.example.toolbox.settings.SettingsStorage(context) }
     val hideSenderInfo by settingsStorage.screenshotHideSenderInfoFlow.collectAsState(initial = false)
@@ -1744,7 +1728,8 @@ private fun MessageSharePreviewCard(
 ) {
     val context = LocalContext.current
     val clipboard = LocalClipboard.current
-
+    val softwareImageLoader = remember { AppImageLoaders.getCoil3Loader(context) }
+    
     Surface(
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
@@ -1895,8 +1880,8 @@ private fun MessageSharePreviewCard(
                                 previewAvatar = previewAvatar,
                                 forceIsMine = previewForceIsMine,
                                 hideMyInfo = hideMyInfo,
-                                hideSenderInfo = hideSenderInfo
-
+                                hideSenderInfo = hideSenderInfo,
+                                imageLoader = softwareImageLoader
                             )
                         }
                     }
