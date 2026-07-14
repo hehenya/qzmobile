@@ -229,7 +229,7 @@ class MessageDetailViewModel(
                 
                 val hint = if (message.isAnnouncement == true) {
                     val setBy = message.announcementSetBy?.username ?: "管理员"
-                    "$setBy 设置了新公告"
+                    "$setBy 设置了置顶消息"
                 } else {
                     "公告已取消"
                 }

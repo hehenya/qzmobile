@@ -725,7 +725,7 @@ fun MessageDetailScreen(
                                             if (success) {
                                                 Toast.makeText(
                                                     context,
-                                                    if (msg.isAnnouncement == true) "已取消公告" else "已设置公告",
+                                                    if (msg.isAnnouncement == true) "已取消置顶" else "已设置公告",
                                                     Toast.LENGTH_SHORT
                                                 ).show()
                                                 // 刷新消息列表以更新公告状态

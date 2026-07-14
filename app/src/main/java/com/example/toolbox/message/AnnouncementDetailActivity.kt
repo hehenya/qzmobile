@@ -12,11 +12,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
@@ -42,13 +42,13 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import androidx.compose.ui.layout.ContentScale
 import android.util.Log
-import androidx.compose.ui.res.painterResource
+
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
-import androidx.compose.ui.draw.alpha
+
 class AnnouncementDetailActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -241,8 +241,7 @@ fun AnnouncementDetailScreen(
                     model = bgUrl,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                    error = painterResource(android.R.drawable.ic_menu_gallery)
+                    modifier = Modifier.fillMaxSize()
                 )
             }
 
@@ -267,7 +266,7 @@ fun AnnouncementDetailScreen(
                         state = listState,
                         modifier = Modifier
                             .fillMaxSize()
-                            .alpha(0f),  // ✅ 改用 alpha，彻底避开 background 问题
+                            .alpha(0f),
                         reverseLayout = false,
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
@@ -313,3 +312,8 @@ fun AnnouncementDetailScreen(
                             )
                         }
                     }
+                }
+            }
+        }
+    }
+}
