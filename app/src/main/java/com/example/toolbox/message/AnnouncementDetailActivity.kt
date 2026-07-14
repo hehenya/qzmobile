@@ -208,19 +208,26 @@ LaunchedEffect(Unit) {
             }
 
             if (isLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .background(Color.Transparent) // ✅ 透明
+                )
             } else if (messages.isEmpty()) {
                 Text(
-                    "暂无公告",
-                    modifier = Modifier.align(Alignment.Center),
+                    "暂无置顶消息",
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .background(Color.Transparent), // ✅ 透明
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            } else {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    reverseLayout = true,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Transparent), // ✅ 这里加上透明背景
+                    reverseLayout = false,
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     items(
@@ -230,7 +237,13 @@ LaunchedEffect(Unit) {
                         val index = messages.indexOf(message)
                         val newerMessage = messages.getOrNull(index - 1)
                         val olderMessage = messages.getOrNull(index + 1)
-
+                        val isFirstItem = index == 0  
+                        val previousMessage = messages.getOrNull(index - 1)
+                        val isSameSenderAsPrevious = previousMessage != null && 
+                            previousMessage.senderId == message.senderId &&
+                            !previousMessage.isRecalled &&
+                            !previousMessage.isSystem
+                        val shouldShowAvatar = isFirstItem || !isSameSenderAsPrevious
                         val isFirstFromSender = olderMessage == null || olderMessage.isRecalled || olderMessage.isSystem || olderMessage.senderId != message.senderId
                         val isLastFromSender = newerMessage == null || newerMessage.isRecalled || newerMessage.isSystem || newerMessage.senderId != message.senderId
                         val isOlderSameSender = olderMessage != null && !olderMessage.isRecalled && !olderMessage.isSystem && olderMessage.senderId == message.senderId
@@ -256,6 +269,8 @@ LaunchedEffect(Unit) {
                             isSelected = false,
                             showMenu = false,
                             onShowMenuChanged = null,
+                            showAvatar = shouldShowAvatar,
+                            isFirstFromSender = shouldShowAvatar,
                             bubbleOpacity = bubbleOpacity,
                             bubbleCornerRadius = bubbleCornerRadius,
                         )
