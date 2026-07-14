@@ -230,7 +230,7 @@ class MessageDetailActivity : ComponentActivity() {
                                         block = null
                                     )
                             )
-            
+
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -303,18 +303,20 @@ class MessageDetailActivity : ComponentActivity() {
                                                 val group = uiState.groupInfo!!
                                                 Row(
                                                     verticalAlignment = Alignment.CenterVertically,
-                                                    modifier = Modifier.fillMaxWidth().clickable {
-                                                        startActivity(Intent(this@MessageDetailActivity, GroupInfoActivity::class.java).apply {
-                                                            putExtra("group_id", chatId)
-                                                            putExtra("is_joined", true)
-                                                            putExtra("group_name", group.name)
-                                                            putExtra("group_avatar", group.avatarUrl)
-                                                            putExtra("group_description", group.description)
-                                                            putExtra("group_members_count", group.membersCount)
-                                                            putExtra("group_created_at", group.createdAt)
-                                                            putExtra("group_is_private", group.isPrivate)
-                                                        })
-                                                    }
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .clickable {
+                                                            startActivity(Intent(this@MessageDetailActivity, GroupInfoActivity::class.java).apply {
+                                                                putExtra("group_id", chatId)
+                                                                putExtra("is_joined", true)
+                                                                putExtra("group_name", group.name)
+                                                                putExtra("group_avatar", group.avatarUrl)
+                                                                putExtra("group_description", group.description)
+                                                                putExtra("group_members_count", group.membersCount)
+                                                                putExtra("group_created_at", group.createdAt)
+                                                                putExtra("group_is_private", group.isPrivate)
+                                                            })
+                                                        }
                                                 ) {
                                                     AsyncImage(
                                                         model = if (group.avatarUrl.startsWith("http")) group.avatarUrl else "${ApiAddress}uploads/${group.avatarUrl}",
@@ -327,8 +329,8 @@ class MessageDetailActivity : ComponentActivity() {
                                                         Text(group.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                                                         val typingText by viewModel.typingText.collectAsState()
                                                         Text(
-                                                            typingText ?: "${group.membersCount} 名成员", 
-                                                            fontSize = 12.sp, 
+                                                            typingText ?: "${group.membersCount} 名成员",
+                                                            fontSize = 12.sp,
                                                             color = if (typingText != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                                                         )
                                                     }
@@ -337,19 +339,21 @@ class MessageDetailActivity : ComponentActivity() {
                                                 val otherUser = uiState.otherUser!!
                                                 Row(
                                                     verticalAlignment = Alignment.CenterVertically,
-                                                    modifier = Modifier.fillMaxWidth().clickable {
-                                                        startActivity(Intent(this@MessageDetailActivity, UserInfoActivity::class.java).apply { putExtra("userId", otherUser.id) })
-                                                    }
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .clickable {
+                                                            startActivity(Intent(this@MessageDetailActivity, UserInfoActivity::class.java).apply { putExtra("userId", otherUser.id) })
+                                                        }
                                                 ) {
                                                     AsyncImage(model = otherUser.avatar, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(36.dp).clip(CircleShape))
                                                     Spacer(Modifier.width(8.dp))
                                                     val typingText by viewModel.typingText.collectAsState()
-                                                    Column { 
+                                                    Column {
                                                         Text(
-                                                            if (typingText != null) "正在输入中..." else otherUser.username, 
-                                                            fontWeight = FontWeight.Bold, 
+                                                            if (typingText != null) "正在输入中..." else otherUser.username,
+                                                            fontWeight = FontWeight.Bold,
                                                             fontSize = 16.sp
-                                                        ) 
+                                                        )
                                                     }
                                                 }
                                             } else Text("聊天详情")
@@ -361,8 +365,25 @@ class MessageDetailActivity : ComponentActivity() {
                         }
                     }
                 ) { innerPadding ->
-                    Box(modifier = Modifier.fillMaxSize().hazeSource(hazeState)) {
-                        MessageDetailScreen(PaddingValues(0.dp), viewModel)
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        if (announcementMessage != null && uiState.chatType == 2) {
+                            AnnouncementBanner(
+                                message = announcementMessage!!,
+                                onClick = {
+                                    val intent = Intent(context, AnnouncementDetailActivity::class.java).apply {
+                                        putExtra("group_id", uiState.chatId)
+                                        putExtra("is_admin", uiState.isAdmin)
+                                    }
+                                    context.startActivity(intent)
+                                }
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .hazeSource(hazeState)
+                        ) {
+                            MessageDetailScreen(innerPadding, viewModel)
                         if (showShareSheet && shareSheetMessages.isNotEmpty()) {
                             val shareChatName = when {
                                 chatType == 2 && uiState.groupInfo != null -> uiState.groupInfo!!.name
