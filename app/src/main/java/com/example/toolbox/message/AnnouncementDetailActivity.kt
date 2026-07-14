@@ -1,0 +1,258 @@
+package com.example.toolbox.message
+
+import android.content.Intent
+import android.os.Bundle
+import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
+import com.example.toolbox.ApiAddress
+import com.example.toolbox.AppJson
+import com.example.toolbox.TokenManager
+import com.example.toolbox.data.GetMessagesResponse
+import com.example.toolbox.data.Message
+import com.example.toolbox.data.effectiveMsgId
+import com.example.toolbox.ui.theme.ToolBoxTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
+
+class AnnouncementDetailActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        val groupId = intent.getIntExtra("group_id", 0)
+        val isAdmin = intent.getBooleanExtra("is_admin", false)
+        val token = TokenManager.get(this) ?: ""
+
+        enableEdgeToEdge()
+        setContent {
+            ToolBoxTheme {
+                AnnouncementDetailScreen(
+                    groupId = groupId,
+                    isAdmin = isAdmin,
+                    token = token,
+                    onBack = { finish() }
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AnnouncementDetailScreen(
+    groupId: Int,
+    isAdmin: Boolean,
+    token: String,
+    onBack: () -> Unit
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val clipboard = LocalClipboard.current
+    var messages by remember { mutableStateOf<List<Message>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var backgroundUrl by remember { mutableStateOf<String?>(null) }
+    val listState = rememberLazyListState()
+    val settingsStorage = remember { com.example.toolbox.settings.SettingsStorage(context) }
+    val bubbleCornerRadius by settingsStorage.bubbleCornerRadiusFlow.collectAsState(initial = 16f)
+    val bubbleOpacity by settingsStorage.bubbleOpacityFlow.collectAsState(initial = 0.9f)
+
+    // 加载公告历史
+    LaunchedEffect(Unit) {
+        try {
+            val client = OkHttpClient()
+            val url = "${ApiAddress}group/announcements"
+            val json = JSONObject().apply {
+                put("group_id", groupId)
+                put("page", 1)
+                put("per_page", 50)
+            }
+            val request = Request.Builder()
+                .url(url)
+                .header("x-access-token", token)
+                .post(json.toString().toRequestBody("application/json".toMediaType()))
+                .build()
+
+            withContext(Dispatchers.IO) {
+                client.newCall(request).execute().use { response ->
+                    val body = response.body?.string() ?: ""
+                    val result = AppJson.json.decodeFromString<GetMessagesResponse>(body)
+                    withContext(Dispatchers.Main) {
+                        messages = result.messages
+                        isLoading = false
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
+                isLoading = false
+                Toast.makeText(context, "加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    // 加载聊天背景
+    LaunchedEffect(Unit) {
+        try {
+            val client = OkHttpClient()
+            val json = JSONObject().apply {
+                put("chat_type", 2)
+                put("target_id", groupId)
+            }
+            val request = Request.Builder()
+                .url("${ApiAddress}chat/get_background")
+                .header("x-access-token", token)
+                .post(json.toString().toRequestBody("application/json".toMediaType()))
+                .build()
+
+            withContext(Dispatchers.IO) {
+                client.newCall(request).execute().use { response ->
+                    val body = response.body?.string() ?: ""
+                    val result = JSONObject(body)
+                    withContext(Dispatchers.Main) {
+                        backgroundUrl = result.optString("background_url", "").ifEmpty { null }
+                    }
+                }
+            }
+        } catch (_: Exception) { }
+    }
+
+    // 取消公告
+    fun cancelAnnouncement(messageId: String) {
+        scope.launch {
+            try {
+                val client = OkHttpClient()
+                val json = JSONObject().apply {
+                    put("message_id", messageId.toIntOrNull() ?: 0)
+                }
+                val request = Request.Builder()
+                    .url("${ApiAddress}group/set_announcement")
+                    .header("x-access-token", token)
+                    .post(json.toString().toRequestBody("application/json".toMediaType()))
+                    .build()
+
+                withContext(Dispatchers.IO) {
+                    client.newCall(request).execute().use { response ->
+                        val body = response.body?.string() ?: ""
+                        val result = JSONObject(body)
+                        withContext(Dispatchers.Main) {
+                            if (result.optBoolean("success")) {
+                                messages = messages.filter { it.msgId != messageId }
+                                Toast.makeText(context, "已取消公告", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "操作失败", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("群公告") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            // 聊天背景
+            backgroundUrl?.takeIf { it.isNotEmpty() }?.let { bgUrl ->
+                AsyncImage(
+                    model = bgUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
+            if (isLoading) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            } else if (messages.isEmpty()) {
+                Text(
+                    "暂无公告",
+                    modifier = Modifier.align(Alignment.Center),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    reverseLayout = true,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    items(
+                        items = messages,
+                        key = { it.effectiveMsgId }
+                    ) { message ->
+                        val index = messages.indexOf(message)
+                        val newerMessage = messages.getOrNull(index - 1)
+                        val olderMessage = messages.getOrNull(index + 1)
+
+                        val isFirstFromSender = olderMessage == null || olderMessage.isRecalled || olderMessage.isSystem || olderMessage.senderId != message.senderId
+                        val isLastFromSender = newerMessage == null || newerMessage.isRecalled || newerMessage.isSystem || newerMessage.senderId != message.senderId
+                        val isOlderSameSender = olderMessage != null && !olderMessage.isRecalled && !olderMessage.isSystem && olderMessage.senderId == message.senderId
+                        val isNewerSameSender = newerMessage != null && !newerMessage.isRecalled && !newerMessage.isSystem && newerMessage.senderId == message.senderId
+
+                        MessageBubble(
+                            context = context,
+                            clipboard = clipboard,
+                            message = message,
+                            onRecall = {},
+                            onEdit = {},
+                            onImageClick = { urls, idx -> },
+                            onReply = {},
+                            isAdmin = isAdmin,
+                            showAvatar = isFirstFromSender,
+                            isOlderSameSender = isOlderSameSender,
+                            isNewerSameSender = isNewerSameSender,
+                            avatarAlignment = Alignment.Bottom,
+                            chatType = 2,
+                            showDate = false,
+                            dateString = null,
+                            isSelectionMode = false,
+                            isSelected = false,
+                            showMenu = false,
+                            onShowMenuChanged = null,
+                            bubbleOpacity = bubbleOpacity,
+                            bubbleCornerRadius = bubbleCornerRadius,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}

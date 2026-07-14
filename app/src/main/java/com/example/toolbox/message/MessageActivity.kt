@@ -612,7 +612,34 @@ fun MessageDetailScreen(
                 modifier = Modifier.fillMaxSize()
             )
         }
+                // 公告状态
+        var announcementMessage by remember { mutableStateOf<Message?>(null) }
 
+        // 加载公告
+        LaunchedEffect(uiState.chatId, uiState.groupInfo) {
+            if (uiState.chatType == 2 && uiState.isAdmin) {
+                viewModel.loadLatestAnnouncement(uiState.chatId) { msg ->
+                    announcementMessage = msg
+                }
+            }
+        }
+
+        Column(modifier = Modifier.fillMaxSize()) {
+            // 公告横幅
+            if (announcementMessage != null && uiState.chatType == 2) {
+                AnnouncementBanner(
+                    message = announcementMessage!!,
+                    onClick = {
+                        val intent = Intent(context, AnnouncementDetailActivity::class.java).apply {
+                            putExtra("group_id", uiState.chatId)
+                            putExtra("is_admin", uiState.isAdmin)
+                        }
+                        context.startActivity(intent)
+                    }
+                )
+            }
+
+            if (uiState.chatType == 1 && uiState.relationship != "friend") {
         Column(modifier = Modifier.fillMaxSize()) {
             if (uiState.chatType == 1 && uiState.relationship != "friend") {
                 Surface(
@@ -1073,6 +1100,7 @@ fun MessageBubble(
     forceIsMine: Boolean? = null,
     hideMyInfo: Boolean = false,
     hideSenderInfo: Boolean = false,
+    onToggleAnnouncement: ((Message) -> Unit)? = null,
 ) {
     val effectiveIsMine = forceIsMine ?: (message.isMine || message.direction == "right")
     val isMine = effectiveIsMine
@@ -1458,6 +1486,16 @@ fun MessageBubble(
                                 },
                                 leadingIcon = { Icon(Icons.AutoMirrored.Filled.Undo, null, Modifier.size(18.dp)) }
                             )
+                            if (chatType == 2 && isAdmin && !message.isRecalled && !message.isSystem) {
+                                DropdownMenuItem(
+                                    text = { Text(if (message.isAnnouncement == true) "取消公告" else "设为公告") },
+                                    onClick = {
+                                        onShowMenuChanged?.invoke(null)
+                                        onToggleAnnouncement?.invoke(message)
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.Campaign, null, Modifier.size(18.dp)) }
+                                )
+                            }
                             
                         }
                         DropdownMenuItem(
@@ -2034,13 +2072,14 @@ fun MessageInput(
 
 @Composable
 fun UploadProgressBar(progress: Float, onCancel: () -> Unit, modifier: Modifier = Modifier) {
+    val percent = ((progress.coerceIn(0f, 1f)) * 100f).toInt()
     Row(modifier = modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxSize(), strokeWidth = 3.dp, color = MaterialTheme.colorScheme.primary, trackColor = MaterialTheme.colorScheme.surfaceVariant)
+            CircularProgressIndicator(progress = { progress.coerceIn(0f, 1f) }, modifier = Modifier.fillMaxSize(), strokeWidth = 3.dp, color = MaterialTheme.colorScheme.primary, trackColor = MaterialTheme.colorScheme.surfaceVariant)
             IconButton(onClick = onCancel, modifier = Modifier.size(24.dp)) { Icon(Icons.Default.Close, contentDescription = "取消上传", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(16.dp)) }
         }
         Spacer(Modifier.width(12.dp))
-        Text("正在上传图片...", style = MaterialTheme.typography.bodySmall)
+        Text("正在上传图片${if (percent > 0) " · $percent%" else ""}...", style = MaterialTheme.typography.bodySmall)
     }
 }
 
@@ -2234,6 +2273,43 @@ private fun buildMessageShareBitmap(message: Message): Bitmap {
 
     return bitmap
 }
+@Composable
+fun AnnouncementBanner(
+    message: Message,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.PushPin,
+                contentDescription = "公告",
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text("群公告", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                Text(
+                    message.content.take(50),
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+                         */
 private const val SHARE_PREVIEW_PLACEHOLDER_AVATAR = "https://www.helloimg.com/i/2025/03/30/67e8e4d5ec8b9.png"
 private const val SHARE_PREVIEW_FOOTER_TEXT = "由轻昼ce生成"
 // ---- 好友请求 ----

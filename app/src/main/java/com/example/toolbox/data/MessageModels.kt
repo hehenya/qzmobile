@@ -88,7 +88,10 @@ data class Message(
     @SerialName("link_info") val linkInfo: List<LinkInfo>? = null,
     val tag: List<String> = emptyList(),
     @SerialName("sticker_id") val stickerId: Int? = null,
-    @SerialName("forward_info") val forwardInfo: ForwardInfo? = null
+    @SerialName("forward_info") val forwardInfo: ForwardInfo? = null,
+    @SerialName("is_announcement") val isAnnouncement: Boolean? = null,
+    @SerialName("announcement_set_at") val announcementSetAt: String? = null,
+    @SerialName("announcement_set_by") val announcementSetBy: AnnouncementSetBy? = null,
 
 )
 val Message.displayTag: String
@@ -451,4 +454,19 @@ data class LinkInfo(
     @SerialName("title") val title: String,
     @SerialName("domain") val domain: String,
     @SerialName("fetched_at") val fetchedAt: String
+)
+// 公告设置者
+@Serializable
+data class AnnouncementSetBy(
+    @SerialName("user_id") val userId: Int,
+    val username: String,
+    @SerialName("avatar_url") val avatarUrl: String = ""
+)
+
+// 公告响应
+@Serializable
+data class AnnouncementResponse(
+    val success: Boolean,
+    val announcement: Message? = null,
+    val message: String? = null
 )

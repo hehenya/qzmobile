@@ -7,7 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.toolbox.ApiAddress
-import com.example.toolbox.community.uploadImage
+import com.example.toolbox.community.HttpUpload
 import kotlinx.coroutines.CoroutineScope
 import java.io.File
 import java.io.FileOutputStream
@@ -78,6 +78,7 @@ class MessageDetailViewModel(
     private val _backgroundUrl = MutableStateFlow<String?>(null)
     val backgroundUrl: StateFlow<String?> = _backgroundUrl.asStateFlow()
     private var typingJob: Job? = null
+    private var activeUploadCancel: (() -> Unit)? = null
     private val _typingText = MutableStateFlow<String?>(null)
     val typingText: StateFlow<String?> = _typingText.asStateFlow()
     private val client = OkHttpClient()
@@ -521,7 +522,59 @@ class MessageDetailViewModel(
             }
         }
     }
-    
+    // 设置/取消公告
+    fun toggleAnnouncement(messageId: String, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val url = "${ApiAddress}group/set_announcement"
+                val json = JSONObject().apply { put("message_id", messageId.toIntOrNull() ?: 0) }
+                val request = Request.Builder()
+                    .url(url)
+                    .header("x-access-token", token)
+                    .post(json.toString().toRequestBody("application/json".toMediaType()))
+                    .build()
+                
+                withContext(Dispatchers.IO) {
+                    client.newCall(request).execute().use { response ->
+                        val body = response.body?.string() ?: ""
+                        val result = JSONObject(body)
+                        withContext(Dispatchers.Main) {
+                            onResult(result.optBoolean("success"))
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) { onResult(false) }
+            }
+        }
+    }
+
+    // 获取最新公告
+    fun loadLatestAnnouncement(groupId: Int, onResult: (Message?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val url = "${ApiAddress}group/latest_announcement"
+                val json = JSONObject().apply { put("group_id", groupId) }
+                val request = Request.Builder()
+                    .url(url)
+                    .header("x-access-token", token)
+                    .post(json.toString().toRequestBody("application/json".toMediaType()))
+                    .build()
+                
+                withContext(Dispatchers.IO) {
+                    client.newCall(request).execute().use { response ->
+                        val body = response.body?.string() ?: ""
+                        val result = AppJson.json.decodeFromString<AnnouncementResponse>(body)
+                        withContext(Dispatchers.Main) {
+                            onResult(result.announcement)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) { onResult(null) }
+            }
+        }
+    }
 
     
     
@@ -665,6 +718,8 @@ class MessageDetailViewModel(
         if (uri == null) return
 
         coroutineScope.launch {
+            _isUploading.value = true
+            _uploadProgress.value = 0f
             try {
                 val inputStream = context.contentResolver.openInputStream(uri)
                 val tempFile = File(context.cacheDir, "temp_img_${System.currentTimeMillis()}.jpg")
@@ -673,7 +728,24 @@ class MessageDetailViewModel(
                 }
                 inputStream?.close()
 
-                val url = uploadImage(tempFile.absolutePath, token, 3) { _: Int -> }
+                val uploader = HttpUpload(
+                    panUrl = "${ApiAddress}upload_image",
+                    token = token
+                )
+                activeUploadCancel = { uploader.cancelUpload() }
+
+                val resultJson = withContext(Dispatchers.IO) {
+                    uploader.uploadFile(
+                        filePath = tempFile.absolutePath,
+                        status = 3,
+                        onProgress = { progress ->
+                            _uploadProgress.value = progress / 100f
+                        }
+                    )
+                }
+                activeUploadCancel = null
+
+                val url = parseUploadResult(resultJson)
                 if (url != null) {
                     if (_uiState.value.editingMessage != null) {
                         _uiState.update { it.copy(editingImages = it.editingImages + url) }
@@ -685,8 +757,31 @@ class MessageDetailViewModel(
                     _toastMessage.emit("图片上传失败")
                 }
             } catch (e: Exception) {
-                _toastMessage.emit("上传出错: ${e.message}")
+                if (e is kotlinx.coroutines.CancellationException) {
+                    _toastMessage.emit("上传已取消")
+                } else {
+                    _toastMessage.emit("上传出错: ${e.message}")
+                }
+            } finally {
+                activeUploadCancel = null
+                _isUploading.value = false
+                _uploadProgress.value = 0f
             }
+        }
+    }
+
+    private fun parseUploadResult(resultJson: String): String? {
+        return try {
+            val jsonElement = Json.parseToJsonElement(resultJson)
+            val jsonObject = jsonElement.jsonObject
+            val imageUrl = jsonObject["image_url"]?.jsonPrimitive?.content
+            if (imageUrl?.startsWith("http") == true) {
+                imageUrl
+            } else {
+                "${ApiAddress}uploads/$imageUrl"
+            }
+        } catch (_: Exception) {
+            null
         }
     }
 
@@ -698,6 +793,8 @@ class MessageDetailViewModel(
     }
 
     fun cancelUpload() {
+        activeUploadCancel?.invoke()
+        activeUploadCancel = null
         _isUploading.value = false
         _uploadProgress.value = 0f
     }

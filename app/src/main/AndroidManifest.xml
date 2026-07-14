@@ -112,6 +112,7 @@
         <activity
             android:name=".settings.BubbleStyleActivity"
             android:exported="false" />
+        <activity android:name=".message.AnnouncementDetailActivity" android:exported="false" />
         <activity
             android:name=".message.GroupInfoActivity"
             android:exported="true"
