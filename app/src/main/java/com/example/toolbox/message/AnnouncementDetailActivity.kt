@@ -43,7 +43,6 @@ import org.json.JSONObject
 import androidx.compose.ui.layout.ContentScale
 import android.util.Log
 
-// ✅ 新增 Haze 相关导入
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
@@ -71,7 +70,7 @@ class AnnouncementDetailActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalHazeMaterialsApi::class) // ✅ 加上 Haze 的实验性注解
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalHazeMaterialsApi::class)
 @Composable
 fun AnnouncementDetailScreen(
     groupId: Int,
@@ -90,7 +89,6 @@ fun AnnouncementDetailScreen(
     val bubbleCornerRadius by settingsStorage.bubbleCornerRadiusFlow.collectAsState(initial = 16f)
     val bubbleOpacity by settingsStorage.bubbleOpacityFlow.collectAsState(initial = 0.9f)
 
-    // ✅ 声明 HazeState
     val hazeState = remember { HazeState() }
 
     // 加载公告历史
@@ -152,7 +150,6 @@ fun AnnouncementDetailScreen(
                     val result = JSONObject(body)
                     val rawUrl = result.optString("background_url", "")
                     withContext(Dispatchers.Main) {
-                        // ✅ 和消息列表一样处理 URL
                         backgroundUrl = if (rawUrl.isNotBlank()) {
                             if (rawUrl.startsWith("http")) rawUrl else "${ApiAddress}uploads/$rawUrl"
                         } else null
@@ -199,7 +196,6 @@ fun AnnouncementDetailScreen(
     Scaffold(
         topBar = {
             Box(modifier = Modifier.fillMaxWidth()) {
-                // 毛玻璃效果层（同消息列表）
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -210,7 +206,6 @@ fun AnnouncementDetailScreen(
                         )
                 )
 
-                // 底部细分割线
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -239,9 +234,8 @@ fun AnnouncementDetailScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .hazeSource(hazeState)  // ✅ 内容区域加上 hazeSource
+                .hazeSource(hazeState)
         ) {
-            // 背景（最底层）
             backgroundUrl?.takeIf { it.isNotEmpty() }?.let { bgUrl ->
                 AsyncImage(
                     model = bgUrl,
@@ -251,7 +245,6 @@ fun AnnouncementDetailScreen(
                 )
             }
 
-            // 内容层
             when {
                 isLoading -> {
                     CircularProgressIndicator(
