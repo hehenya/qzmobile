@@ -322,7 +322,7 @@ class MessageDetailActivity : ComponentActivity() {
                 ) { innerPadding ->
                     Box(
                         modifier = Modifier
-                            .weight(1f)
+                            .fillMaxSize()
                             .hazeSource(hazeState)
                     ) {
                         MessageDetailScreen(innerPadding, viewModel)
@@ -1058,7 +1058,7 @@ fun MessageBubble(
     hideMyInfo: Boolean = false,
     hideSenderInfo: Boolean = false,
     onToggleAnnouncement: ((Message) -> Unit)? = null,
-    imageLoader: coil3.ImageLoader = coil3.ImageLoader
+    imageLoader: coil3.ImageLoader = coil3.ImageLoader(context)
 ) {
     val effectiveIsMine = forceIsMine ?: (message.isMine || message.direction == "right")
     val isMine = effectiveIsMine && !hideMyInfo
@@ -1591,25 +1591,21 @@ private fun MessageShareBottomSheet(
                 factory = {
                     ComposeView(context).apply {
                         setContent {
-                            CompositionLocalProvider(
-                                coil3.compose.LocalImageLoader provides softwareImageLoader
-                            ) {
-                                ToolBoxTheme {
-                                    MessageSharePreviewCard(
-                                        messages = messages,
-                                        chatName = chatName,
-                                        chatAvatar = chatAvatar,
-                                        chatType = chatType,
-                                        hideSenderInfo = localHideSenderInfo,
-                                        hideMyInfo = localHideMyInfo,
-                                        hideSessionInfo = localHideSessionInfo,
-                                        hideImages = localHideImages,
-                                        onToggleSender = { localHideSenderInfo = !localHideSenderInfo },
-                                        onToggleMyInfo = { localHideMyInfo = !localHideMyInfo },
-                                        onToggleSession = { localHideSessionInfo = !localHideSessionInfo },
-                                        onToggleImages = { localHideImages = !localHideImages }
-                                    )
-                                }
+                            ToolBoxTheme {
+                                MessageSharePreviewCard(
+                                    messages = messages,
+                                    chatName = chatName,
+                                    chatAvatar = chatAvatar,
+                                    chatType = chatType,
+                                    hideSenderInfo = localHideSenderInfo,
+                                    hideMyInfo = localHideMyInfo,
+                                    hideSessionInfo = localHideSessionInfo,
+                                    hideImages = localHideImages,
+                                    onToggleSender = { localHideSenderInfo = !localHideSenderInfo },
+                                    onToggleMyInfo = { localHideMyInfo = !localHideMyInfo },
+                                    onToggleSession = { localHideSessionInfo = !localHideSessionInfo },
+                                    onToggleImages = { localHideImages = !localHideImages }
+                                )
                             }
                         }
                         screenshotView = this
