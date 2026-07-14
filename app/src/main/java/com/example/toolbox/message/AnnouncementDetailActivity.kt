@@ -265,8 +265,7 @@ fun AnnouncementDetailScreen(
                     LazyColumn(
                         state = listState,
                         modifier = Modifier
-                            .fillMaxSize()
-                            .alpha(0f),
+                            .fillMaxSize(),
                         reverseLayout = false,
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
