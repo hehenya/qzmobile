@@ -1446,7 +1446,7 @@ fun MessageBubble(
                             )
                             if (chatType == 2 && isAdmin && !message.isRecalled && !message.isSystem) {
                                 DropdownMenuItem(
-                                    text = { Text(if (message.isAnnouncement == true) "取消公告" else "设为公告") },
+                                    text = { Text(if (message.isAnnouncement == true) "取消置顶" else "置顶消息") },
                                     onClick = {
                                         onShowMenuChanged?.invoke(null)
                                         onToggleAnnouncement?.invoke(message)
