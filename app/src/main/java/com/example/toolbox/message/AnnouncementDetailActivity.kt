@@ -183,99 +183,99 @@ fun AnnouncementDetailScreen(
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("历史置顶消息") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                    }
+    topBar = {
+        TopAppBar(
+            title = { Text("历史置顶消息") },
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                 }
+            }
+        )
+    }
+) { padding ->
+    // 1. 使用 Box 包裹所有内容（和消息列表完全一样）
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)
+    ) {
+        // 2. 背景图（先写，在最底层）
+        backgroundUrl?.takeIf { it.isNotEmpty() }?.let { bgUrl ->
+            AsyncImage(
+                model = bgUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
             )
         }
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            // 聊天背景（最底层）
-            backgroundUrl?.takeIf { it.isNotEmpty() }?.let { bgUrl ->
-                AsyncImage(
-                    model = bgUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
+
+        // 3. 内容层（后写，在背景之上）
+        when {
+            isLoading -> {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .align(Alignment.Center)
                 )
             }
+            messages.isEmpty() -> {
+                Text(
+                    "暂无置顶消息",
+                    modifier = Modifier
+                        .align(Alignment.Center),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            else -> {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    reverseLayout = false,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    items(
+                        items = messages,
+                        key = { it.effectiveMsgId }
+                    ) { message ->
+                        val index = messages.indexOf(message)
 
-            // 内容层（根据状态显示不同内容）
-            when {
-                isLoading -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                    )
-                }
-                messages.isEmpty() -> {
-                    Text(
-                        "暂无置顶消息",
-                        modifier = Modifier
-                            .align(Alignment.Center),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                else -> {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Transparent), 
-                        reverseLayout = false,
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        items(
-                            items = messages,
-                            key = { it.effectiveMsgId }
-                        ) { message ->
-                            val index = messages.indexOf(message)
+                        val previousMessage = messages.getOrNull(index - 1)
+                        val isSameSenderAsPrevious = previousMessage != null &&
+                                previousMessage.senderId == message.senderId &&
+                                !previousMessage.isRecalled &&
+                                !previousMessage.isSystem
 
-                            val previousMessage = messages.getOrNull(index - 1)
-                            val isSameSenderAsPrevious = previousMessage != null &&
-                                    previousMessage.senderId == message.senderId &&
-                                    !previousMessage.isRecalled &&
-                                    !previousMessage.isSystem
+                        // 你想让头像在最后一条显示，就用这个：
+                        val shouldShowAvatar = (index == messages.size - 1) || !isSameSenderAsPrevious
 
-                            val shouldShowAvatar = (index == 0) || !isSameSenderAsPrevious
-
-                            MessageBubble(
-                                context = context,
-                                clipboard = clipboard,
-                                message = message,
-                                onRecall = {},
-                                onEdit = {},
-                                onImageClick = { _, _ -> },
-                                onReply = {},
-                                isAdmin = isAdmin,
-                                showAvatar = shouldShowAvatar,
-                                isOlderSameSender = isSameSenderAsPrevious,
-                                isNewerSameSender = false,
-                                avatarAlignment = Alignment.Bottom,
-                                chatType = 2,
-                                showDate = false,
-                                dateString = null,
-                                isSelectionMode = false,
-                                isSelected = false,
-                                showMenu = false,
-                                onShowMenuChanged = null,
-                                bubbleOpacity = bubbleOpacity,
-                                bubbleCornerRadius = bubbleCornerRadius,
-                                previewDisplayName = if (shouldShowAvatar) message.displayName else null,
-                                previewDisplayTag = if (shouldShowAvatar) message.displayTag else null,
-                                previewAvatar = if (shouldShowAvatar) message.displayAvatar else null,
-                            )
-                        }
+                        MessageBubble(
+                            context = context,
+                            clipboard = clipboard,
+                            message = message,
+                            onRecall = {},
+                            onEdit = {},
+                            onImageClick = { _, _ -> },
+                            onReply = {},
+                            isAdmin = isAdmin,
+                            showAvatar = shouldShowAvatar,
+                            isOlderSameSender = isSameSenderAsPrevious,
+                            isNewerSameSender = false,
+                            avatarAlignment = Alignment.Bottom,
+                            chatType = 2,
+                            showDate = false,
+                            dateString = null,
+                            isSelectionMode = false,
+                            isSelected = false,
+                            showMenu = false,
+                            onShowMenuChanged = null,
+                            bubbleOpacity = bubbleOpacity,
+                            bubbleCornerRadius = bubbleCornerRadius,
+                            previewDisplayName = if (shouldShowAvatar) message.displayName else null,
+                            previewDisplayTag = if (shouldShowAvatar) message.displayTag else null,
+                            previewAvatar = if (shouldShowAvatar) message.displayAvatar else null,
+                        )
                     }
                 }
             }
