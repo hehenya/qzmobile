@@ -122,7 +122,7 @@ fun AnnouncementDetailScreen(
         }
     }
 
-    // 加载聊天背景
+
     LaunchedEffect(Unit) {
         try {
             val client = OkHttpClient()
@@ -140,8 +140,11 @@ fun AnnouncementDetailScreen(
                 client.newCall(request).execute().use { response ->
                     val body = response.body?.string() ?: ""
                     val result = JSONObject(body)
+                    val rawUrl = result.optString("background_url", "")
                     withContext(Dispatchers.Main) {
-                        backgroundUrl = result.optString("background_url", "").ifEmpty { null }
+                        backgroundUrl = if (rawUrl.isNotBlank()) {
+                            if (rawUrl.startsWith("http")) rawUrl else "${ApiAddress}uploads/$rawUrl"
+                        } else null
                     }
                 }
             }
@@ -182,16 +185,46 @@ fun AnnouncementDetailScreen(
         }
     }
 
+val hazeState = remember { HazeState() }
+
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("历史置顶消息") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                    }
-                }
-            )
+            Box(modifier = Modifier.fillMaxWidth()) {
+                // 1. 毛玻璃背景层（同聊天列表）
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .hazeEffect(
+                            state = hazeState,
+                            style = HazeMaterials.thin().copy(noiseFactor = 0f),
+                            block = null
+                        )
+                )
+
+                // 2. 底部细分割线（同聊天列表）
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(0.5.dp)
+                        .align(Alignment.BottomCenter)
+                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                )
+
+                // 3. 顶栏内容
+                TopAppBar(
+                    title = {
+                        Text(
+                            if (messages.isNotEmpty()) "${messages.size}条置顶消息" else "历史置顶消息"
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                )
+            }
         }
     ) { padding ->
         Box(
