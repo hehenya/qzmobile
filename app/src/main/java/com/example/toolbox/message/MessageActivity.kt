@@ -185,6 +185,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.SaveAlt
+import androidx.compose.material.icons.filled.Campaign
 
 // ---- Activity ----
 class MessageDetailActivity : ComponentActivity() {
@@ -639,8 +640,6 @@ fun MessageDetailScreen(
                 )
             }
 
-            if (uiState.chatType == 1 && uiState.relationship != "friend") {
-        Column(modifier = Modifier.fillMaxSize()) {
             if (uiState.chatType == 1 && uiState.relationship != "friend") {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
@@ -2309,7 +2308,6 @@ fun AnnouncementBanner(
         }
     }
 }
-                         */
 private const val SHARE_PREVIEW_PLACEHOLDER_AVATAR = "https://www.helloimg.com/i/2025/03/30/67e8e4d5ec8b9.png"
 private const val SHARE_PREVIEW_FOOTER_TEXT = "由轻昼ce生成"
 // ---- 好友请求 ----
