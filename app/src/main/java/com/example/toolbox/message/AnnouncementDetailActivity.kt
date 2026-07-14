@@ -241,7 +241,8 @@ fun AnnouncementDetailScreen(
                     model = bgUrl,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    error = painterResource(R.drawable.ic_launcher_foreground)
                 )
             }
 
