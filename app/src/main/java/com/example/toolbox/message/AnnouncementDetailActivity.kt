@@ -223,8 +223,7 @@ LaunchedEffect(Unit) {
                 Text(
                     "暂无置顶消息",
                     modifier = Modifier
-                        .align(Alignment.Center)
-                        .background(Color.Transparent),
+                        .align(Alignment.Center),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -234,7 +233,6 @@ LaunchedEffect(Unit) {
                     state = listState,
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Transparent),
                     reverseLayout = false,
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
