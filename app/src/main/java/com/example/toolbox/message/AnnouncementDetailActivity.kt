@@ -43,6 +43,13 @@ import org.json.JSONObject
 import androidx.compose.ui.layout.ContentScale
 import android.util.Log
 
+// ✅ 新增 Haze 相关导入
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
+import dev.chrisbanes.haze.materials.HazeMaterials
+
 class AnnouncementDetailActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,7 +71,7 @@ class AnnouncementDetailActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalHazeMaterialsApi::class) // ✅ 加上 Haze 的实验性注解
 @Composable
 fun AnnouncementDetailScreen(
     groupId: Int,
@@ -82,6 +89,9 @@ fun AnnouncementDetailScreen(
     val settingsStorage = remember { com.example.toolbox.settings.SettingsStorage(context) }
     val bubbleCornerRadius by settingsStorage.bubbleCornerRadiusFlow.collectAsState(initial = 16f)
     val bubbleOpacity by settingsStorage.bubbleOpacityFlow.collectAsState(initial = 0.9f)
+
+    // ✅ 声明 HazeState
+    val hazeState = remember { HazeState() }
 
     // 加载公告历史
     LaunchedEffect(Unit) {
@@ -122,7 +132,7 @@ fun AnnouncementDetailScreen(
         }
     }
 
-
+    // 加载聊天背景
     LaunchedEffect(Unit) {
         try {
             val client = OkHttpClient()
@@ -142,6 +152,7 @@ fun AnnouncementDetailScreen(
                     val result = JSONObject(body)
                     val rawUrl = result.optString("background_url", "")
                     withContext(Dispatchers.Main) {
+                        // ✅ 和消息列表一样处理 URL
                         backgroundUrl = if (rawUrl.isNotBlank()) {
                             if (rawUrl.startsWith("http")) rawUrl else "${ApiAddress}uploads/$rawUrl"
                         } else null
@@ -185,12 +196,10 @@ fun AnnouncementDetailScreen(
         }
     }
 
-val hazeState = remember { HazeState() }
-
     Scaffold(
         topBar = {
             Box(modifier = Modifier.fillMaxWidth()) {
-                // 1. 毛玻璃背景层（同聊天列表）
+                // 毛玻璃效果层（同消息列表）
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -201,7 +210,7 @@ val hazeState = remember { HazeState() }
                         )
                 )
 
-                // 2. 底部细分割线（同聊天列表）
+                // 底部细分割线
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -210,7 +219,6 @@ val hazeState = remember { HazeState() }
                         .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
                 )
 
-                // 3. 顶栏内容
                 TopAppBar(
                     title = {
                         Text(
@@ -231,6 +239,7 @@ val hazeState = remember { HazeState() }
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .hazeSource(hazeState)  // ✅ 内容区域加上 hazeSource
         ) {
             // 背景（最底层）
             backgroundUrl?.takeIf { it.isNotEmpty() }?.let { bgUrl ->
