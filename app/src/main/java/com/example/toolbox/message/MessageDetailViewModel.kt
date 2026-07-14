@@ -772,19 +772,22 @@ class MessageDetailViewModel(
     }
 
     private fun parseUploadResult(resultJson: String): String? {
-        return try {
-            val jsonElement = Json.parseToJsonElement(resultJson)
-            val jsonObject = jsonElement.jsonObject
-            val imageUrl = jsonObject["image_url"]?.jsonPrimitive?.content
-            if (imageUrl?.startsWith("http") == true) {
+    return try {
+        val jsonObject = JSONObject(resultJson)
+        val imageUrl = jsonObject.optString("image_url")
+        if (imageUrl.isNotEmpty()) {
+            if (imageUrl.startsWith("http")) {
                 imageUrl
             } else {
                 "${ApiAddress}uploads/$imageUrl"
             }
-        } catch (_: Exception) {
+        } else {
             null
         }
+    } catch (_: Exception) {
+        null
     }
+}
 
     fun removeImage(index: Int) {
         _uiState.update { state ->
