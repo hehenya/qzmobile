@@ -17,7 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color  // ✅ 关键导入
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -27,9 +27,9 @@ import com.example.toolbox.AppJson
 import com.example.toolbox.TokenManager
 import com.example.toolbox.data.AnnouncementListResponse
 import com.example.toolbox.data.Message
-import com.example.toolbox.data.displayName  // ✅ 关键导入
-import com.example.toolbox.data.displayTag  // ✅ 关键导入
-import com.example.toolbox.data.displayAvatar  // ✅ 关键导入
+import com.example.toolbox.data.displayName
+import com.example.toolbox.data.displayTag
+import com.example.toolbox.data.displayAvatar
 import com.example.toolbox.data.effectiveMsgId
 import com.example.toolbox.ui.theme.ToolBoxTheme
 import kotlinx.coroutines.Dispatchers
@@ -84,44 +84,43 @@ fun AnnouncementDetailScreen(
     val bubbleOpacity by settingsStorage.bubbleOpacityFlow.collectAsState(initial = 0.9f)
 
     // 加载公告历史
-    // 加载公告历史
-LaunchedEffect(Unit) {
-    try {
-        val client = OkHttpClient()
-        val url = "${ApiAddress}group/announcements"
-        val json = JSONObject().apply {
-            put("group_id", groupId)
-            put("page", 1)
-            put("per_page", 50)
-        }
-        val request = Request.Builder()
-            .url(url)
-            .header("x-access-token", token)
-            .post(json.toString().toRequestBody("application/json".toMediaType()))
-            .build()
+    LaunchedEffect(Unit) {
+        try {
+            val client = OkHttpClient()
+            val url = "${ApiAddress}group/announcements"
+            val json = JSONObject().apply {
+                put("group_id", groupId)
+                put("page", 1)
+                put("per_page", 50)
+            }
+            val request = Request.Builder()
+                .url(url)
+                .header("x-access-token", token)
+                .post(json.toString().toRequestBody("application/json".toMediaType()))
+                .build()
 
-        withContext(Dispatchers.IO) {
-            client.newCall(request).execute().use { response ->
-                val body = response.body?.string() ?: ""
-                Log.d("ANNOUNCEMENT_LIST", "响应体: $body") // 调试用
-                val result = AppJson.json.decodeFromString<AnnouncementListResponse>(body)  // ✅ 改用专用数据类
-                withContext(Dispatchers.Main) {
-                    if (result.success) {  // ✅ 改用 success 判断
-                        messages = result.messages
-                    } else {
-                        Toast.makeText(context, "加载公告失败", Toast.LENGTH_SHORT).show()
+            withContext(Dispatchers.IO) {
+                client.newCall(request).execute().use { response ->
+                    val body = response.body?.string() ?: ""
+                    Log.d("ANNOUNCEMENT_LIST", "响应体: $body") // 调试用
+                    val result = AppJson.json.decodeFromString<AnnouncementListResponse>(body)
+                    withContext(Dispatchers.Main) {
+                        if (result.success) {
+                            messages = result.messages
+                        } else {
+                            Toast.makeText(context, "加载公告失败", Toast.LENGTH_SHORT).show()
+                        }
+                        isLoading = false
                     }
-                    isLoading = false
                 }
             }
-        }
-    } catch (e: Exception) {
-        withContext(Dispatchers.Main) {
-            isLoading = false
-            Toast.makeText(context, "加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
+                isLoading = false
+                Toast.makeText(context, "加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
         }
     }
-}
 
     // 加载聊天背景
     LaunchedEffect(Unit) {
@@ -184,98 +183,99 @@ LaunchedEffect(Unit) {
     }
 
     Scaffold(
-    topBar = {
-        TopAppBar(
-            title = { Text("历史置顶消息") },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+        topBar = {
+            TopAppBar(
+                title = { Text("历史置顶消息") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
                 }
-            }
-        )
-    }
-) { padding ->
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(padding)
-    ) {
-        // 聊天背景（最底层）
-        backgroundUrl?.takeIf { it.isNotEmpty() }?.let { bgUrl ->
-            AsyncImage(
-                model = bgUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
             )
         }
-
-        // 内容层（根据状态显示不同内容）
-        when {
-            isLoading -> {
-                CircularProgressIndicator(
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .background(Color.Transparent)
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            // 聊天背景（最底层）
+            backgroundUrl?.takeIf { it.isNotEmpty() }?.let { bgUrl ->
+                AsyncImage(
+                    model = bgUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
                 )
             }
-            messages.isEmpty() -> {
-                Text(
-                    "暂无置顶消息",
-                    modifier = Modifier
-                        .align(Alignment.Center),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            else -> {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                    reverseLayout = false,
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    items(
-                        items = messages,
-                        key = { it.effectiveMsgId }
-                    ) { message ->
-                        val index = messages.indexOf(message)
 
-                        val previousMessage = messages.getOrNull(index - 1)
-                        val isSameSenderAsPrevious = previousMessage != null &&
-                                previousMessage.senderId == message.senderId &&
-                                !previousMessage.isRecalled &&
-                                !previousMessage.isSystem
+            // 内容层（根据状态显示不同内容）
+            when {
+                isLoading -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .background(Color.Transparent)
+                    )
+                }
+                messages.isEmpty() -> {
+                    Text(
+                        "暂无置顶消息",
+                        modifier = Modifier
+                            .align(Alignment.Center),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                else -> {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .fillMaxSize(),
+                        reverseLayout = false,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        items(
+                            items = messages,
+                            key = { it.effectiveMsgId }
+                        ) { message ->
+                            val index = messages.indexOf(message)
 
-                        val shouldShowAvatar = (index == 0) || !isSameSenderAsPrevious
+                            val previousMessage = messages.getOrNull(index - 1)
+                            val isSameSenderAsPrevious = previousMessage != null &&
+                                    previousMessage.senderId == message.senderId &&
+                                    !previousMessage.isRecalled &&
+                                    !previousMessage.isSystem
 
-                        MessageBubble(
-                            context = context,
-                            clipboard = clipboard,
-                            message = message,
-                            onRecall = {},
-                            onEdit = {},
-                            onImageClick = { _, _ -> },
-                            onReply = {},
-                            isAdmin = isAdmin,
-                            showAvatar = shouldShowAvatar,
-                            isOlderSameSender = isSameSenderAsPrevious,
-                            isNewerSameSender = false,
-                            avatarAlignment = Alignment.Bottom,
-                            chatType = 2,
-                            showDate = false,
-                            dateString = null,
-                            isSelectionMode = false,
-                            isSelected = false,
-                            showMenu = false,
-                            onShowMenuChanged = null,
-                            bubbleOpacity = bubbleOpacity,
-                            bubbleCornerRadius = bubbleCornerRadius,
-                            previewDisplayName = if (shouldShowAvatar) message.displayName else null,
-                            previewDisplayTag = if (shouldShowAvatar) message.displayTag else null,
-                            previewAvatar = if (shouldShowAvatar) message.displayAvatar else null,
-                        )
+                            val shouldShowAvatar = (index == 0) || !isSameSenderAsPrevious
+
+                            MessageBubble(
+                                context = context,
+                                clipboard = clipboard,
+                                message = message,
+                                onRecall = {},
+                                onEdit = {},
+                                onImageClick = { _, _ -> },
+                                onReply = {},
+                                isAdmin = isAdmin,
+                                showAvatar = shouldShowAvatar,
+                                isOlderSameSender = isSameSenderAsPrevious,
+                                isNewerSameSender = false,
+                                avatarAlignment = Alignment.Bottom,
+                                chatType = 2,
+                                showDate = false,
+                                dateString = null,
+                                isSelectionMode = false,
+                                isSelected = false,
+                                showMenu = false,
+                                onShowMenuChanged = null,
+                                bubbleOpacity = bubbleOpacity,
+                                bubbleCornerRadius = bubbleCornerRadius,
+                                previewDisplayName = if (shouldShowAvatar) message.displayName else null,
+                                previewDisplayTag = if (shouldShowAvatar) message.displayTag else null,
+                                previewAvatar = if (shouldShowAvatar) message.displayAvatar else null,
+                            )
+                        }
                     }
                 }
             }
