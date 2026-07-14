@@ -215,7 +215,6 @@ fun AnnouncementDetailScreen(
                     CircularProgressIndicator(
                         modifier = Modifier
                             .align(Alignment.Center)
-                            .background(Color.Transparent)
                     )
                 }
                 messages.isEmpty() -> {
@@ -231,7 +230,8 @@ fun AnnouncementDetailScreen(
                     LazyColumn(
                         state = listState,
                         modifier = Modifier
-                            .fillMaxSize(),
+                            .fillMaxSize()
+                            .background(Color.Transparent), 
                         reverseLayout = false,
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
