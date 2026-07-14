@@ -181,52 +181,57 @@ LaunchedEffect(Unit) {
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("历史置顶消息") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                    }
+    topBar = {
+        TopAppBar(
+            title = { Text("历史置顶消息") },
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                 }
+            }
+        )
+    }
+) { padding ->
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)
+    ) {
+        // 聊天背景（最底层）
+        backgroundUrl?.takeIf { it.isNotEmpty() }?.let { bgUrl ->
+            AsyncImage(
+                model = bgUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
             )
         }
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            // 聊天背景
-            backgroundUrl?.takeIf { it.isNotEmpty() }?.let { bgUrl ->
-                AsyncImage(
-                    model = bgUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
 
-            if (isLoading) {
+        // 内容层（根据状态显示不同内容）
+        when {
+            isLoading -> {
                 CircularProgressIndicator(
                     modifier = Modifier
                         .align(Alignment.Center)
-                        .background(Color.Transparent) // ✅ 透明
+                        .background(Color.Transparent)
                 )
-            } else if (messages.isEmpty()) {
+            }
+            messages.isEmpty() -> {
                 Text(
                     "暂无置顶消息",
                     modifier = Modifier
                         .align(Alignment.Center)
-                        .background(Color.Transparent), // ✅ 透明
+                        .background(Color.Transparent),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+            else -> {
                 LazyColumn(
                     state = listState,
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Transparent), // ✅ 这里加上透明背景
+                        .background(Color.Transparent),
                     reverseLayout = false,
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
@@ -235,19 +240,14 @@ LaunchedEffect(Unit) {
                         key = { it.effectiveMsgId }
                     ) { message ->
                         val index = messages.indexOf(message)
-                        val newerMessage = messages.getOrNull(index - 1)
-                        val olderMessage = messages.getOrNull(index + 1)
-                        val isFirstItem = index == 0  
+
                         val previousMessage = messages.getOrNull(index - 1)
-                        val isSameSenderAsPrevious = previousMessage != null && 
-                            previousMessage.senderId == message.senderId &&
-                            !previousMessage.isRecalled &&
-                            !previousMessage.isSystem
-                        val shouldShowAvatar = isFirstItem || !isSameSenderAsPrevious
-                        val isFirstFromSender = olderMessage == null || olderMessage.isRecalled || olderMessage.isSystem || olderMessage.senderId != message.senderId
-                        val isLastFromSender = newerMessage == null || newerMessage.isRecalled || newerMessage.isSystem || newerMessage.senderId != message.senderId
-                        val isOlderSameSender = olderMessage != null && !olderMessage.isRecalled && !olderMessage.isSystem && olderMessage.senderId == message.senderId
-                        val isNewerSameSender = newerMessage != null && !newerMessage.isRecalled && !newerMessage.isSystem && newerMessage.senderId == message.senderId
+                        val isSameSenderAsPrevious = previousMessage != null &&
+                                previousMessage.senderId == message.senderId &&
+                                !previousMessage.isRecalled &&
+                                !previousMessage.isSystem
+
+                        val shouldShowAvatar = (index == 0) || !isSameSenderAsPrevious
 
                         MessageBubble(
                             context = context,
@@ -255,12 +255,12 @@ LaunchedEffect(Unit) {
                             message = message,
                             onRecall = {},
                             onEdit = {},
-                            onImageClick = { urls, idx -> },
+                            onImageClick = { _, _ -> },
                             onReply = {},
                             isAdmin = isAdmin,
-                            showAvatar = isFirstFromSender,
-                            isOlderSameSender = isOlderSameSender,
-                            isNewerSameSender = isNewerSameSender,
+                            showAvatar = shouldShowAvatar,
+                            isOlderSameSender = isSameSenderAsPrevious,
+                            isNewerSameSender = false,
                             avatarAlignment = Alignment.Bottom,
                             chatType = 2,
                             showDate = false,
@@ -269,10 +269,11 @@ LaunchedEffect(Unit) {
                             isSelected = false,
                             showMenu = false,
                             onShowMenuChanged = null,
-                            showAvatar = shouldShowAvatar,
-                            isFirstFromSender = shouldShowAvatar,
                             bubbleOpacity = bubbleOpacity,
                             bubbleCornerRadius = bubbleCornerRadius,
+                            previewDisplayName = if (shouldShowAvatar) message.displayName else null,
+                            previewDisplayTag = if (shouldShowAvatar) message.displayTag else null,
+                            previewAvatar = if (shouldShowAvatar) message.displayAvatar else null,
                         )
                     }
                 }
