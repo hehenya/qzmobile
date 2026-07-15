@@ -618,158 +618,126 @@ fun MessageDetailScreen(
                 }
             }
 
-            Box(modifier = Modifier.weight(1f)) {
-                PullToRefreshBox(
-                    isRefreshing = uiState.isRefreshing,
-                    onRefresh = { viewModel.refresh() },
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    // 在 PullToRefreshBox 内部的 LazyColumn
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    reverseLayout = true,
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    items(
-                        items = uiState.messages,
-                        key = { it.effectiveMsgId }
-                    ) { message ->
-                        val index = uiState.messages.indexOf(message)
-
-                        val newerMessage = uiState.messages.getOrNull(index - 1)
-                        val olderMessage = uiState.messages.getOrNull(index + 1)
-
-                        val isFirstFromSender =
-                            olderMessage == null || olderMessage.isRecalled || olderMessage.isSystem || olderMessage.senderId != message.senderId
-                        val isLastFromSender =
-                            newerMessage == null || newerMessage.isRecalled || newerMessage.isSystem || newerMessage.senderId != message.senderId
-                        val isOlderSameSender =
-                            olderMessage != null && !olderMessage.isRecalled && !olderMessage.isSystem && olderMessage.senderId == message.senderId
-                        val isNewerSameSender =
-                            newerMessage != null && !newerMessage.isRecalled && !newerMessage.isSystem && newerMessage.senderId == message.senderId
-
-                        val isTopVisibleItem = message.msgId == topVisibleMessageId
-                        val shouldShowItemAvatar = if (isTopVisibleItem) {
-                            !showFloatingAvatar && (isLastFromSender || isFirstFromSender)
-                        } else {
-                            isLastFromSender
-                        }
-
-                        val avatarAlignment =
-                            if (isTopVisibleItem && shouldShowItemAvatar) {
-                                if (isLastFromSender) Alignment.Top else Alignment.Bottom
-                            } else {
-                                Alignment.Bottom
-                            }
-
-                        val targetMessageId by viewModel.targetMessageId.collectAsState()
-                        val isLoadingAtPage by viewModel.isLoadingAtPage.collectAsState()
-
-                        val isHighlighted = message.effectiveMsgId == targetMessageId
-
-                        val isMenuOpen = showMenuMsgId != null
-                        val isCurrentMsg = message.effectiveMsgId == showMenuMsgId
-                        val itemAlpha = if (isMenuOpen && !isCurrentMsg) 0.4f else 1f
-
-                        // 滚动到目标消息
-                        LaunchedEffect(targetMessageId) {
-                            if (targetMessageId != null) {
-                                val targetIndex = uiState.messages.indexOfFirst {
-                                    it.effectiveMsgId == targetMessageId
-                                }
-                                if (targetIndex != -1) {
-                                    listState.animateScrollToItem(targetIndex)
-                                }
-                            }
-                        }
-
-                        Box(modifier = Modifier.graphicsLayer(alpha = itemAlpha)) {
-                            MessageBubble(
-                                context = context,
-                                clipboard = clipboard,
-                                message = message,
-                                onRecall = { viewModel.showRecallDialog(message.effectiveMsgId) },
-                                onEdit = { viewModel.startEditMessage(message) },
-                                onImageClick = { urls, idx ->
-                                    imageViewerUrls = urls
-                                    imageViewerInitialPage = idx
-                                    showImageViewer = true
-                                },
-                                onReply = { viewModel.setReplyTo(message) },
-                                isAdmin = uiState.isAdmin,
-                                showAvatar = shouldShowItemAvatar,
-                                isOlderSameSender = isOlderSameSender,
-                                isNewerSameSender = isNewerSameSender,
-                                avatarAlignment = avatarAlignment,
-                                chatType = uiState.chatType,
-                                showDate = message.showDate,
-                                dateString = message.dateIndicator,
-                                isSelectionMode = selectionMode,
-                                isSelected = message.effectiveMsgId in selectedMessages,
-                                onLongPress = { viewModel.enterSelectionMode(message) },
-                                isFirstFromSender = isFirstFromSender,
-                                onClickInSelectionMode = { viewModel.toggleMessageSelection(message) },
-                                showMenu = showMenuMsgId == message.effectiveMsgId && !selectionMode,
-                                onShowMenuChanged = { msgId ->
-                                    if (!selectionMode) {
-                                        showMenuMsgId = if (showMenuMsgId == msgId) null else msgId
-                                    }
-                                },
-                                onTimeClick = {
-                                    val intent = Intent(context, HeatmapActivity::class.java).apply {
-                                        putExtra("chat_type", uiState.chatType)
-                                        putExtra("chat_id", uiState.chatId)
-                                    }
-                                    context.startActivity(intent)
-                                },
-                                onDateClick = { dateString ->
-                                    val intent = Intent(context, HeatmapActivity::class.java).apply {
-                                        putExtra("chat_type", uiState.chatType)
-                                        putExtra("chat_id", uiState.chatId)
-                                        putExtra("date_string", dateString)
-                                    }
-                                    context.startActivity(intent)
-                                },
-                                onCollectSticker = { viewModel.collectSticker(it) },
-                                onDeleteSticker = { viewModel.deleteSticker(it) },
-                                onCollectImageAsSticker = { viewModel.collectImageAsSticker(it) },
-                                onDeleteMessage = { viewModel.deleteMessage(it) },
-                                onShareClick = { msg ->
-                                    // 分享消息的实现（如果需要）
-                                },
-                                onToggleAnnouncement = { msg ->
-                                    viewModel.toggleAnnouncement(msg.effectiveMsgId) { success ->
-                                        if (success) {
-                                            Toast.makeText(
-                                                context,
-                                                if (msg.isAnnouncement == true) "已取消公告" else "已设置公告",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                            viewModel.refresh()
-                                        } else {
-                                            Toast.makeText(context, "操作失败，请重试", Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                },
-                                bubbleOpacity = bubbleOpacity,
-                                bubbleCornerRadius = bubbleCornerRadius,
-                                isHighlighted = isHighlighted,
-                                onAtUser = { userId, username ->
-                                    val currentText = uiState.inputText
-                                    val newText = if (currentText.endsWith(" ")) {
-                                        "$currentText@$username "
-                                    } else {
-                                        "$currentText @$username "
-                                    }
-                                    viewModel.updateInputText(newText)
-                                    viewModel.addMentionUser(userId)
-                                }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (isHighlighted) {
+                            Modifier.background(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                RoundedCornerShape(8.dp)
                             )
+                        } else {
+                            Modifier
                         }
+                    )
+            ) {
+                LazyColumn(
+    state = listState,
+    modifier = Modifier.fillMaxSize(),
+    reverseLayout = true,
+    verticalArrangement = Arrangement.spacedBy(4.dp)
+) {
+    items(
+        items = uiState.messages,
+        key = { it.effectiveMsgId }
+    ) { message ->
+        MessageBubble(
+            context = context,
+            clipboard = clipboard,
+            message = message,
+            onRecall = { viewModel.showRecallDialog(message.effectiveMsgId) },
+            onEdit = { viewModel.startEditMessage(message) },
+            onImageClick = { urls, idx ->
+                imageViewerUrls = urls
+                imageViewerInitialPage = idx
+                showImageViewer = true
+            },
+            onReply = { viewModel.setReplyTo(message) },
+            isAdmin = uiState.isAdmin,
+            showAvatar = shouldShowItemAvatar,
+            isOlderSameSender = isOlderSameSender,
+            isNewerSameSender = isNewerSameSender,
+            avatarAlignment = avatarAlignment,
+            chatType = uiState.chatType,
+            showDate = message.showDate,
+            dateString = message.dateIndicator,
+            isSelectionMode = selectionMode,
+            isSelected = message.effectiveMsgId in selectedMessages,
+            onLongPress = { viewModel.enterSelectionMode(message) },
+            isFirstFromSender = isFirstFromSender,
+            onClickInSelectionMode = { viewModel.toggleMessageSelection(message) },
+            showMenu = showMenuMsgId == message.effectiveMsgId && !selectionMode,
+            onShowMenuChanged = { msgId ->
+                if (!selectionMode) {
+                    showMenuMsgId = if (showMenuMsgId == msgId) null else msgId
+                }
+            },
+            onTimeClick = {
+                val intent = Intent(context, HeatmapActivity::class.java).apply {
+                    putExtra("chat_type", uiState.chatType)
+                    putExtra("chat_id", uiState.chatId)
+                }
+                context.startActivity(intent)
+            },
+            onDateClick = { dateString ->
+                val intent = Intent(context, HeatmapActivity::class.java).apply {
+                    putExtra("chat_type", uiState.chatType)
+                    putExtra("chat_id", uiState.chatId)
+                    putExtra("date_string", dateString)
+                }
+                context.startActivity(intent)
+            },
+            onCollectSticker = { viewModel.collectSticker(it) },
+            onDeleteSticker = { viewModel.deleteSticker(it) },
+            onCollectImageAsSticker = { viewModel.collectImageAsSticker(it) },
+            onDeleteMessage = { viewModel.deleteMessage(it) },
+            onShareClick = { msg ->
+                // 分享消息的实现（如果需要）
+            },
+            onToggleAnnouncement = { msg ->
+                viewModel.toggleAnnouncement(msg.effectiveMsgId) { success ->
+                    if (success) {
+                        Toast.makeText(
+                            context,
+                            if (msg.isAnnouncement == true) "已取消公告" else "已设置公告",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        viewModel.refresh()
+                    } else {
+                        Toast.makeText(context, "操作失败，请重试", Toast.LENGTH_SHORT).show()
                     }
                 }
+            },
+            bubbleOpacity = bubbleOpacity,
+            bubbleCornerRadius = bubbleCornerRadius,
+            isHighlighted = isHighlighted,
+            onAtUser = { userId, username ->
+                val currentText = uiState.inputText
+                val newText = if (currentText.endsWith(" ")) {
+                    "$currentText@$username "
+                } else {
+                    "$currentText @$username "
+                }
+                viewModel.updateInputText(newText)
+                viewModel.addMentionUser(userId, username)
+            }
+        )
+    }  // ✅ 这里加上 }) 关闭 items
 
+    if (uiState.isLoadingMore) {
+        item {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                ContainedLoadingIndicator()
+            }
+        }
+    }
+}
                     if (uiState.isLoadingMore) {
                         item {
                             Box(
@@ -1099,6 +1067,7 @@ fun MessageBubble(
     onToggleAnnouncement: ((Message) -> Unit)? = null,
     imageLoader: coil3.ImageLoader = coil3.ImageLoader(context),
     onAtUser: ((Int, String) -> Unit)? = null,
+    isHighlighted: Boolean = false,
 ) {
     val effectiveIsMine = forceIsMine ?: (message.isMine || message.direction == "right")
     val isMine = effectiveIsMine && !hideMyInfo
