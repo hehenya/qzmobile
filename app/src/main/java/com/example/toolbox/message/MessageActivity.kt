@@ -132,7 +132,8 @@ import com.example.toolbox.message.UploadProgressBar
 import com.example.toolbox.utils.MultiImageViewer
 import com.example.toolbox.message.ForwardActivity
 import com.example.toolbox.message.HeatmapActivity
-import com.example.toolbox.message.GroupInfoActivity
+import com.example.toolbox.message.UserInfoActivity
+
 // ---- Activity ----
 class MessageDetailActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class, ExperimentalHazeMaterialsApi::class)
@@ -250,7 +251,7 @@ class MessageDetailActivity : ComponentActivity() {
                                                         modifier = Modifier
                                                             .fillMaxWidth()
                                                             .clickable {
-                                                                startActivity(Intent(this@MessageDetailActivity, com.example.toolbox.community.GroupInfoActivity::class.java)).apply {
+                                                                startActivity(Intent(this@MessageDetailActivity, GroupInfoActivity::class.java)).apply {
                                                                     putExtra("group_id", chatId)
                                                                     putExtra("is_joined", true)
                                                                     putExtra("group_name", group.name)
@@ -259,7 +260,7 @@ class MessageDetailActivity : ComponentActivity() {
                                                                     putExtra("group_members_count", group.membersCount)
                                                                     putExtra("group_created_at", group.createdAt)
                                                                     putExtra("group_is_private", group.isPrivate)
-                                                                })
+                                                                }
                                                             }
                                                     ) {
                                                         AsyncImage(
