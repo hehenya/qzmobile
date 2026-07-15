@@ -177,6 +177,11 @@ class MessageDetailViewModel(
                                 messages = listOf(message) + state.messages
                             )
                         }
+                        val mentionUsers = message.mentionUsers ?: emptyList()
+                        if (chatType == 2 && mentionUsers.contains(currentUserId)) {
+                            _atMessages.update { list -> list + message }
+                            _hasAtMessage.value = true
+                        }
                     }
                 }
                 "group_typing_status" -> {
@@ -648,12 +653,32 @@ class MessageDetailViewModel(
 }
 
     
-    
+    private val _mentionUsers = MutableStateFlow<List<Int>>(emptyList())
+    val mentionUsers: StateFlow<List<Int>> = _mentionUsers.asStateFlow()
+
+    fun addMentionUser(userId: Int, username: String) {
+        _mentionUsers.update { list ->
+            if (userId !in list) list + userId else list
+        }
+        
+    val currentText = _uiState.value.inputText
+    val newText = if (currentText.endsWith(" ")) {
+        "$currentText@$username "
+    } else {
+        "$currentText @$username "
+    }
+    _uiState.update { it.copy(inputText = newText) }
+}
+
+    fun clearMentionUsers() {
+        _mentionUsers.value = emptyList()
+    }
     fun sendMessage() {
         val state = _uiState.value
         val text = state.inputText.trim()
         val images = state.selectedImages
         if (text.isEmpty() && images.isEmpty()) return
+        
         viewModelScope.launch {
             _uiState.update { it.copy(isSending = true) }
             try {
@@ -661,6 +686,9 @@ class MessageDetailViewModel(
                     put("text", text)
                     put("images", org.json.JSONArray(images))
                     put("is_markdown", state.isMarkdown)
+                    if (chatType == 2 && _mentionUsers.value.isNotEmpty()) {
+                        put("mention_users", org.json.JSONArray(_mentionUsers.value))
+                    }
                 }
                 val body = JSONObject().apply {
                     put("chat_type", chatType)
@@ -673,11 +701,19 @@ class MessageDetailViewModel(
                     .post(body.toString().toRequestBody("application/json".toMediaType()))
                     .header("x-access-token", token)
                     .build()
+                
                 withContext(Dispatchers.IO) { client.newCall(request).execute() }
+                
                 _uiState.update {
-                    it.copy(inputText = "", selectedImages = emptyList(), isMarkdown = false, isSending = false)
+                    it.copy(
+                        inputText = "",
+                        selectedImages = emptyList(),
+                        isMarkdown = false,
+                        isSending = false
+                    )
                 }
                 _replyTo.value = null
+                clearMentionUsers()
                 DraftManager.removeDraft(chatType, chatId)
             } catch (e: Exception) {
                 _uiState.update { it.copy(isSending = false) }
@@ -1123,6 +1159,94 @@ class MessageDetailViewModel(
                 _toastMessage.emit("转发成功")
             } catch (e: Exception) {
                 _toastMessage.emit("转发失败")
+            }
+        }
+    }
+    private val _atMessages = MutableStateFlow<List<Message>>(emptyList())
+    val atMessages: StateFlow<List<Message>> = _atMessages.asStateFlow()
+
+    private val _hasAtMessage = MutableStateFlow(false)
+    val hasAtMessage: StateFlow<Boolean> = _hasAtMessage.asStateFlow()
+
+    private val _targetMessageId = MutableStateFlow<String?>(null)
+    val targetMessageId: StateFlow<String?> = _targetMessageId.asStateFlow()
+
+    private val _isLoadingAtPage = MutableStateFlow(false)
+    val isLoadingAtPage: StateFlow<Boolean> = _isLoadingAtPage.asStateFlow()
+    private var currentUserId: Int = 0
+
+    fun setCurrentUserId(userId: Int) {
+        currentUserId = userId
+    }
+    
+
+    fun handleNewMessage(message: Message) {
+        val mentionUsers = message.mentionUsers ?: emptyList()
+        if (mentionUsers.contains(currentUserId)) {
+            _atMessages.update { list -> list + message }
+            _hasAtMessage.value = true
+        }
+    }
+
+    fun clearAtMessages() {
+        _atMessages.value = emptyList()
+        _hasAtMessage.value = false
+        _targetMessageId.value = null
+    }
+
+    fun jumpToAtMessage(messageId: String) {
+        viewModelScope.launch {
+            _isLoadingAtPage.value = true
+            try {
+                val client = OkHttpClient()
+                val json = JSONObject().apply {
+                    put("chat_type", chatType)
+                    put("chat_id", chatId)
+                    put("around_msg_id", messageId.toIntOrNull() ?: 0)
+                    put("per_page", 20)
+                }
+                val request = Request.Builder()
+                    .url("${ApiAddress}chat/messages")
+                    .post(json.toString().toRequestBody("application/json".toMediaType()))
+                    .header("x-access-token", token)
+                    .build()
+                
+                withContext(Dispatchers.IO) {
+                    client.newCall(request).execute().use { response ->
+                        val body = response.body?.string() ?: ""
+                        val result = AppJson.json.decodeFromString<GetMessagesResponse>(body)
+                        withContext(Dispatchers.Main) {
+                            if (result.status.code == 0) {
+
+                                val sortedMessages = result.messages.sortedByDescending { it.sendTime }
+                                _uiState.update { state ->
+                                    state.copy(
+                                        messages = sortedMessages,
+                                        pagination = result.pagination
+                                    )
+                                }
+                                
+
+                                _targetMessageId.value = messageId
+                                
+
+                                clearAtMessages()
+                                
+
+                                delay(3000)
+                                _targetMessageId.value = null
+
+                            } else {
+                                _toastMessage.emit("定位消息失败: ${result.status.msg}")
+                            }
+                            _isLoadingAtPage.value = false
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("AT_MESSAGE", "跳转失败", e)
+                _isLoadingAtPage.value = false
+                _toastMessage.emit("定位消息失败")
             }
         }
     }

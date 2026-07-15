@@ -230,6 +230,8 @@ data class MessageDetailUiState(
     val editingImages: List<String> = emptyList(),
     val editingIsMarkdown: Boolean = false,
     val latestAnnouncement: Message? = null,
+    val atMessages: List<Message> = emptyList(),
+    val hasAtMessage: Boolean = false,
 )
 
 // 撤回确认弹窗状态
