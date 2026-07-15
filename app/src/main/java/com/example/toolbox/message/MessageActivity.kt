@@ -134,7 +134,7 @@ import com.example.toolbox.message.UploadProgressBar
 import com.example.toolbox.utils.MultiImageViewer
 import com.example.toolbox.message.ForwardActivity
 import com.example.toolbox.message.HeatmapActivity
-
+import com.example.toolbox.community.GroupInfoActivity
 // ---- Activity ----
 class MessageDetailActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class, ExperimentalHazeMaterialsApi::class)
