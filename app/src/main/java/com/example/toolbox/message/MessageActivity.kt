@@ -693,9 +693,11 @@ fun MessageDetailScreen(
                                     val targetIndex = uiState.messages.indexOfFirst { it.effectiveMsgId == targetMessageId }
                                     if (targetIndex != -1) {
                                         listState.animateScrollToItem(targetIndex)
-                                        // 3秒后取消高亮
+                                        Toast.makeText(context, "已滚动到索引 $targetIndex", Toast.LENGTH_SHORT).show()
                                         delay(3000)
                                         viewModel.clearTargetMessageId()
+                                    } else {
+                                        Toast.makeText(context, "未找到目标消息，无法滚动", Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             }
@@ -849,8 +851,8 @@ fun MessageDetailScreen(
                             )
                     )
                 }
-                //uiState.chatType == 2 && uiState.hasAtMessage
-                if (true) {
+
+                if (uiState.chatType == 2 && uiState.hasAtMessage) {
                     AnimatedAtMessageButton(
                         unreadCount = uiState.atMessages.size,
                         onClick = {

@@ -1245,6 +1245,11 @@ class MessageDetailViewModel(
                         withContext(Dispatchers.Main) {
                             if (result.status.code == 0) {
                                 val newMessages = result.messages.sortedByDescending { it.sendTime }
+
+                                // 调试 Toast：检查目标消息是否在返回结果中
+                                val containsTarget = newMessages.any { it.effectiveMsgId == messageId }
+                                _toastMessage.emit("获取到 ${newMessages.size} 条，包含目标消息: $containsTarget")
+
                                 val mergedList = (_uiState.value.messages + newMessages)
                                     .distinctBy { it.effectiveMsgId }
                                     .sortedByDescending { it.sendTime }
@@ -1257,7 +1262,11 @@ class MessageDetailViewModel(
                                 }
                                 _targetMessageId.value = messageId
                                 clearAtMessages()
-                                clearMentionOnServer(messageId.toIntOrNull() ?: return@withContext)
+                                clearMentionOnServer(msgIdInt)
+
+                                // 调试 Toast：目标消息在合并列表中的索引
+                                val idx = mergedList.indexOfFirst { it.effectiveMsgId == messageId }
+                                _toastMessage.emit("目标消息索引: $idx (列表大小: ${mergedList.size})")
                             } else {
                                 _toastMessage.emit("定位消息失败: ${result.status.msg}")
                             }
