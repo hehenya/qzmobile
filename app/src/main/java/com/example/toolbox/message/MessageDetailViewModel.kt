@@ -1190,8 +1190,8 @@ class MessageDetailViewModel(
     private val _targetMessageId = MutableStateFlow<String?>(null)
     val targetMessageId: StateFlow<String?> = _targetMessageId.asStateFlow()
 
-    private val _isLoadingAtPage = MutableStateFlow(false)
-    val isLoadingAtPage: StateFlow<Boolean> = _isLoadingAtPage.asStateFlow()
+
+
 
     
 
