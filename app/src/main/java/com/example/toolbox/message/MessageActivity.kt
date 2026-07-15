@@ -133,6 +133,9 @@ import com.example.toolbox.utils.MultiImageViewer
 import com.example.toolbox.message.ForwardActivity
 import com.example.toolbox.message.HeatmapActivity
 import com.example.toolbox.community.UserInfoActivity
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.delay
 
 // ---- Activity ----
 class MessageDetailActivity : ComponentActivity() {
