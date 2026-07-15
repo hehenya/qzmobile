@@ -89,21 +89,32 @@ class MessageDetailViewModel(
     private var wsObserver: ((String, String, Int, Message) -> Unit)? = null
 
     init {
-    loadMessages()
-    connectWebSocket()
-    loadBackground()
-    if (chatType == 2) {
-        loadGroupInfo()
-        loadLatestAnnouncement(chatId) { announcement ->
-            _uiState.update { state ->
-                state.copy(
-                    latestAnnouncement = announcement
-                )
+        currentUserId = TokenManager.getUserID(MyApplication.instance)
+        loadMessages()
+        connectWebSocket()
+        loadBackground()
+        if (chatType == 2) {
+            loadGroupInfo()
+            loadLatestAnnouncement(chatId) { announcement ->
+                _uiState.update { state ->
+                    state.copy(
+                        latestAnnouncement = announcement
+                    )
+                }
+            }
+            viewModelScope.launch {
+            _atMessages.collect { messages ->
+                _uiState.update { it.copy(atMessages = messages) }
             }
         }
+            viewModelScope.launch {
+                _hasAtMessage.collect { has ->
+                    _uiState.update { it.copy(hasAtMessage = has) }
+                }
+            }
+        }
+        loadDraft()
     }
-    loadDraft()
-}
 
     fun connectWebSocket() {
         val manager = ChatSocketManager.getInstance()
@@ -178,7 +189,7 @@ class MessageDetailViewModel(
                             )
                         }
                         val mentionUsers = message.mentionUsers ?: emptyList()
-                        if (chatType == 2 && mentionUsers.contains(currentUserId)) {
+                        if (chatType == 2 && !message.isMine && mentionUsers.contains(currentUserId)) {
                             _atMessages.update { list -> list + message }
                             _hasAtMessage.value = true
                         }
@@ -321,7 +332,12 @@ class MessageDetailViewModel(
                         } catch (_: Exception) {}
                     msgIdCache.clear()
                     msgIdCache.addAll(sortedMessages.map { it.effectiveMsgId })
-    
+                    val newAtMessages = sortedMessages.filter { msg ->
+                        chatType == 2 && !msg.isMine && (msg.mentionUsers?.contains(currentUserId) == true)
+                    }
+                    val merged = (_atMessages.value + newAtMessages).distinctBy { it.effectiveMsgId }
+                    _atMessages.value = merged
+                    _hasAtMessage.value = merged.isNotEmpty()
                     if (chatType == 1 && result.chatBackgroundUrl.isNotEmpty()) {
                         _backgroundUrl.value = result.chatBackgroundUrl
                     }
@@ -1181,11 +1197,15 @@ class MessageDetailViewModel(
     
 
     fun handleNewMessage(message: Message) {
-        val mentionUsers = message.mentionUsers ?: emptyList()
-        if (mentionUsers.contains(currentUserId)) {
-            _atMessages.update { list -> list + message }
-            _hasAtMessage.value = true
+    val mentionUsers = message.mentionUsers ?: emptyList()
+    if (mentionUsers.contains(currentUserId)) {
+        _atMessages.update { list ->
+            if (list.none { it.effectiveMsgId == message.effectiveMsgId }) {
+                list + message
+            } else list
         }
+        _hasAtMessage.value = true
+    }
     }
 
     fun clearAtMessages() {
