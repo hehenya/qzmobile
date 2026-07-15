@@ -106,18 +106,14 @@ class MessageDetailViewModel(
                 _uiState.update { state -> state.copy(latestAnnouncement = announcement) }
             }
             viewModelScope.launch {
-                _atMessages
-                    .distinctUntilChanged()
-                    .collect { messages ->
-                        _uiState.update { it.copy(atMessages = messages) }
-                    }
+                _atMessages.collect { messages ->
+                    _uiState.update { it.copy(atMessages = messages) }
+                }
             }
             viewModelScope.launch {
-                _hasAtMessage
-                    .distinctUntilChanged()
-                    .collect { has ->
-                        _uiState.update { it.copy(hasAtMessage = has) }
-                    }
+                _hasAtMessage.collect { has ->
+                    _uiState.update { it.copy(hasAtMessage = has) }
+                }
             }
         }
         loadDraft()
