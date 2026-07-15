@@ -124,18 +124,7 @@ import androidx.compose.material.icons.filled.SaveAlt
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.PushPin
-import com.example.toolbox.message.AnnouncementBanner
-import com.example.toolbox.message.AnimatedAtMessageButton
-import com.example.toolbox.message.AnimatedScrollToBottomButton
-import com.example.toolbox.message.MessageInput
-import com.example.toolbox.message.LinkPreviewCard
-import com.example.toolbox.message.UploadProgressBar
-import com.example.toolbox.message.MessageShareBottomSheet
-import com.example.toolbox.message.MessageSharePreviewCard
-import com.example.toolbox.message.AppImageLoaders
-import com.example.toolbox.message.sendFriendRequest
-import com.example.toolbox.message.saveBitmapToGallery
-import com.example.toolbox.message.shareBitmap
+
 
 // ---- Activity ----
 class MessageDetailActivity : ComponentActivity() {
@@ -1292,23 +1281,14 @@ fun MessageBubble(
                             modifier = Modifier
                                 .size(36.dp)
                                 .clip(CircleShape)
-                                .clickable {
-                                    // 点击头像跳转个人主页
-                                    val intent = Intent(context, UserInfoActivity::class.java).apply {
-                                        putExtra("userId", message.senderId ?: return@clickable)
-                                    }
-                                    context.startActivity(intent)
-                                }
-                                .combinedClickable(  // ✅ 改用 combinedClickable，支持长按
+                                .combinedClickable(  // ✅ 只用 combinedClickable
                                     onClick = {
-                                        // 点击跳转个人主页
                                         val intent = Intent(context, UserInfoActivity::class.java).apply {
                                             putExtra("userId", message.senderId ?: return@clickable)
                                         }
                                         context.startActivity(intent)
                                     },
                                     onLongClick = {
-                                        // 长按头像触发 @
                                         if (message.senderId != null && message.displayName.isNotBlank()) {
                                             onAtUser?.invoke(message.senderId, message.displayName)
                                         }
