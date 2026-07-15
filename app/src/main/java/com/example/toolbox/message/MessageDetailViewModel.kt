@@ -1222,65 +1222,69 @@ class MessageDetailViewModel(
     }
 
     fun jumpToAtMessage(messageId: String) {
-        viewModelScope.launch {
-            _isLoadingAtPage.value = true
-            try {
-                val client = OkHttpClient()
-                val json = JSONObject().apply {
-                    put("chat_type", chatType)
-                    put("chat_id", chatId)
-                    put("around_msg_id", messageId.toIntOrNull() ?: 0)
-                    put("per_page", 20)
-                }
-                val request = Request.Builder()
-                    .url("${ApiAddress}chat/messages")
-                    .post(json.toString().toRequestBody("application/json".toMediaType()))
-                    .header("x-access-token", token)
-                    .build()
+    viewModelScope.launch {
+        _isLoadingAtPage.value = true
+        try {
+            // 提前转换并检查 messageId
+            val msgIdInt = messageId.toIntOrNull()
+            if (msgIdInt == null || msgIdInt <= 0) {
+                _toastMessage.emit("消息 ID 无效")
+                _isLoadingAtPage.value = false
+                return@launch
+            }
 
-                withContext(Dispatchers.IO) {
-                    client.newCall(request).execute().use { response ->
-                        val body = response.body?.string() ?: ""
-                        val result = AppJson.json.decodeFromString<GetMessagesResponse>(body)
-                        withContext(Dispatchers.Main) {
-                            if (result.status.code == 0) {
-                                val newMessages = result.messages.sortedByDescending { it.sendTime }
+            val client = OkHttpClient()
+            val json = JSONObject().apply {
+                put("chat_type", chatType)
+                put("chat_id", chatId)
+                put("around_msg_id", msgIdInt)
+                put("per_page", 20)
+            }
+            val request = Request.Builder()
+                .url("${ApiAddress}chat/messages")
+                .post(json.toString().toRequestBody("application/json".toMediaType()))
+                .header("x-access-token", token)
+                .build()
 
-                                // 调试 Toast：检查目标消息是否在返回结果中
-                                val containsTarget = newMessages.any { it.effectiveMsgId == messageId }
-                                _toastMessage.emit("获取到 ${newMessages.size} 条，包含目标消息: $containsTarget")
+            withContext(Dispatchers.IO) {
+                client.newCall(request).execute().use { response ->
+                    val body = response.body?.string() ?: ""
+                    val result = AppJson.json.decodeFromString<GetMessagesResponse>(body)
+                    withContext(Dispatchers.Main) {
+                        if (result.status.code == 0) {
+                            val newMessages = result.messages.sortedByDescending { it.sendTime }
+                            val mergedList = (_uiState.value.messages + newMessages)
+                                .distinctBy { it.effectiveMsgId }
+                                .sortedByDescending { it.sendTime }
 
-                                val mergedList = (_uiState.value.messages + newMessages)
-                                    .distinctBy { it.effectiveMsgId }
-                                    .sortedByDescending { it.sendTime }
-
-                                _uiState.update { state ->
-                                    state.copy(
-                                        messages = mergedList,
-                                        pagination = result.pagination
-                                    )
-                                }
-                                _targetMessageId.value = messageId
-                                clearAtMessages()
-                                clearMentionOnServer(msgIdInt)
-
-                                // 调试 Toast：目标消息在合并列表中的索引
-                                val idx = mergedList.indexOfFirst { it.effectiveMsgId == messageId }
-                                _toastMessage.emit("目标消息索引: $idx (列表大小: ${mergedList.size})")
-                            } else {
-                                _toastMessage.emit("定位消息失败: ${result.status.msg}")
+                            _uiState.update { state ->
+                                state.copy(
+                                    messages = mergedList,
+                                    pagination = result.pagination
+                                )
                             }
-                            _isLoadingAtPage.value = false
+                            _targetMessageId.value = messageId
+
+                            // 清除本地和服务器标记
+                            clearAtMessages()
+                            clearMentionOnServer(msgIdInt)
+
+                            // 调试 Toast：跳转成功
+                            _toastMessage.emit("跳转成功，消息已加载")
+                        } else {
+                            _toastMessage.emit("定位失败: ${result.status.msg}")
                         }
+                        _isLoadingAtPage.value = false
                     }
                 }
-            } catch (e: Exception) {
-                Log.e("AT_MESSAGE", "跳转失败", e)
-                _isLoadingAtPage.value = false
-                _toastMessage.emit("定位消息失败")
             }
+        } catch (e: Exception) {
+            Log.e("AT_MESSAGE", "跳转失败", e)
+            _isLoadingAtPage.value = false
+            _toastMessage.emit("网络错误，跳转失败")
         }
     }
+}
     fun clearTargetMessageId() {
         _targetMessageId.value = null
     }
