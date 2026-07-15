@@ -1868,7 +1868,7 @@ private fun MessageSharePreviewCard(
                         }
                         val previewAvatar = when {
                             hideMyInfo && isMineMessage -> message.displayAvatar
-                            hideSenderInfo -> SHARE_PREVIEW_PLACEHOLDER_AVATAR
+                            hideSenderInfo -> "https://www.helloimg.com/i/2025/03/30/67e8e4d5ec8b9.png"
                             else -> null
                         }
                         val previewTag = when {
@@ -1934,7 +1934,7 @@ private fun MessageSharePreviewCard(
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            text = SHARE_PREVIEW_FOOTER_TEXT,
+                            text = "由轻昼ce生成",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Medium
@@ -2388,5 +2388,3 @@ private suspend fun sendFriendRequest(token: String, friendId: Int): Boolean {
         catch (e: Exception) { android.util.Log.e("NetworkError", "请求失败", e); false }
     }
 }
-private const val SHARE_PREVIEW_PLACEHOLDER_AVATAR = "https://www.helloimg.com/i/2025/03/30/67e8e4d5ec8b9.png"
-private const val SHARE_PREVIEW_FOOTER_TEXT = "由轻昼ce生成"
