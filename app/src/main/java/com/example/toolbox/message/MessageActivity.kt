@@ -839,7 +839,21 @@ fun MessageDetailScreen(
                             )
                     )
                 }
-          
+
+                if (uiState.chatType == 2 && uiState.hasAtMessage) {
+                    AnimatedAtMessageButton(
+                        unreadCount = uiState.atMessages.size,
+                        onClick = {
+                            val firstAtMessage = uiState.atMessages.firstOrNull()
+                            firstAtMessage?.let {
+                                viewModel.jumpToAtMessage(it.effectiveMsgId)
+                            }
+                        },
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(bottom = 80.dp, end = 16.dp)   
+                    )
+                }
                 AnimatedScrollToBottomButton(
                     visible = showScrollToBottom,
                     unreadCount = unreadCount,

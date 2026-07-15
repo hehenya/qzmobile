@@ -92,6 +92,15 @@ class MessageDetailViewModel(
     private val _isLoadingAtPage = MutableStateFlow(false)
     val isLoadingAtPage: StateFlow<Boolean> = _isLoadingAtPage.asStateFlow()
     private var currentUserId: Int = TokenManager.getUserID(MyApplication.instance) 
+    
+    private val _atMessages = MutableStateFlow<List<Message>>(emptyList())
+    val atMessages: StateFlow<List<Message>> = _atMessages.asStateFlow()
+
+    private val _hasAtMessage = MutableStateFlow(false)
+    val hasAtMessage: StateFlow<Boolean> = _hasAtMessage.asStateFlow()
+
+    private val _targetMessageId = MutableStateFlow<String?>(null)
+    val targetMessageId: StateFlow<String?> = _targetMessageId.asStateFlow()
     init {
         val app = MyApplication.instance
         currentUserId = if (app != null) TokenManager.getUserID(app) else 0
@@ -1186,14 +1195,7 @@ class MessageDetailViewModel(
             }
         }
     }
-    private val _atMessages = MutableStateFlow<List<Message>>(emptyList())
-    val atMessages: StateFlow<List<Message>> = _atMessages.asStateFlow()
-
-    private val _hasAtMessage = MutableStateFlow(false)
-    val hasAtMessage: StateFlow<Boolean> = _hasAtMessage.asStateFlow()
-
-    private val _targetMessageId = MutableStateFlow<String?>(null)
-    val targetMessageId: StateFlow<String?> = _targetMessageId.asStateFlow()
+    
 
 
 
