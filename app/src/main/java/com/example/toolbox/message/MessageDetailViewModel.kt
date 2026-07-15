@@ -355,6 +355,7 @@ class MessageDetailViewModel(
                     val merged = (_atMessages.value + newAtMessages).distinctBy { it.effectiveMsgId }
                     _atMessages.value = merged
                     _hasAtMessage.value = merged.isNotEmpty()
+                    Toast.makeText(MyApplication.instance, "newAtMessages=${newAtMessages.size}, merged=${merged.size}", Toast.LENGTH_SHORT).show()
                     if (chatType == 1 && result.chatBackgroundUrl.isNotEmpty()) {
                         _backgroundUrl.value = result.chatBackgroundUrl
                     }

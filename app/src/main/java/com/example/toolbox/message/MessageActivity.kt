@@ -849,19 +849,21 @@ fun MessageDetailScreen(
                             )
                     )
                 }
-
-                if (uiState.chatType == 2 && uiState.hasAtMessage) {
+                //uiState.chatType == 2 && uiState.hasAtMessage
+                if (true) {
                     AnimatedAtMessageButton(
                         unreadCount = uiState.atMessages.size,
                         onClick = {
                             val firstAtMessage = uiState.atMessages.firstOrNull()
-                            firstAtMessage?.let {
-                                viewModel.jumpToAtMessage(it.effectiveMsgId)
+                            if (firstAtMessage != null) {
+                                // 调试 Toast：显示即将跳转的消息 ID
+                                Toast.makeText(context, "点击跳转: ${firstAtMessage.effectiveMsgId}", Toast.LENGTH_SHORT).show()
+                                viewModel.jumpToAtMessage(firstAtMessage.effectiveMsgId)
                             }
                         },
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .padding(bottom = 80.dp, end = 16.dp)   
+                            .padding(bottom = 80.dp, end = 16.dp)
                     )
                 }
                 AnimatedScrollToBottomButton(
