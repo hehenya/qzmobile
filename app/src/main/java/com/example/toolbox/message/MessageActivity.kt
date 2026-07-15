@@ -839,7 +839,7 @@ fun MessageDetailScreen(
                             )
                     )
                 }
-                
+          
                 AnimatedScrollToBottomButton(
                     visible = showScrollToBottom,
                     unreadCount = unreadCount,
@@ -849,7 +849,7 @@ fun MessageDetailScreen(
                         .padding(16.dp)
                 )
             }
-
+          
             if (selectionMode) {
                 Row(
                     modifier = Modifier
