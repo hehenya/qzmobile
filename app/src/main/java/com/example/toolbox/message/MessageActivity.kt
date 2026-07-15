@@ -1566,19 +1566,7 @@ fun MessageBubble(
     }
 }
 
-object AppImageLoaders {
-    private var _coil3Loader: coil3.ImageLoader? = null
 
-    fun getCoil3Loader(context: Context): coil3.ImageLoader {
-        return _coil3Loader ?: synchronized(this) {
-            _coil3Loader ?: coil3.ImageLoader.Builder(context)
-                .bitmapConfig(Bitmap.Config.ARGB_8888)
-                .crossfade(true)
-                .allowHardware(false)
-                .build().also { _coil3Loader = it }
-        }
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -2386,5 +2374,18 @@ private suspend fun sendFriendRequest(token: String, friendId: Int): Boolean {
     return withContext(Dispatchers.IO) {
         try { client.newCall(request).execute().use { r -> if (!r.isSuccessful) false else { val b = r.body.string(); if (b.isBlank()) false else (try { JSONObject(b) } catch (_: Exception) { return@withContext false }).optBoolean("success", false) } } }
         catch (e: Exception) { android.util.Log.e("NetworkError", "请求失败", e); false }
+    }
+}
+object AppImageLoaders {
+    private var _coil3Loader: coil3.ImageLoader? = null
+
+    fun getCoil3Loader(context: Context): coil3.ImageLoader {
+        return _coil3Loader ?: synchronized(this) {
+            _coil3Loader ?: coil3.ImageLoader.Builder(context)
+                .bitmapConfig(Bitmap.Config.ARGB_8888)
+                .crossfade(true)
+                .allowHardware(false)
+                .build().also { _coil3Loader = it }
+        }
     }
 }
