@@ -49,6 +49,7 @@ import kotlinx.coroutines.Job
 import com.example.toolbox.AppJson
 import com.example.toolbox.data.AnnouncementResponse
 import kotlinx.serialization.json.Json
+import com.example.toolbox.TokenManager
 
 class MessageDetailViewModel(
     private val token: String,
@@ -87,9 +88,11 @@ class MessageDetailViewModel(
     private var hasMore = true
     private val msgIdCache = mutableSetOf<String>()
     private var wsObserver: ((String, String, Int, Message) -> Unit)? = null
-
+    
+    private val _isLoadingAtPage = MutableStateFlow(false)
+    val isLoadingAtPage: StateFlow<Boolean> = _isLoadingAtPage.asStateFlow()
+    private var currentUserId: Int = TokenManager.getUserID(MyApplication.instance) 
     init {
-        currentUserId = TokenManager.getUserID(MyApplication.instance)
         loadMessages()
         connectWebSocket()
         loadBackground()
@@ -1189,11 +1192,7 @@ class MessageDetailViewModel(
 
     private val _isLoadingAtPage = MutableStateFlow(false)
     val isLoadingAtPage: StateFlow<Boolean> = _isLoadingAtPage.asStateFlow()
-    private var currentUserId: Int = 0
 
-    fun setCurrentUserId(userId: Int) {
-        currentUserId = userId
-    }
     
 
     fun handleNewMessage(message: Message) {
