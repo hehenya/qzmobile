@@ -768,6 +768,7 @@ fun MessageDetailScreen(
                             )
                         }
                     }
+                }
 
                     if (uiState.isLoadingMore) {
                         item {
@@ -2376,7 +2377,7 @@ private suspend fun sendFriendRequest(token: String, friendId: Int): Boolean {
         catch (e: Exception) { android.util.Log.e("NetworkError", "请求失败", e); false }
     }
 }
-}
+
 object AppImageLoaders {
     private var _coil3Loader: coil3.ImageLoader? = null
 
