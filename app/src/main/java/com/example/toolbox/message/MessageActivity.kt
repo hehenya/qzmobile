@@ -808,21 +808,35 @@ fun MessageDetailScreen(
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                             .size(36.dp)
                             .clip(CircleShape)
-                    )
-                }
-
-                if (uiState.chatType == 2 && uiState.hasAtMessage) {
-                    AnimatedAtMessageButton(
-                        unreadCount = uiState.atMessages.size,
-                        onClick = {
-                            val firstAtMessage = uiState.atMessages.firstOrNull()
-                            firstAtMessage?.let {
-                                viewModel.jumpToAtMessage(it.effectiveMsgId)
-                            }
-                        },
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(bottom = 72.dp, end = 16.dp)
+                            .combinedClickable(
+                                onClick = {
+                                    // 点击进入用户主页
+                                    topVisibleMessage?.senderId?.let { senderId ->
+                                        val intent = Intent(context, UserInfoActivity::class.java).apply {
+                                            putExtra("userId", senderId)
+                                        }
+                                        context.startActivity(intent)
+                                    }
+                                },
+                                onLongClick = {
+                                    // 长按 @ 该用户
+                                    topVisibleMessage?.let { msg ->
+                                        msg.senderId?.let { senderId ->
+                                            val name = msg.displayName
+                                            if (name.isNotBlank()) {
+                                                val currentText = uiState.inputText
+                                                val newText = if (currentText.endsWith(" ")) {
+                                                    "$currentText@$name "
+                                                } else {
+                                                    "$currentText @$name "
+                                                }
+                                                viewModel.updateInputText(newText)
+                                                viewModel.addMentionUser(senderId, name)
+                                            }
+                                        }
+                                    }
+                                }
+                            )
                     )
                 }
 
