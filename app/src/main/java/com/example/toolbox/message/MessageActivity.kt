@@ -251,7 +251,7 @@ class MessageDetailActivity : ComponentActivity() {
                                                         modifier = Modifier
                                                             .fillMaxWidth()
                                                             .clickable {
-                                                                startActivity(Intent(this@MessageDetailActivity, GroupInfoActivity::class.java)).apply {
+                                                                val intent = Intent(this@MessageDetailActivity, GroupInfoActivity::class.java).apply {
                                                                     putExtra("group_id", chatId)
                                                                     putExtra("is_joined", true)
                                                                     putExtra("group_name", group.name)
@@ -261,6 +261,7 @@ class MessageDetailActivity : ComponentActivity() {
                                                                     putExtra("group_created_at", group.createdAt)
                                                                     putExtra("group_is_private", group.isPrivate)
                                                                 }
+                                                                startActivity(intent)
                                                             }
                                                     ) {
                                                         AsyncImage(
