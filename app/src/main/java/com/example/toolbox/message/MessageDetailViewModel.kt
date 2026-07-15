@@ -93,31 +93,36 @@ class MessageDetailViewModel(
     val isLoadingAtPage: StateFlow<Boolean> = _isLoadingAtPage.asStateFlow()
     private var currentUserId: Int = TokenManager.getUserID(MyApplication.instance) 
     init {
+        val app = MyApplication.instance
+        currentUserId = if (app != null) TokenManager.getUserID(app) else 0
+        Log.d("AtDebug", "currentUserId = $currentUserId")
+
         loadMessages()
         connectWebSocket()
         loadBackground()
         if (chatType == 2) {
             loadGroupInfo()
             loadLatestAnnouncement(chatId) { announcement ->
-                _uiState.update { state ->
-                    state.copy(
-                        latestAnnouncement = announcement
-                    )
-                }
+                _uiState.update { state -> state.copy(latestAnnouncement = announcement) }
             }
             viewModelScope.launch {
-            _atMessages.collect { messages ->
-                _uiState.update { it.copy(atMessages = messages) }
+                _atMessages
+                    .distinctUntilChanged()
+                    .collect { messages ->
+                        _uiState.update { it.copy(atMessages = messages) }
+                    }
             }
-        }
             viewModelScope.launch {
-                _hasAtMessage.collect { has ->
-                    _uiState.update { it.copy(hasAtMessage = has) }
-                }
+                _hasAtMessage
+                    .distinctUntilChanged()
+                    .collect { has ->
+                        _uiState.update { it.copy(hasAtMessage = has) }
+                    }
             }
         }
         loadDraft()
     }
+            
 
     fun connectWebSocket() {
         val manager = ChatSocketManager.getInstance()
@@ -335,8 +340,12 @@ class MessageDetailViewModel(
                         } catch (_: Exception) {}
                     msgIdCache.clear()
                     msgIdCache.addAll(sortedMessages.map { it.effectiveMsgId })
-                    val newAtMessages = sortedMessages.filter { msg ->
-                        chatType == 2 && !msg.isMine && (msg.mentionUsers?.contains(currentUserId) == true)
+                    val newAtMessages = if (currentUserId > 0) {
+                        sortedMessages.filter { msg ->
+                            chatType == 2 && !msg.isMine && (msg.mentionUsers?.contains(currentUserId) == true)
+                        }
+                    } else {
+                        emptyList()
                     }
                     val merged = (_atMessages.value + newAtMessages).distinctBy { it.effectiveMsgId }
                     _atMessages.value = merged

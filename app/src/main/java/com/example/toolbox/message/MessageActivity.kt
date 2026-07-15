@@ -839,7 +839,7 @@ fun MessageDetailScreen(
                             )
                     )
                 }
-
+                
                 AnimatedScrollToBottomButton(
                     visible = showScrollToBottom,
                     unreadCount = unreadCount,
