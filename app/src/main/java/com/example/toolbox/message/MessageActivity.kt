@@ -773,7 +773,7 @@ fun MessageDetailScreen(
                                         viewModel.addMentionUser(userId, username)
                                     }
                                 )
-                            }
+                            
                         }
 
                         if (uiState.isLoadingMore) {
