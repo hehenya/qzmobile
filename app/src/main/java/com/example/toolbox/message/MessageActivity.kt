@@ -72,8 +72,6 @@ import com.example.toolbox.ApiAddress
 import com.example.toolbox.DraftManager
 import com.example.toolbox.R
 import com.example.toolbox.TokenManager
-import com.example.toolbox.community.GroupInfoActivity
-import com.example.toolbox.community.UserInfoActivity
 import com.example.toolbox.data.EditDialogState
 import com.example.toolbox.data.displayAvatar
 import com.example.toolbox.data.displayName
@@ -134,7 +132,7 @@ import com.example.toolbox.message.UploadProgressBar
 import com.example.toolbox.utils.MultiImageViewer
 import com.example.toolbox.message.ForwardActivity
 import com.example.toolbox.message.HeatmapActivity
-
+import com.example.toolbox.message.GroupInfoActivity
 // ---- Activity ----
 class MessageDetailActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class, ExperimentalHazeMaterialsApi::class)
