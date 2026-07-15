@@ -1236,32 +1236,27 @@ class MessageDetailViewModel(
                     .post(json.toString().toRequestBody("application/json".toMediaType()))
                     .header("x-access-token", token)
                     .build()
-                
+
                 withContext(Dispatchers.IO) {
                     client.newCall(request).execute().use { response ->
                         val body = response.body?.string() ?: ""
                         val result = AppJson.json.decodeFromString<GetMessagesResponse>(body)
                         withContext(Dispatchers.Main) {
                             if (result.status.code == 0) {
+                                val newMessages = result.messages.sortedByDescending { it.sendTime }
+                                val mergedList = (_uiState.value.messages + newMessages)
+                                    .distinctBy { it.effectiveMsgId }
+                                    .sortedByDescending { it.sendTime }
 
-                                val sortedMessages = result.messages.sortedByDescending { it.sendTime }
                                 _uiState.update { state ->
                                     state.copy(
-                                        messages = sortedMessages,
+                                        messages = mergedList,
                                         pagination = result.pagination
                                     )
                                 }
-                                
-
                                 _targetMessageId.value = messageId
-                                
-
                                 clearAtMessages()
-                                
-
-                                delay(3000)
-                                _targetMessageId.value = null
-
+                                clearMentionOnServer(messageId.toIntOrNull() ?: return@withContext)
                             } else {
                                 _toastMessage.emit("定位消息失败: ${result.status.msg}")
                             }
@@ -1273,6 +1268,28 @@ class MessageDetailViewModel(
                 Log.e("AT_MESSAGE", "跳转失败", e)
                 _isLoadingAtPage.value = false
                 _toastMessage.emit("定位消息失败")
+            }
+        }
+    }
+    fun clearTargetMessageId() {
+        _targetMessageId.value = null
+    }
+    private fun clearMentionOnServer(messageId: Int) {
+        viewModelScope.launch {
+            try {
+                val json = JSONObject().apply {
+                    put("message_id", messageId)
+                }
+                val request = Request.Builder()
+                    .url("${ApiAddress}chat/clear_mention")
+                    .post(json.toString().toRequestBody("application/json".toMediaType()))
+                    .header("x-access-token", token)
+                    .build()
+                withContext(Dispatchers.IO) {
+                    client.newCall(request).execute()
+                }
+            } catch (e: Exception) {
+                // 静默失败，不影响使用
             }
         }
     }

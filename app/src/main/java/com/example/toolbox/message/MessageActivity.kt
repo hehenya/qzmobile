@@ -681,11 +681,18 @@ fun MessageDetailScreen(
                             // 滚动到目标消息
                             LaunchedEffect(targetMessageId) {
                                 if (targetMessageId != null) {
-                                    val targetIndex = uiState.messages.indexOfFirst {
-                                        it.effectiveMsgId == targetMessageId
+                                    // 等待目标消息出现再滚动，最多等 2 秒
+                                    withTimeoutOrNull(2000) {
+                                        snapshotFlow {
+                                            uiState.messages.firstOrNull { it.effectiveMsgId == targetMessageId }
+                                        }.first { it != null }
                                     }
+                                    val targetIndex = uiState.messages.indexOfFirst { it.effectiveMsgId == targetMessageId }
                                     if (targetIndex != -1) {
                                         listState.animateScrollToItem(targetIndex)
+                                        // 3秒后取消高亮
+                                        delay(3000)
+                                        viewModel.clearTargetMessageId()
                                     }
                                 }
                             }
