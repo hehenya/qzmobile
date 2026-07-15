@@ -1293,10 +1293,12 @@ fun MessageBubble(
                                 .clip(CircleShape)
                                 .combinedClickable(
                                     onClick = {
-                                        val intent = Intent(context, UserInfoActivity::class.java).apply {
-                                            putExtra("userId", message.senderId ?: return@clickable)
+                                        message.senderId?.let { senderId ->
+                                            val intent = Intent(context, UserInfoActivity::class.java).apply {
+                                                putExtra("userId", senderId)
+                                            }
+                                            context.startActivity(intent)
                                         }
-                                        context.startActivity(intent)
                                     },
                                     onLongClick = {
                                         if (message.senderId != null && message.displayName.isNotBlank()) {
