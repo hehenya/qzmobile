@@ -1018,8 +1018,7 @@ fun MessageDetailScreen(
             }
         }
     }
-    private const val SHARE_PREVIEW_PLACEHOLDER_AVATAR = "https://www.helloimg.com/i/2025/03/30/67e8e4d5ec8b9.png"
-    private const val SHARE_PREVIEW_FOOTER_TEXT = "由轻昼ce生成"
+    
     // 热力图弹窗
     
     if (recallDialog.isOpen) {
@@ -2389,3 +2388,5 @@ private suspend fun sendFriendRequest(token: String, friendId: Int): Boolean {
         catch (e: Exception) { android.util.Log.e("NetworkError", "请求失败", e); false }
     }
 }
+private const val SHARE_PREVIEW_PLACEHOLDER_AVATAR = "https://www.helloimg.com/i/2025/03/30/67e8e4d5ec8b9.png"
+private const val SHARE_PREVIEW_FOOTER_TEXT = "由轻昼ce生成"
