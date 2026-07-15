@@ -252,7 +252,7 @@ class MessageDetailActivity : ComponentActivity() {
                                                         modifier = Modifier
                                                             .fillMaxWidth()
                                                             .clickable {
-                                                                startActivity(Intent(this@MessageDetailActivity, GroupInfoActivity::class.java).apply {
+                                                                startActivity(Intent(this@MessageDetailActivity, com.example.toolbox.community.GroupInfoActivity::class.java)).apply {
                                                                     putExtra("group_id", chatId)
                                                                     putExtra("is_joined", true)
                                                                     putExtra("group_name", group.name)
@@ -2381,7 +2381,22 @@ private suspend fun sendFriendRequest(token: String, friendId: Int): Boolean {
     val requestBody = jsonBody.toRequestBody("application/json; charset=utf-8".toMediaType())
     val request = Request.Builder().url("${ApiAddress}friends/send_request").post(requestBody).addHeader("x-access-token", token).build()
     return withContext(Dispatchers.IO) {
-        try { client.newCall(request).execute().use { r -> if (!r.isSuccessful) false else { val b = r.body.string(); if (b.isBlank()) false else (try { JSONObject(b) } catch (_: Exception) { return@withContext false }).optBoolean("success", false) } } }
+        try {
+            client.newCall(request).execute().use { r ->
+                if (!r.isSuccessful) false
+                else {
+                    val b = r.body.string()
+                    if (b.isBlank()) false
+                    else {
+                        try {
+                            JSONObject(b).optBoolean("success", false)
+                        } catch (_: Exception) {
+                            false
+                        }
+                    }
+                }
+            }
+        }
         catch (e: Exception) { android.util.Log.e("NetworkError", "请求失败", e); false }
     }
 }
