@@ -92,6 +92,7 @@ data class Message(
     @SerialName("is_announcement") val isAnnouncement: Boolean? = null,
     @SerialName("announcement_set_at") val announcementSetAt: String? = null,
     @SerialName("announcement_set_by") val announcementSetBy: AnnouncementSetBy? = null,
+    @SerialName("mention_users") val mentionUsers: List<Int>? = null,
 
 )
 val Message.displayTag: String
