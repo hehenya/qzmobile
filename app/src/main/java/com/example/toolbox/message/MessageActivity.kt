@@ -134,8 +134,7 @@ import com.example.toolbox.message.UploadProgressBar
 import com.example.toolbox.utils.MultiImageViewer
 import com.example.toolbox.message.ForwardActivity
 import com.example.toolbox.message.HeatmapActivity
-import com.example.toolbox.community.GroupInfoActivity
-import com.example.toolbox.community.GroupInfoActivity
+
 // ---- Activity ----
 class MessageDetailActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class, ExperimentalHazeMaterialsApi::class)
@@ -773,7 +772,7 @@ fun MessageDetailScreen(
                                         viewModel.addMentionUser(userId, username)
                                     }
                                 )
-                            
+                            }
                         }
 
                         if (uiState.isLoadingMore) {
@@ -1292,7 +1291,7 @@ fun MessageBubble(
                             modifier = Modifier
                                 .size(36.dp)
                                 .clip(CircleShape)
-                                .combinedClickable(  // ✅ 只用 combinedClickable
+                                .combinedClickable(
                                     onClick = {
                                         val intent = Intent(context, UserInfoActivity::class.java).apply {
                                             putExtra("userId", message.senderId ?: return@clickable)

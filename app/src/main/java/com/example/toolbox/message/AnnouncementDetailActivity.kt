@@ -12,11 +12,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
@@ -42,7 +42,6 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import androidx.compose.ui.layout.ContentScale
 import android.util.Log
-import com.example.toolbox.message.MessageBubble
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
@@ -266,7 +265,7 @@ fun AnnouncementDetailScreen(
                         state = listState,
                         modifier = Modifier
                             .fillMaxSize(),
-                        reverseLayout = true,
+                        reverseLayout = false,
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         items(
@@ -281,7 +280,7 @@ fun AnnouncementDetailScreen(
                                     !previousMessage.isRecalled &&
                                     !previousMessage.isSystem
 
-                            val shouldShowAvatar = true
+                            val shouldShowAvatar = (index == messages.size - 1) || !isSameSenderAsPrevious
 
                             MessageBubble(
                                 context = context,
