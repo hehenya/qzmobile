@@ -549,7 +549,6 @@ fun FriendItem(friend: Friend, viewModel: MessageViewModel, refreshKey: Long) {
     val draft = remember(refreshKey) { DraftManager.getDraft(chatType, chatId) }
     val draftTime = remember(refreshKey) { DraftManager.getDraftTime(chatType, chatId) }
     
-    
     val lastMsgText = if (!draft.isNullOrBlank()) "[草稿] $draft" else (friend.lastMessage ?: "暂无消息")
     val lastMsgColor = if (!draft.isNullOrBlank()) Color.Red 
         else if (friend.unreadCount > 0) MaterialTheme.colorScheme.primary 
@@ -559,9 +558,7 @@ fun FriendItem(friend: Friend, viewModel: MessageViewModel, refreshKey: Long) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
-                // 本地清零未读数
                 viewModel.markAsRead(friend.id, chatType)
-                
                 val intent = Intent(context, MessageDetailActivity::class.java)
                 if (friend.type == "group") {
                     intent.putExtra("chat_type", 2)
@@ -575,25 +572,15 @@ fun FriendItem(friend: Friend, viewModel: MessageViewModel, refreshKey: Long) {
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box {
-            Image(
-                painter = rememberAsyncImagePainter(friend.avatar),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(50.dp)
-                    .clip(CircleShape)
-            )
-            if (friend.unreadCount > 0) {
-                Badge(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .offset(x = 4.dp, y = (-4).dp)
-                ) {
-                    Text(text = friend.unreadCount.toString(), fontSize = 10.sp)
-                }
-            }
-        }
+        // 头像（不再显示未读数字）
+        Image(
+            painter = rememberAsyncImagePainter(friend.avatar),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(50.dp)
+                .clip(CircleShape)
+        )
 
         Spacer(modifier = Modifier.width(12.dp))
 
@@ -631,6 +618,7 @@ fun FriendItem(friend: Friend, viewModel: MessageViewModel, refreshKey: Long) {
 
             Spacer(modifier = Modifier.height(4.dp))
 
+            // 消息摘要 + @/未读角标 + 时间
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
@@ -644,19 +632,37 @@ fun FriendItem(friend: Friend, viewModel: MessageViewModel, refreshKey: Long) {
                     modifier = Modifier.weight(1f)
                 )
 
+                // @ 提示（仅群聊，红色 @ 图标）
+                if (friend.type == "group" && friend.mentionCount > 0) {
+                    Badge(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    ) {
+                        Text("@", style = MaterialTheme.typography.labelSmall)
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
+
+                // 未读数字角标
+                if (friend.unreadCount > 0) {
+                    Badge {
+                        Text("${friend.unreadCount}", fontSize = 10.sp)
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
+
+                // 时间或草稿时间
                 if (!draft.isNullOrBlank()) {
                     Text(
                         text = formatRelativeTime(draftTime ?: ""),
                         fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 8.dp)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else if (friend.lastMessageTime != null) {
                     Text(
                         text = formatRelativeTime(friend.lastMessageTime),
                         fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 8.dp)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

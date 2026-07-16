@@ -15,7 +15,8 @@ data class Friend(
     @SerialName("last_message_time") val lastMessageTime: String?,
     @SerialName("unread_count") val unreadCount: Int,
     @SerialName("added_at") val addedAt: String = "",
-    val type: String = "private" // "private" or "group"
+    val type: String = "private",// "private" or "group"
+    val mentionCount: Int = 0
 )
 
 @Serializable
