@@ -691,9 +691,10 @@ class MessageDetailViewModel(
     val mentionUsers: StateFlow<List<Int>> = _mentionUsers.asStateFlow()
 
     fun addMentionUser(userId: Int, username: String) {
-        _mentionUsers.update { list ->
-            if (userId !in list) list + userId else list
-        }
+    _mentionUsers.update { list ->
+        if (userId !in list) list + userId else list
+    }
+    }
         
     val currentText = _uiState.value.inputText
     val newText = if (currentText.endsWith(" ")) {

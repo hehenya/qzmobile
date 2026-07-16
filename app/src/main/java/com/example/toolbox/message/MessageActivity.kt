@@ -774,11 +774,10 @@ fun MessageDetailScreen(
                                     bubbleCornerRadius = bubbleCornerRadius,
                                     isHighlighted = isHighlighted,
                                     onAtUser = { userId, username ->
-                                        val currentText = uiState.inputText
-                                        val newText = if (currentText.endsWith(" ")) {
-                                            "$currentText@$username "
+                                        val newText = if (uiState.inputText.endsWith(" ")) {
+                                            "${uiState.inputText}@$username "
                                         } else {
-                                            "$currentText @$username "
+                                            "${uiState.inputText} @$username "
                                         }
                                         viewModel.updateInputText(newText)
                                         viewModel.addMentionUser(userId, username)
@@ -831,19 +830,17 @@ fun MessageDetailScreen(
                                     }
                                 },
                                 onLongClick = {
-                                    // 长按 @ 该用户
                                     topVisibleMessage?.let { msg ->
                                         msg.senderId?.let { senderId ->
                                             val name = msg.displayName
                                             if (name.isNotBlank()) {
-                                                val currentText = uiState.inputText
-                                                val newText = if (currentText.endsWith(" ")) {
-                                                    "$currentText@$name "
+                                                val newText = if (uiState.inputText.endsWith(" ")) {
+                                                    "${uiState.inputText}@$name "
                                                 } else {
-                                                    "$currentText @$name "
+                                                    "${uiState.inputText} @$name "
                                                 }
-                                                viewModel.updateInputText(newText)
-                                                viewModel.addMentionUser(senderId, name)
+                                                viewModel.updateInputText(newText)   // 只更新一次文本
+                                                viewModel.addMentionUser(senderId, name)  // 只添加用户ID
                                             }
                                         }
                                     }
