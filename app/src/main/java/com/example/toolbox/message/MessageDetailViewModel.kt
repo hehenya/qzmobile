@@ -694,16 +694,10 @@ class MessageDetailViewModel(
     _mentionUsers.update { list ->
         if (userId !in list) list + userId else list
     }
-    }
-        
-    val currentText = _uiState.value.inputText
-    val newText = if (currentText.endsWith(" ")) {
-        "$currentText@$username "
-    } else {
-        "$currentText @$username "
-    }
-    _uiState.update { it.copy(inputText = newText) }
 }
+        
+    
+
 
     fun clearMentionUsers() {
         _mentionUsers.value = emptyList()
