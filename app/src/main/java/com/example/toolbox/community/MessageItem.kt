@@ -38,6 +38,7 @@ import com.hrm.markdown.renderer.Markdown
 import com.hrm.markdown.renderer.MarkdownTheme
 import com.example.toolbox.webview.WebViewActivity
 import android.net.Uri
+import com.example.toolbox.utils.MarkdownRenderer
 @Composable
 fun CategoryItem(
     select: Boolean,
@@ -136,6 +137,7 @@ fun MessageItem(
     onHistory: () -> Unit,
     onImageClick: (List<String>, Int) -> Unit,
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val colorScheme = MaterialTheme.colorScheme
     var showMenu by remember { mutableStateOf(false) }
