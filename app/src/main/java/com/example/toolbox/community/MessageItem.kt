@@ -35,6 +35,8 @@ import com.example.toolbox.utils.MarkdownRenderer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.hrm.markdown.renderer.Markdown
+import com.hrm.markdown.renderer.MarkdownTheme
 
 @Composable
 fun CategoryItem(
@@ -370,19 +372,25 @@ fun MessageItem(
             }
 
             val rawText = message.content.text ?: message.content.content ?: ""
-            if (rawText.isNotEmpty()) {
-                if (message.is_markdown) {
-                    MarkdownRenderer.Render(
-                        content = rawText,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                } else {
-                    Text(
-                        text = rawText,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
+            if (message.is_markdown) {
+                Markdown(
+                    markdown = rawText,
+                    enableScroll = false,   // 避免内部滚动，与父布局不冲突
+                    modifier = Modifier.fillMaxWidth(),
+                    theme = MarkdownTheme.material3(),
+                    onLinkClick = { url: String ->
+                        val intent = Intent(context, WebViewActivity::class.java).apply {
+                            putExtra("url", url)
+                        }
+                        context.startActivity(intent)
+                    }
+                )
+            } else {
+                Text(
+                    text = rawText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
 
             message.content.images?.takeIf { it.isNotEmpty() }?.let { images ->

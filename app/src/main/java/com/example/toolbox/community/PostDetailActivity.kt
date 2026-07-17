@@ -78,6 +78,8 @@ import com.example.toolbox.data.community.ReplyMessage
 import com.example.toolbox.data.community.ReplyPagination
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.jsonArray
+import com.hrm.markdown.renderer.Markdown
+import com.hrm.markdown.renderer.MarkdownTheme
 
 object AppImageLoaders {
     private var _coil3Loader: coil3.ImageLoader? = null
@@ -95,9 +97,17 @@ object AppImageLoaders {
 
 @Composable
 fun MarkdownText(content: String, modifier: Modifier = Modifier) {
-    MarkdownRenderer.Render(
+    Markdown(
+        markdown = content,
         modifier = modifier,
-        content = content
+        enableScroll = false,
+        theme = MarkdownTheme.material3(),
+        onLinkClick = { url: String ->
+            val intent = Intent(LocalContext.current, WebViewActivity::class.java).apply {
+                putExtra("url", url)
+            }
+            LocalContext.current.startActivity(intent)
+        }
     )
 }
 

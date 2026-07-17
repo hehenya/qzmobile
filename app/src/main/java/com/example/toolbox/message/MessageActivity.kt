@@ -1445,20 +1445,6 @@ fun MessageBubble(
                                         markdown = message.content,
                                         enableScroll = false,
                                         modifier = Modifier
-                                            .combinedClickable(
-                                                onClick = {
-                                                    if (isSelectionMode) {
-                                                        onClickInSelectionMode?.invoke()
-                                                    } else {
-                                                        onShowMenuChanged?.invoke(message.effectiveMsgId)
-                                                    }
-                                                },
-                                                onLongClick = {
-                                                    if (!isSelectionMode) {
-                                                        onLongPress?.invoke()
-                                                    }
-                                                }
-                                            )
                                             .padding(8.dp)
                                             .fillMaxWidth(),
                                         theme = MarkdownTheme.material3(),
