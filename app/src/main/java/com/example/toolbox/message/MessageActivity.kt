@@ -1436,24 +1436,24 @@ fun MessageBubble(
                                     }
                                 }
                                 if (message.isMarkdown) {
-                                        val maxHeight = LocalConfiguration.current.screenHeightDp.dp * 2
-                                        Box(modifier = Modifier.heightIn(max = maxHeight)) {
-                                            Markdown(
-                                                markdown = message.content,
-                                                modifier = Modifier
-                                                    .padding(8.dp)
-                                                    .fillMaxWidth(),
-                                                theme = MarkdownTheme.auto().copy(linkColor = Color(0xFF1E88E5)),
-                                                onLinkClick = { url: String ->
-                                                    val intent = Intent(context, WebViewActivity::class.java).apply {
-                                                        putExtra(WebViewActivity.EXTRA_URL, url)
-                                                    }
-                                                    context.startActivity(intent)
+                                    val maxHeight = LocalConfiguration.current.screenHeightDp.dp * 2
+                                    Box(modifier = Modifier.heightIn(max = maxHeight)) {
+                                        Markdown(
+                                            markdown = message.content,
+                                            modifier = Modifier
+                                                .padding(8.dp)
+                                                .fillMaxWidth(),
+                                            theme = MarkdownTheme.auto().copy(linkColor = Color(0xFF1E88E5)),
+                                            onLinkClick = { url: String ->
+                                                val intent = Intent(context, WebViewActivity::class.java).apply {
+                                                    putExtra(WebViewActivity.EXTRA_URL, url)
                                                 }
-                                            )
-                                        }
+                                                context.startActivity(intent)
+                                            }
+                                        )
                                     }
-                                    else Text(
+                                } else {
+                                    Text(
                                         message.content,
                                         fontSize = 14.sp,
                                         color = if (isMine) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.95f)
