@@ -136,6 +136,9 @@ import com.example.toolbox.community.UserInfoActivity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.delay
+import com.hrm.markdown.renderer.Markdown
+import com.hrm.markdown.renderer.MarkdownTheme
+import com.hrm.codehigh.theme.OneDarkProTheme
 
 // ---- Activity ----
 class MessageDetailActivity : ComponentActivity() {
@@ -1432,7 +1435,20 @@ fun MessageBubble(
                                     }
                                 }
                                 if (message.content.isNotBlank()) {
-                                    if (message.isMarkdown) MarkdownRenderer.Render(content = message.content)
+                                    if (message.isMarkdown) {
+                                        Markdown(
+                                            markdown = message.content,
+                                            codeTheme = OneDarkProTheme,
+                                            modifier = Modifier.padding(8.dp),
+                                            theme = MarkdownTheme.auto(),
+                                            onLinkClick = { url ->
+                                                val intent = Intent(context, WebViewActivity::class.java).apply {
+                                                    putExtra(WebViewActivity.EXTRA_URL, url)
+                                                }
+                                                context.startActivity(intent)
+                                            }
+                                        )
+                                    }
                                     else Text(
                                         message.content,
                                         fontSize = 14.sp,

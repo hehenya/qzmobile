@@ -105,11 +105,15 @@ dependencies {
     implementation(libs.persistentcookiejar)
     implementation(libs.socket.io.client)
 
-    //Markdown
+    //Markdown(pravite)
+    implementation("io.github.huarangmeng:markdown-parser:1.2.1")
+    implementation("io.github.huarangmeng:markdown-runtime:1.2.1")
+    implementation("io.github.huarangmeng:markdown-renderer:1.2.1")
+    //md other
     implementation(libs.multiplatform.markdown.renderer)
     implementation(libs.multiplatform.markdown.renderer.m3)
     implementation(libs.multiplatform.markdown.renderer.coil3)
-
+    
     implementation(libs.haze)
     implementation(libs.haze.materials)
 
