@@ -139,6 +139,7 @@ import kotlinx.coroutines.delay
 import com.hrm.markdown.renderer.Markdown
 import com.hrm.markdown.renderer.MarkdownTheme
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.ui.platform.LocalConfiguration
 
 // ---- Activity ----
 class MessageDetailActivity : ComponentActivity() {
@@ -1434,14 +1435,14 @@ fun MessageBubble(
                                         }
                                     }
                                 }
-                                if (message.content.isNotBlank()) {
-                                    if (message.isMarkdown) {
-                                        Column {
+                                if (message.isMarkdown) {
+                                        val maxHeight = LocalConfiguration.current.screenHeightDp.dp * 2
+                                        Box(modifier = Modifier.heightIn(max = maxHeight)) {
                                             Markdown(
                                                 markdown = message.content,
                                                 modifier = Modifier
                                                     .padding(8.dp)
-                                                    .wrapContentHeight(),   // 让 Markdown 自适应高度，不产生内部滚动
+                                                    .fillMaxWidth(),
                                                 theme = MarkdownTheme.auto().copy(linkColor = Color(0xFF1E88E5)),
                                                 onLinkClick = { url: String ->
                                                     val intent = Intent(context, WebViewActivity::class.java).apply {
