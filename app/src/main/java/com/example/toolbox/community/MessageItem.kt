@@ -372,17 +372,9 @@ fun MessageItem(
 
             val rawText = message.content.text ?: message.content.content ?: ""
             if (message.is_markdown) {
-                Markdown(
-                    markdown = rawText,
-                    enableScroll = false,
-                    modifier = Modifier.fillMaxWidth(),
-                    theme = MarkdownTheme.material3(),
-                    onLinkClick = { url: String ->
-                        val intent = Intent(context, WebViewActivity::class.java).apply {
-                            putExtra(WebViewActivity.EXTRA_URL, url)
-                        }
-                        context.startActivity(intent)
-                    }
+                MarkdownRenderer.Render(
+                    content = rawText,
+                    modifier = Modifier.fillMaxWidth()
                 )
             } else {
                 Text(

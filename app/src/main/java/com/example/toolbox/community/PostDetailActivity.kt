@@ -98,19 +98,7 @@ object AppImageLoaders {
 
 @Composable
 fun MarkdownText(content: String, modifier: Modifier = Modifier) {
-    val context = LocalContext.current
-    Markdown(
-        markdown = content,
-        modifier = modifier,
-        enableScroll = false,
-        theme = MarkdownTheme.material3(),
-        onLinkClick = { url: String ->
-            val intent = Intent(context, WebViewActivity::class.java).apply {
-                putExtra(WebViewActivity.EXTRA_URL, url)
-            }
-            context.startActivity(intent)
-        }
-    )
+    MarkdownRenderer.Render(content = content, modifier = modifier)
 }
 
 class PostDetailActivity : ComponentActivity() {
