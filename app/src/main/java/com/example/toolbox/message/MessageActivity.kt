@@ -1159,7 +1159,6 @@ fun MessageBubble(
     val timestampDisplay = message.timestampDisplay ?: message.sendTimeDisplay ?: remember(message.sendTime) {
         try { SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(message.sendTime)) } catch (_: Exception) { "" }
     }
-    val forwardColor = if (isMine) Color(0xFF2196F3) else Color(0xFF9C27B0)
     if (isRecalledMessage) {
         Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
             Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), modifier = Modifier.widthIn(max = 250.dp)) {
@@ -1372,8 +1371,8 @@ fun MessageBubble(
                             colors = CardDefaults.cardColors(
                                 containerColor = when {
                                     message.images.isNotEmpty() && message.content.isBlank() -> Color.Transparent
-                                    isMine -> MaterialTheme.colorScheme.primary.copy(alpha = bubbleOpacity)
-                                    else -> MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = bubbleOpacity)
+                                    isMine -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = bubbleOpacity)
+                                    else -> MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp).copy(alpha = bubbleOpacity)
                                 }
                             ),
                             elevation = if (message.images.isNotEmpty()) CardDefaults.cardElevation(defaultElevation = 0.dp) else CardDefaults.cardElevation()
@@ -1390,10 +1389,10 @@ fun MessageBubble(
                                             context.startActivity(intent)
                                         }
                                     ) {
-                                        Text("转发自 ", fontSize = 12.sp, color = forwardColor, fontWeight = FontWeight.Medium)
+                                        Text("转发自 ", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
                                         AsyncImage(model = fi.avatarUrl, imageLoader = imageLoader, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(20.dp).clip(CircleShape))
                                         Spacer(Modifier.width(4.dp))
-                                        Text(fi.username, fontSize = 12.sp, color = forwardColor, fontWeight = FontWeight.Medium)
+                                        Text(fi.username, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
                                     }
                                 }
                                 if (!isMine && isFirstFromSender && chatType == 2 && message.content.isNotBlank()) {
@@ -1436,28 +1435,25 @@ fun MessageBubble(
                                     }
                                 }
                                 if (message.isMarkdown) {
-                                    val maxHeight = LocalConfiguration.current.screenHeightDp.dp * 2
-                                    Box(modifier = Modifier.heightIn(max = maxHeight)) {
-                                        Markdown(
-                                            markdown = message.content,
-                                            modifier = Modifier
-                                                .padding(8.dp)
-                                                .fillMaxWidth(),
-                                            theme = MarkdownTheme.auto().copy(linkColor = Color(0xFF1E88E5)),
-                                            onLinkClick = { url: String ->
-                                                val intent = Intent(context, WebViewActivity::class.java).apply {
-                                                    putExtra(WebViewActivity.EXTRA_URL, url)
-                                                }
-                                                context.startActivity(intent)
+                                    Markdown(
+                                        markdown = message.content,
+                                        enableScroll = false,
+                                        modifier = Modifier
+                                            .padding(8.dp)
+                                            .fillMaxWidth(),
+                                        theme = MarkdownTheme.material3(),
+                                        onLinkClick = { url: String ->
+                                            val intent = Intent(context, WebViewActivity::class.java).apply {
+                                                putExtra(WebViewActivity.EXTRA_URL, url)
                                             }
-                                        )
-                                    }
+                                            context.startActivity(intent)
+                                        }
+                                    )
                                 } else {
                                     Text(
                                         message.content,
                                         fontSize = 14.sp,
-                                        color = if (isMine) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.95f)
-                                                else MaterialTheme.colorScheme.onSurface
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                 }
                                 if (message.images.isNotEmpty()) {
@@ -1519,9 +1515,9 @@ fun MessageBubble(
                                         .clickable { onTimeClick?.invoke() }  // 添加点击事件
                                 ) {
                                     if (message.content.isNotBlank()) { 
-                                        Text(timestampDisplay, fontSize = 10.sp, color = if (isMine) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant) 
+                                        Text(timestampDisplay, fontSize = 10.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)) 
                                     }
-                                    if (message.editTime != null) Text("已编辑", fontSize = 10.sp, color = if (isMine) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp))
+                                    if (message.editTime != null) Text("已编辑", fontSize = 10.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f), modifier = Modifier.padding(start = 4.dp))
                                 }
                             }
                         }
