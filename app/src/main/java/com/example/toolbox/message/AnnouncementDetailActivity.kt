@@ -295,9 +295,6 @@ fun AnnouncementDetailScreen(
                                 onShowMenuChanged = null,
                                 bubbleOpacity = bubbleOpacity,
                                 bubbleCornerRadius = bubbleCornerRadius,
-                                previewDisplayName = if (shouldShowAvatar) message.displayName else null,
-                                previewDisplayTag = if (shouldShowAvatar) message.displayTag else null,
-                                previewAvatar = if (shouldShowAvatar) message.displayAvatar else null,
                                 showDate = message.showDate,
                                 dateString = message.dateIndicator
                             )
