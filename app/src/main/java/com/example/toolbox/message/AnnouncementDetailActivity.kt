@@ -115,7 +115,7 @@ fun AnnouncementDetailScreen(
                     val result = AppJson.json.decodeFromString<AnnouncementListResponse>(body)
                     withContext(Dispatchers.Main) {
                         if (result.success) {
-                            messages = result.messages.reversed()
+                            messages = result.messages
                         } else {
                             Toast.makeText(context, "加载公告失败", Toast.LENGTH_SHORT).show()
                         }
@@ -267,7 +267,7 @@ fun AnnouncementDetailScreen(
                         state = listState,
                         modifier = Modifier
                             .fillMaxSize(),
-                        reverseLayout = false,
+                        reverseLayout = true,
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         items(
