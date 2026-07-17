@@ -1439,8 +1439,10 @@ fun MessageBubble(
                                         Column {
                                             Markdown(
                                                 markdown = message.content,
-                                                theme = MarkdownTheme.auto(),
-                                                isScrollable = false,   // 禁用内部滚动
+                                                modifier = Modifier
+                                                    .padding(8.dp)
+                                                    .wrapContentHeight(),   // 让 Markdown 自适应高度，不产生内部滚动
+                                                theme = MarkdownTheme.auto().copy(linkColor = Color(0xFF1E88E5)),
                                                 onLinkClick = { url: String ->
                                                     val intent = Intent(context, WebViewActivity::class.java).apply {
                                                         putExtra(WebViewActivity.EXTRA_URL, url)
