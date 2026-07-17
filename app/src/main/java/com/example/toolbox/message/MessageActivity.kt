@@ -138,7 +138,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.delay
 import com.hrm.markdown.renderer.Markdown
 import com.hrm.markdown.renderer.MarkdownTheme
-
+import androidx.compose.material.icons.filled.ContentCopy
 
 // ---- Activity ----
 class MessageDetailActivity : ComponentActivity() {
@@ -1441,20 +1441,25 @@ fun MessageBubble(
                                                 markdown = message.content,
                                                 modifier = Modifier.padding(8.dp),
                                                 theme = MarkdownTheme.auto(),
-                                                onLinkClick = { url -> /* 打开链接 */ }
+                                                onLinkClick = { url ->
+                                                    val intent = Intent(context, WebViewActivity::class.java).apply {
+                                                        putExtra(WebViewActivity.EXTRA_URL, url)
+                                                    }
+                                                    context.startActivity(intent)
+                                                }
                                             )
-                                            // 检查是否包含代码块，显示复制按钮
-                                            val codeBlocks = remember(message.content) {
-                                                Regex("```(\\w*)\\n([\\s\\S]*?)```").findAll(message.content).toList()
+                                            // 如果消息中包含代码块，显示复制代码按钮
+                                            val containsCode = remember(message.content) {
+                                                message.content.contains("```")
                                             }
-                                            if (codeBlocks.isNotEmpty()) {
+                                            if (containsCode) {
                                                 TextButton(
                                                     onClick = {
-                                                        val context = LocalContext.current
-                                                        val allCode = codeBlocks.joinToString("\n\n") { it.groupValues[2] }
+                                                        val codeBlocks = Regex("```(?:\\w*\\n)?([\\s\\S]*?)```").findAll(message.content)
+                                                        val allCode = codeBlocks.joinToString("\n\n") { it.groupValues[1] }
                                                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                                         clipboard.setPrimaryClip(ClipData.newPlainText("code", allCode))
-                                                        Toast.makeText(context, "已复制所有代码", Toast.LENGTH_SHORT).show()
+                                                        Toast.makeText(context, "代码已复制", Toast.LENGTH_SHORT).show()
                                                     },
                                                     modifier = Modifier.align(Alignment.End)
                                                 ) {
