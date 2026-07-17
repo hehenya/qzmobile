@@ -1045,7 +1045,13 @@ fun MessageDetailScreen(
                         },
                         onAddImageClick = { imagePicker.launch("image/*") },
                         onRemoveImage = { viewModel.removeImage(it) },
-                        onToggleMarkdown = { viewModel.toggleMarkdown() },
+                        onToggleMarkdown = {
+                            if (uiState.editingMessage != null) {
+                                viewModel.toggleEditingMarkdown()
+                            } else {
+                                viewModel.toggleMarkdown()
+                            }
+                        },
                         innerPadding = innerPadding,
                         isUploading = isUploading,
                         uploadProgress = uploadProgress,
