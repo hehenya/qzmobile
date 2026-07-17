@@ -132,7 +132,9 @@ fun SettingsScreen(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     val prefs = context.getSharedPreferences("app_preferences", MODE_PRIVATE)
-    
+    var isDisableInAppBrowser by remember {
+        mutableStateOf(prefs.getBoolean("disable_in_app_browser", false))
+    }
     var isOpenCancelTips by remember { 
         mutableStateOf(prefs.getBoolean("exit_confirmation", false)) 
     }
@@ -324,10 +326,26 @@ fun SettingsScreen(
                                     }
                                 }
                             )
+                        },
+                        // 新增开关
+                        {
+                            SettingsSwitchItem(
+                                icon = Icons.Default.Public,
+                                title = "禁用内置浏览器",
+                                subtitle = "使用系统浏览器打开链接",
+                                checked = isDisableInAppBrowser,
+                                onCheckedChange = { checked ->
+                                    isDisableInAppBrowser = checked
+                                    prefs.edit().apply {
+                                        putBoolean("disable_in_app_browser", isDisableInAppBrowser)
+                                        apply()
+                                    }
+                                }
+                            )
                         }
                     )
                 )
-            }
+        }
 
             item {
                 SettingsGroup(

@@ -76,6 +76,21 @@ class WebViewActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val prefs = getSharedPreferences("app_preferences", MODE_PRIVATE)
+        val disableInAppBrowser = prefs.getBoolean("disable_in_app_browser", false)
+
+        if (disableInAppBrowser) {
+            val url = intent.getStringExtra(EXTRA_URL)
+            if (!url.isNullOrBlank()) {
+                try {
+                    startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+                } catch (e: Exception) {
+                    Toast.makeText(this, "未找到可打开链接的应用", Toast.LENGTH_SHORT).show()
+                }
+            }
+            finish()
+            return
+        }
         enableEdgeToEdge()
 
         val url = intent.getStringExtra(EXTRA_URL) ?: "https://www.bing.com"

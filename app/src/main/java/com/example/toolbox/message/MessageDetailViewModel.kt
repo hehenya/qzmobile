@@ -1313,7 +1313,9 @@ class MessageDetailViewModel(
 
     private val _isLoadingActiveDays = MutableStateFlow(false)
     val isLoadingActiveDays: StateFlow<Boolean> = _isLoadingActiveDays.asStateFlow()
+    private val loadedYearMonths = mutableSetOf<YearMonth>()
     fun loadActiveDays(yearMonth: YearMonth = YearMonth.now()) {
+        if (yearMonth in loadedYearMonths) return  
         viewModelScope.launch {
             _isLoadingActiveDays.value = true
             try {
@@ -1326,7 +1328,7 @@ class MessageDetailViewModel(
                     put("chat_type", chatType)
                     put("chat_id", chatId)
                     put("page", 1)
-                    put("per_page", 31)
+                    put("per_page", 31) 
                 }.toString()
                 
                 val requestBody = jsonBody.toRequestBody("application/json; charset=utf-8".toMediaType())
@@ -1343,6 +1345,7 @@ class MessageDetailViewModel(
                             val result = jsonParser.decodeFromString<ActiveDaysResponse>(body)
                             if (result.success) {
                                 _activeDays.value = result.activeDays
+                                loadedYearMonths.add(yearMonth)  
                             }
                         }
                     }

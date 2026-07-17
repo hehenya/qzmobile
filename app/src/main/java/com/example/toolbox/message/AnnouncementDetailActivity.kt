@@ -129,7 +129,6 @@ fun AnnouncementDetailScreen(
         }
     }
 
-    // 加载聊天背景
     LaunchedEffect(Unit) {
         try {
             val client = OkHttpClient()
@@ -146,13 +145,14 @@ fun AnnouncementDetailScreen(
             withContext(Dispatchers.IO) {
                 client.newCall(request).execute().use { response ->
                     val body = response.body?.string() ?: ""
-                    val result = JSONObject(body)
-                    val rawUrl = result.optString("background_url", "")
-                    withContext(Dispatchers.Main) {
-                        backgroundUrl = if (rawUrl.isNotBlank()) {
-                            if (rawUrl.startsWith("http")) rawUrl else "${ApiAddress}uploads/$rawUrl"
-                        } else null
+                    val result = AppJson.json.decodeFromString<BackgroundResponse>(body)
+                    if (result.success && result.data != null) {
+                        val rawUrl = result.data.backgroundUrl
+                        if (rawUrl.isNotBlank()) {
+                            backgroundUrl = if (rawUrl.startsWith("http")) rawUrl else "${ApiAddress}uploads/$rawUrl"
+                        }
                     }
+                    
                 }
             }
         } catch (_: Exception) { }
@@ -169,6 +169,8 @@ fun AnnouncementDetailScreen(
                 val request = Request.Builder()
                     .url("${ApiAddress}group/set_announcement")
                     .header("x-access-token", token)
+                    .header("linkinfo", "true")
+                    .header("timeis", "true")
                     .post(json.toString().toRequestBody("application/json".toMediaType()))
                     .build()
 
@@ -307,6 +309,8 @@ fun AnnouncementDetailScreen(
                                 previewDisplayName = if (shouldShowAvatar) message.displayName else null,
                                 previewDisplayTag = if (shouldShowAvatar) message.displayTag else null,
                                 previewAvatar = if (shouldShowAvatar) message.displayAvatar else null,
+                                showDate = message.showDate,
+                                dateString = message.dateIndicator
                             )
                         }
                     }
