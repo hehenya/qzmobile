@@ -1441,7 +1441,12 @@ fun MessageBubble(
                                                 markdown = message.content,
                                                 theme = MarkdownTheme.auto(),
                                                 isScrollable = false,   // 禁用内部滚动
-                                                onLinkClick = { url -> /* 打开链接 */ }
+                                                onLinkClick = { url: String ->
+                                                    val intent = Intent(context, WebViewActivity::class.java).apply {
+                                                        putExtra(WebViewActivity.EXTRA_URL, url)
+                                                    }
+                                                    context.startActivity(intent)
+                                                }
                                             )
                                         }
                                     }
