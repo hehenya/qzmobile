@@ -31,13 +31,13 @@ import com.example.toolbox.TokenManager
 import com.example.toolbox.data.community.Category
 import com.example.toolbox.data.community.Message
 import com.example.toolbox.mine.getLevelIconRes
-import com.example.toolbox.utils.MarkdownRenderer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.hrm.markdown.renderer.Markdown
 import com.hrm.markdown.renderer.MarkdownTheme
-
+import com.example.toolbox.webview.WebViewActivity
+import android.net.Uri
 @Composable
 fun CategoryItem(
     select: Boolean,
@@ -136,7 +136,6 @@ fun MessageItem(
     onHistory: () -> Unit,
     onImageClick: (List<String>, Int) -> Unit,
 ) {
-    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val colorScheme = MaterialTheme.colorScheme
     var showMenu by remember { mutableStateOf(false) }
@@ -375,12 +374,12 @@ fun MessageItem(
             if (message.is_markdown) {
                 Markdown(
                     markdown = rawText,
-                    enableScroll = false,   // 避免内部滚动，与父布局不冲突
+                    enableScroll = false,
                     modifier = Modifier.fillMaxWidth(),
                     theme = MarkdownTheme.material3(),
                     onLinkClick = { url: String ->
                         val intent = Intent(context, WebViewActivity::class.java).apply {
-                            putExtra("url", url)
+                            putExtra(WebViewActivity.EXTRA_URL, url)
                         }
                         context.startActivity(intent)
                     }
