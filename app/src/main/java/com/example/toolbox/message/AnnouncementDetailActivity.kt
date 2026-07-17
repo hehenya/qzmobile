@@ -276,14 +276,6 @@ fun AnnouncementDetailScreen(
                         ) { message ->
                             val index = messages.indexOf(message)
 
-                            val previousMessage = messages.getOrNull(index - 1)
-                            val isSameSenderAsPrevious = previousMessage != null &&
-                                    previousMessage.senderId == message.senderId &&
-                                    !previousMessage.isRecalled &&
-                                    !previousMessage.isSystem
-
-                            val shouldShowAvatar = (index == messages.size - 1) || !isSameSenderAsPrevious
-
                             MessageBubble(
                                 context = context,
                                 clipboard = clipboard,
@@ -293,8 +285,7 @@ fun AnnouncementDetailScreen(
                                 onImageClick = { _, _ -> },
                                 onReply = {},
                                 isAdmin = isAdmin,
-                                showAvatar = shouldShowAvatar,
-                                isOlderSameSender = isSameSenderAsPrevious,
+                                isOlderSameSender = false,
                                 isNewerSameSender = false,
                                 avatarAlignment = Alignment.Bottom,
                                 chatType = 2,

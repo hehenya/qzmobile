@@ -106,9 +106,9 @@ dependencies {
     implementation(libs.socket.io.client)
 
     //Markdown(pravite)
-    implementation("io.github.huarangmeng:markdown-parser:1.2.1")
-    implementation("io.github.huarangmeng:markdown-runtime:1.2.1")
-    implementation("io.github.huarangmeng:markdown-renderer:1.2.1")
+    implementation("io.github.huarangmeng:markdown-parser:1.4.1")
+    implementation("io.github.huarangmeng:markdown-runtime:1.4.1")
+    implementation("io.github.huarangmeng:markdown-renderer:1.4.1")
     //md other
     implementation(libs.multiplatform.markdown.renderer)
     implementation(libs.multiplatform.markdown.renderer.m3)
