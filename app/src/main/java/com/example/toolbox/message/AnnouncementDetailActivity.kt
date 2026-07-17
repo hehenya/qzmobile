@@ -103,6 +103,8 @@ fun AnnouncementDetailScreen(
             val request = Request.Builder()
                 .url(url)
                 .header("x-access-token", token)
+                .header("linkinfo", "true")   
+                .header("timeis", "true")
                 .post(json.toString().toRequestBody("application/json".toMediaType()))
                 .build()
 
@@ -113,7 +115,7 @@ fun AnnouncementDetailScreen(
                     val result = AppJson.json.decodeFromString<AnnouncementListResponse>(body)
                     withContext(Dispatchers.Main) {
                         if (result.success) {
-                            messages = result.messages
+                            messages = result.messages.reversed()
                         } else {
                             Toast.makeText(context, "加载公告失败", Toast.LENGTH_SHORT).show()
                         }
@@ -169,8 +171,6 @@ fun AnnouncementDetailScreen(
                 val request = Request.Builder()
                     .url("${ApiAddress}group/set_announcement")
                     .header("x-access-token", token)
-                    .header("linkinfo", "true")
-                    .header("timeis", "true")
                     .post(json.toString().toRequestBody("application/json".toMediaType()))
                     .build()
 

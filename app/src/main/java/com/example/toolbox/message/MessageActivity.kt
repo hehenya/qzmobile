@@ -1439,35 +1439,10 @@ fun MessageBubble(
                                         Column {
                                             Markdown(
                                                 markdown = message.content,
-                                                modifier = Modifier.padding(8.dp),
                                                 theme = MarkdownTheme.auto(),
-                                                onLinkClick = { url ->
-                                                    val intent = Intent(context, WebViewActivity::class.java).apply {
-                                                        putExtra(WebViewActivity.EXTRA_URL, url)
-                                                    }
-                                                    context.startActivity(intent)
-                                                }
+                                                isScrollable = false,   // 禁用内部滚动
+                                                onLinkClick = { url -> /* 打开链接 */ }
                                             )
-                                            // 如果消息中包含代码块，显示复制代码按钮
-                                            val containsCode = remember(message.content) {
-                                                message.content.contains("```")
-                                            }
-                                            if (containsCode) {
-                                                TextButton(
-                                                    onClick = {
-                                                        val codeBlocks = Regex("```(?:\\w*\\n)?([\\s\\S]*?)```").findAll(message.content)
-                                                        val allCode = codeBlocks.joinToString("\n\n") { it.groupValues[1] }
-                                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                                        clipboard.setPrimaryClip(ClipData.newPlainText("code", allCode))
-                                                        Toast.makeText(context, "代码已复制", Toast.LENGTH_SHORT).show()
-                                                    },
-                                                    modifier = Modifier.align(Alignment.End)
-                                                ) {
-                                                    Icon(Icons.Default.ContentCopy, "复制代码", Modifier.size(16.dp))
-                                                    Spacer(Modifier.width(4.dp))
-                                                    Text("复制代码", fontSize = 12.sp)
-                                                }
-                                            }
                                         }
                                     }
                                     else Text(
