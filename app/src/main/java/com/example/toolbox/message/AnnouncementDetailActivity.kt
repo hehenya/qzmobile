@@ -298,8 +298,6 @@ fun AnnouncementDetailScreen(
                                 isNewerSameSender = false,
                                 avatarAlignment = Alignment.Bottom,
                                 chatType = 2,
-                                showDate = false,
-                                dateString = null,
                                 isSelectionMode = false,
                                 isSelected = false,
                                 showMenu = false,
