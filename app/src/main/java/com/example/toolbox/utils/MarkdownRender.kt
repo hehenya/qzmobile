@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -15,8 +14,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.hrm.markdown.renderer.Markdown
 import com.hrm.markdown.renderer.MarkdownTheme
-import com.hrm.markdown.renderer.components.MarkdownComponents
-import com.hrm.markdown.renderer.components.ImageState
+import com.hrm.markdown.renderer.model.MarkdownImageData
 import com.example.toolbox.webview.WebViewActivity
 
 object MarkdownRenderer {
@@ -26,47 +24,41 @@ object MarkdownRenderer {
         modifier: Modifier = Modifier,
         content: String,
         onLinkClick: ((String) -> Unit)? = null,
-        onImageClick: ((String, String) -> Unit)? = null
+        onImageClick: ((String, String) -> Unit)? = null  // (imageUrl, altText)
     ) {
         val context = LocalContext.current
 
-        // 准备图片组件（若将来需要）
-        val components = remember(onImageClick) {
-            if (onImageClick != null) {
-                MarkdownComponents(
-                    image = { state ->
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                                .clickable {
-                                    onImageClick.invoke(state.url, state.altText.orEmpty())
-                                }
-                        ) {
-                            AsyncImage(
-                                model = state.url,
-                                contentDescription = state.altText.orEmpty(),
-                                modifier = Modifier.fillMaxWidth(),
-                                contentScale = ContentScale.FillWidth
-                            )
-                        }
-                    }
-                )
-            } else null
-        }
-
         Markdown(
-            markdown = content,
+            document = content,   // 新版库的参数名
             modifier = modifier,
             enableScroll = false,
             theme = MarkdownTheme.material3(),
-            components = components,
+            // 自定义图片渲染（如果调用方需要图片点击，则传入回调）
+            imageContent = if (onImageClick != null) {
+                { imageData: MarkdownImageData, imageModifier: Modifier ->
+                    Box(
+                        modifier = imageModifier
+                            .clickable {
+                                onImageClick(imageData.url, imageData.altText ?: "")
+                            }
+                    ) {
+                        AsyncImage(
+                            model = imageData.url,
+                            contentDescription = imageData.altText,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            contentScale = ContentScale.FillWidth
+                        )
+                    }
+                }
+            } else null,
             onLinkClick = { url: String ->
                 // 优先使用调用方传入的自定义回调
                 if (onLinkClick != null) {
                     onLinkClick(url)
                 } else {
-                    // 默认行为：HTTP 链接使用内置浏览器，否则使用系统浏览器
+                    // 默认行为：HTTP/HTTPS 用内置浏览器，其他用系统浏览器
                     if (url.startsWith("http://") || url.startsWith("https://")) {
                         try {
                             val intent = Intent(context, WebViewActivity::class.java).apply {
@@ -74,7 +66,6 @@ object MarkdownRenderer {
                             }
                             context.startActivity(intent)
                         } catch (_: Exception) {
-                            // 内置浏览器不可用时回退到系统浏览器
                             openWithSystemBrowser(context, url)
                         }
                     } else {
@@ -89,8 +80,6 @@ object MarkdownRenderer {
         try {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
             context.startActivity(intent)
-        } catch (_: Exception) {
-            // 无应用可打开，静默忽略
-        }
+        } catch (_: Exception) { }
     }
 }
