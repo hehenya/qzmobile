@@ -101,12 +101,41 @@ class MessageDetailViewModel(
 
     private val _targetMessageId = MutableStateFlow<String?>(null)
     val targetMessageId: StateFlow<String?> = _targetMessageId.asStateFlow()
+    if (showScheduledList) {
+        ScheduledMessageListOverlay(
+            messages = uiState.scheduledMessages,
+            backgroundUrl = viewModel.backgroundUrl.value,
+            onDismiss = { showScheduledList = false },
+            onCancel = { viewModel.cancelScheduledMessage(it) },
+            onCopy = { content -> 
+                val clipboardManager = LocalContext.current.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                clipboardManager.setPrimaryClip(ClipData.newPlainText("text", content))
+                Toast.makeText(LocalContext.current, "已复制", Toast.LENGTH_SHORT).show()
+            }
+        )
+    }
+
+    // 全屏或底部弹窗：定时消息列表
+    if (showScheduledList) {
+        ScheduledMessageListOverlay(
+            messages = uiState.scheduledMessages,
+            backgroundUrl = viewModel.backgroundUrl.value,
+            onDismiss = { showScheduledList = false },
+            onCancel = { viewModel.cancelScheduledMessage(it) },
+            onCopy = { content -> 
+                val clipboardManager = LocalContext.current.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                clipboardManager.setPrimaryClip(ClipData.newPlainText("text", content))
+                Toast.makeText(LocalContext.current, "已复制", Toast.LENGTH_SHORT).show()
+            }
+        )
+    }
     init {
         val app = MyApplication.instance
         currentUserId = if (app != null) TokenManager.getUserID(app) else 0
         Log.d("AtDebug", "currentUserId = $currentUserId")
 
         loadMessages()
+        loadScheduledList()
         connectWebSocket()
         loadBackground()
         if (chatType == 2) {
@@ -372,7 +401,8 @@ class MessageDetailViewModel(
                             isChatExpired = result.tempChatExpired,
                             otherUser = result.otherUser,
                             groupInfo = if (chatType == 2) state.groupInfo else null,
-                            error = null
+                            error = null,
+                            hasScheduled = result.hasScheduled 
                         )
                     }
     
@@ -567,7 +597,95 @@ class MessageDetailViewModel(
             exitSelectionMode()
         }
     }
+    fun loadScheduledList() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingScheduled = true) }
+            try {
+                val body = JSONObject().apply {
+                    put("chat_type", chatType)
+                    put("chat_id", chatId)
+                    put("page", 1)
+                    put("per_page", 20)
+                }
+                val request = Request.Builder()
+                    .url("${ApiAddress}chat/scheduled_list")
+                    .post(body.toString().toRequestBody("application/json".toMediaType()))
+                    .header("x-access-token", token)
+                    .build()
+                
+                withContext(Dispatchers.IO) {
+                    client.newCall(request).execute().use { response ->
+                        if (response.isSuccessful) {
+                            val resp = AppJson.json.decodeFromString<ScheduleListResponse>(response.body?.string() ?: "")
+                            if (resp.success) {
+                                _uiState.update { 
+                                    it.copy(scheduledMessages = resp.messages, hasScheduled = resp.messages.isNotEmpty()) 
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("Schedule", "loadScheduledList error", e)
+            } finally {
+                _uiState.update { it.copy(isLoadingScheduled = false) }
+            }
+        }
+    }
 
+    // 创建定时消息
+    fun scheduleMessage(scheduledAt: String, text: String, images: List<String>) {
+        viewModelScope.launch {
+            try {
+                val data = JSONObject().apply {
+                    put("text", text)
+                    put("images", JSONArray(images))
+                    put("is_markdown", _uiState.value.isMarkdown)
+                }
+                val body = JSONObject().apply {
+                    put("chat_type", chatType)
+                    put("chat_id", chatId)
+                    put("scheduled_at", scheduledAt)
+                    put("data", data)
+                }
+                val request = Request.Builder()
+                    .url("${ApiAddress}chat/schedule_send")
+                    .post(body.toString().toRequestBody("application/json".toMediaType()))
+                    .header("x-access-token", token)
+                    .build()
+                
+                withContext(Dispatchers.IO) { client.newCall(request).execute() }
+                
+                // 成功后清空输入框并刷新列表
+                _uiState.update { it.copy(inputText = "", selectedImages = emptyList()) }
+                loadScheduledList()
+                _toastMessage.emit("定时消息已设置")
+            } catch (e: Exception) {
+                _toastMessage.emit("设置定时消息失败: ${e.message}")
+            }
+        }
+    }
+
+    // 取消定时消息
+    fun cancelScheduledMessage(id: Int) {
+        viewModelScope.launch {
+            try {
+                val body = JSONObject().apply { put("scheduled_id", id) }
+                val request = Request.Builder()
+                    .url("${ApiAddress}chat/cancel_schedule")
+                    .post(body.toString().toRequestBody("application/json".toMediaType()))
+                    .header("x-access-token", token)
+                    .build()
+                
+                withContext(Dispatchers.IO) { client.newCall(request).execute() }
+                loadScheduledList() // 刷新列表
+                _toastMessage.emit("已取消定时消息")
+            } catch (e: Exception) {
+                _toastMessage.emit("取消失败: ${e.message}")
+            }
+        }
+    }
+}
     private suspend fun recallMessageInternal(msgId: String) {
         withContext(Dispatchers.IO) {
             val json = JSONObject().apply {
@@ -1493,6 +1611,21 @@ data class BackgroundData(
     @SerialName("chat_type") val chatType: Int,
     @SerialName("target_id") val targetId: Int,
     @SerialName("background_url") val backgroundUrl: String = ""
+)
+@Serializable
+data class ScheduledMessage(
+    val id: Int,
+    val content: String,
+    val images: List<String> = emptyList(),
+    @SerialName("is_markdown") val isMarkdown: Boolean = false,
+    @SerialName("scheduled_at") val scheduledAt: String,
+    @SerialName("scheduled_at_display") val scheduledAtDisplay: String,
+    val status: Int = 0
+)
+@Serializable
+data class ScheduleListResponse(
+    val success: Boolean,
+    @SerialName("scheduled_messages") val messages: List<ScheduledMessage> = emptyList()
 )
 
 class MessageDetailViewModelFactory(

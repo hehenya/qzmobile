@@ -158,6 +158,7 @@ data class GetMessagesResponse(
     @SerialName("is_admin") val isAdmin: Boolean = false,
     @SerialName("is_muted") val isMuted: Boolean = false,
     @SerialName("mute_end_time") val muteEndTime: String? = null,
+    @SerialName("has_scheduled") val hasScheduled: Boolean = false,
     @SerialName("my_role") val myRole: Int? = null
 )
 
@@ -233,6 +234,9 @@ data class MessageDetailUiState(
     val latestAnnouncement: Message? = null,
     val atMessages: List<Message> = emptyList(),
     val hasAtMessage: Boolean = false,
+    val hasScheduled: Boolean = false,
+    val scheduledMessages: List<ScheduledMessage> = emptyList(),
+    val isLoadingScheduled: Boolean = false
 )
 
 // 撤回确认弹窗状态

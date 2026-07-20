@@ -140,6 +140,9 @@ import com.hrm.markdown.renderer.Markdown
 import com.hrm.markdown.renderer.MarkdownTheme
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberTimePickerState
 
 // ---- Activity ----
 class MessageDetailActivity : ComponentActivity() {
@@ -390,6 +393,33 @@ fun MessageDetailScreen(
     val density = LocalDensity.current
     val isUploading by viewModel.isUploading.collectAsState()
     val uploadProgress by viewModel.uploadProgress.collectAsState()
+    var showScheduleMenu by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+    var showScheduledList by remember { mutableStateOf(false) }
+    if (showTimePicker) {
+        ScheduleTimePickerBottomSheet(
+            onDismiss = { showTimePicker = false },
+            onConfirm = { dateTimeStr ->
+                viewModel.scheduleMessage(dateTimeStr, uiState.inputText, uiState.selectedImages)
+                showTimePicker = false
+            }
+        )
+    }
+
+    if (showScheduledList) {
+        ScheduledMessageListOverlay(
+            messages = uiState.scheduledMessages,
+            backgroundUrl = backgroundUrl.value,
+            onDismiss = { showScheduledList = false },
+            onCancel = { viewModel.cancelScheduledMessage(it) },
+            // 👇 UI层才能拿到的LocalContext和ClipboardManager移到这里
+            onCopy = { content -> 
+                val clipboardManager = LocalContext.current.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                clipboardManager.setPrimaryClip(ClipData.newPlainText("text", content))
+                Toast.makeText(LocalContext.current, "已复制", Toast.LENGTH_SHORT).show()
+            }
+        )
+    }
 
     LaunchedEffect(
         uiState.messages.size,
@@ -1071,6 +1101,7 @@ fun MessageDetailScreen(
                             onEmojiLongPress = { viewModel.deleteEmoji(it) },
                             modifier = Modifier.height(260.dp)
                         )
+                        
                     }
                 }
             }
@@ -2082,7 +2113,11 @@ fun MessageInput(
     onTextChange: (String) -> Unit, onSendClick: () -> Unit, onAddImageClick: () -> Unit,
     onRemoveImage: (Int) -> Unit, onToggleMarkdown: () -> Unit, innerPadding: PaddingValues,
     isUploading: Boolean = false, uploadProgress: Float = 0f, onCancelUpload: () -> Unit = {},
-    onEmojiClick: () -> Unit = {}
+    onEmojiClick: () -> Unit = {},hasScheduled: Boolean,
+    onScheduledListClick: () -> Unit,
+    showScheduleMenu: Boolean,
+    onShowScheduleMenuChange: (Boolean) -> Unit,
+    onScheduleMenuConfirm: () -> Unit
 ) {
     var showAttachmentMenu by remember { mutableStateOf(false) }
     Surface(
@@ -2129,15 +2164,71 @@ fun MessageInput(
                     )
                 )
                 Spacer(Modifier.width(5.dp))
-                Box(contentAlignment = Alignment.Center) {
-                    IconButton(onClick = onSendClick, modifier = Modifier.size(40.dp), enabled = inputText.isNotBlank() || selectedImages.isNotEmpty()) { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "发送") }
-                    if (isMarkdown) { Text("MD", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, modifier = Modifier.align(Alignment.TopEnd).padding(2.dp)) }
+                Box {
+                    BadgedBox(
+                        badge = {
+                            if (hasScheduled) {
+                                Badge(
+                                    containerColor = MaterialTheme.colorScheme.error,
+                                    contentColor = Color.White,
+                                    modifier = Modifier.size(8.dp)
+                                ) {}
+                            }
+                        }
+                    ) {
+                        IconButton(onClick = onScheduledListClick, modifier = Modifier.size(32.dp)) {
+                            Icon(Icons.Default.Event, contentDescription = "定时消息", tint = MaterialTheme.colorScheme.onSurface)
+                        }
+                    }
+                }
+
+                Spacer(Modifier.width(2.dp))
+
+                // 发送按钮（支持长按）
+                Box {
+                    IconButton(
+                        onClick = {
+                            // 防止长按菜单弹出时触发普通点击
+                            if (!showScheduleMenu) {
+                                onSendClick()
+                            }
+                        },
+                        modifier = Modifier
+                            .size(40.dp)
+                            .pointerInput(Unit) {
+                                detectTapGestures(
+                                    onLongPress = {
+                                        onShowScheduleMenuChange(true)
+                                    }
+                                )
+                            },
+                        enabled = inputText.isNotBlank() || selectedImages.isNotEmpty()
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "发送")
+                    }
+
+                    // 长按菜单 (TG风格)
+                    DropdownMenu(
+                        expanded = showScheduleMenu,
+                        onDismissRequest = { onShowScheduleMenuChange(false) },
+                        modifier = Modifier.background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("定时消息", fontWeight = FontWeight.Medium) },
+                            leadingIcon = { Icon(Icons.Default.Event, null, Modifier.size(18.dp)) },
+                            onClick = {
+                                onShowScheduleMenuChange(false)
+                                onScheduleMenuConfirm()
+                            }
+                        )
+                        
+                    }
                 }
             }
         }
     }
 }
-
+            
 @Composable
 fun UploadProgressBar(progress: Float, onCancel: () -> Unit, modifier: Modifier = Modifier) {
     val percent = ((progress.coerceIn(0f, 1f)) * 100f).toInt()
@@ -2474,6 +2565,211 @@ object AppImageLoaders {
                 .crossfade(true)
                 .allowHardware(false)
                 .build().also { _coil3Loader = it }
+        }
+    }
+}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ScheduleTimePickerBottomSheet(
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    // 用 Calendar 获取当前时分，完全兼容低版本安卓
+    val currentCalendar = Calendar.getInstance()
+    val initialHour = currentCalendar.get(Calendar.HOUR_OF_DAY)
+    val initialMinute = currentCalendar.get(Calendar.MINUTE)
+
+    // 日期状态
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = currentCalendar.timeInMillis
+    )
+    // 时间状态（24小时制）
+    val timePickerState = rememberTimePickerState(
+        initialHour = initialHour,
+        initialMinute = initialMinute,
+        is24Hour = true
+    )
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp)
+                .height(480.dp), // 👈 高度需要增加，容纳两个选择器
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("定时发送", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+
+            Text("选择日期", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(4.dp))
+            // 日期选择器
+            DatePicker(
+                state = datePickerState,
+                modifier = Modifier.fillMaxWidth().height(200.dp)
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            Text("选择时间", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(4.dp))
+            // 时间选择器（内联模式）
+            TimePicker(
+                state = timePickerState,
+                modifier = Modifier.fillMaxWidth().height(150.dp)
+            )
+
+            Spacer(Modifier.height(24.dp))
+
+            // 底部确认按钮
+            Button(
+                onClick = {
+                    val selectedDateMillis = datePickerState.selectedDateMillis
+                    if (selectedDateMillis != null) {
+                        // 1. 取出用户选择的日期
+                        val calendar = Calendar.getInstance().apply { timeInMillis = selectedDateMillis }
+                        // 2. 取出用户选择的时间
+                        calendar.set(Calendar.HOUR_OF_DAY, timePickerState.hour)
+                        calendar.set(Calendar.MINUTE, timePickerState.minute)
+                        calendar.set(Calendar.SECOND, 0)
+                        calendar.set(Calendar.MILLISECOND, 0)
+
+                        // 3. 格式化为 yyyy-MM-dd HH:mm:ss
+                        val formatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                        val finalDateTimeStr = formatter.format(calendar.time)
+
+                        onConfirm(finalDateTimeStr)
+                    } else {
+                        // 用户没选日期时的兜底提示
+                        Toast.makeText(LocalContext.current, "请先选择日期", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("确认定时")
+            }
+        }
+    }
+}
+@Composable
+fun ScheduledMessageListOverlay(
+    messages: List<ScheduledMessage>,
+    backgroundUrl: String?,
+    onDismiss: () -> Unit,
+    onCancel: (Int) -> Unit,
+    onCopy: (String) -> Unit
+) {
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f))) {
+        // 背景图
+        if (backgroundUrl != null && backgroundUrl.isNotEmpty()) {
+            AsyncImage(
+                model = backgroundUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
+        Column(modifier = Modifier.fillMaxSize()) {
+            // 顶部导航栏
+            TopAppBar(
+                title = { Text("定时消息") },
+                navigationIcon = {
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
+            )
+
+            // 消息列表
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(messages) { msg ->
+                    val showMenu = remember { mutableStateOf(false) }
+                    
+                    // 气泡样式
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .combinedClickable(
+                                onClick = { showMenu.value = true },
+                                onLongClick = { showMenu.value = true }
+                            ),
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(msg.content, style = MaterialTheme.typography.bodyMedium)
+                            if (msg.images.isNotEmpty()) {
+                                Spacer(Modifier.height(8.dp))
+                                AsyncImage(
+                                    model = msg.images.first(),
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp))
+                                )
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "计划于 ${msg.scheduledAtDisplay} 发送",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+
+                    // 点击消息后弹出的菜单 (复制、取消发送)
+                    if (showMenu.value) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Card(
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                                modifier = Modifier.padding(16.dp)
+                            ) {
+                                Column {
+                                    if (msg.content.isNotBlank()) {
+                                        TextButton(
+                                            onClick = { 
+                                                onCopy(msg.content)
+                                                showMenu.value = false
+                                            }
+                                        ) {
+                                            Icon(Icons.Default.ContentCopy, null, Modifier.size(16.dp))
+                                            Spacer(Modifier.width(8.dp))
+                                            Text("复制")
+                                        }
+                                    }
+                                    TextButton(
+                                        onClick = { 
+                                            onCancel(msg.id)
+                                            showMenu.value = false
+                                        },
+                                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                                    ) {
+                                        Icon(Icons.Default.Delete, null, Modifier.size(16.dp))
+                                        Spacer(Modifier.width(8.dp))
+                                        Text("取消发送")
+                                    }
+                                    TextButton(onClick = { showMenu.value = false }) {
+                                        Text("关闭")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
