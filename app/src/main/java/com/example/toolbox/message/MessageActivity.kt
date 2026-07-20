@@ -1318,9 +1318,9 @@ fun MessageDetailScreen(
             }
         )
     }
-
-    
 }
+
+
 
 @Composable
 fun AnimatedScrollToBottomButton(visible: Boolean, unreadCount: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
