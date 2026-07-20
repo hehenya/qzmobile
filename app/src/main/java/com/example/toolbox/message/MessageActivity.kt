@@ -145,6 +145,8 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
 import com.example.toolbox.data.ScheduledMessage
 import com.example.toolbox.data.ScheduleListResponse
+import androidx.compose.foundation.gestures.pointerInput
+import java.util.Calendar
 
 // ---- Activity ----
 class MessageDetailActivity : ComponentActivity() {
@@ -388,6 +390,9 @@ fun MessageDetailScreen(
     val bubbleCornerRadius by settingsStorage.bubbleCornerRadiusFlow.collectAsState(initial = 16f)
     val bubbleOpacity by settingsStorage.bubbleOpacityFlow.collectAsState(initial = 0.9f)
     val backgroundUrl by viewModel.backgroundUrl.collectAsState()
+    var showScheduleMenu by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+    var showScheduledList by remember { mutableStateOf(false) }
     val hazeState = remember { HazeState() }
     val scope = rememberCoroutineScope()
     val clipboard = LocalClipboard.current
@@ -1062,7 +1067,12 @@ fun MessageDetailScreen(
                         isUploading = isUploading,
                         uploadProgress = uploadProgress,
                         onCancelUpload = { viewModel.cancelUpload() },
-                        onEmojiClick = { viewModel.toggleEmojiPanel() }
+                        onEmojiClick = { viewModel.toggleEmojiPanel() },
+                        hasScheduled = uiState.hasScheduled,
+                        onScheduledListClick = { showScheduledList = true },
+                        showScheduleMenu = showScheduleMenu,
+                        onShowScheduleMenuChange = { showScheduleMenu = it },
+                        onScheduleMenuConfirm = { showTimePicker = true }
                         
                     )
                     AnimatedVisibility(
