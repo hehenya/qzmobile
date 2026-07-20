@@ -52,6 +52,7 @@ import kotlinx.serialization.json.Json
 import com.example.toolbox.TokenManager
 import com.example.toolbox.data.ScheduledMessage
 import com.example.toolbox.data.ScheduleListResponse
+import org.json.JSONArray
 class MessageDetailViewModel(
     private val token: String,
     private val chatType: Int,
@@ -659,7 +660,7 @@ class MessageDetailViewModel(
             }
         }
     }
-}
+
     private suspend fun recallMessageInternal(msgId: String) {
         withContext(Dispatchers.IO) {
             val json = JSONObject().apply {
