@@ -121,7 +121,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.SaveAlt
 import androidx.compose.material.icons.filled.Campaign
-import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.PushPin
 import com.example.toolbox.message.AnnouncementDetailActivity
 import com.example.toolbox.message.AnimatedAtMessageButton
@@ -145,7 +144,7 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
 import com.example.toolbox.data.ScheduledMessage
 import com.example.toolbox.data.ScheduleListResponse
-import androidx.compose.foundation.gestures.pointerInput
+import androidx.compose.ui.input.pointer.pointerInput
 import java.util.Calendar
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -154,7 +153,7 @@ fun ScheduleTimePickerBottomSheet(
     onConfirm: (String) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
+    val context = LocalContext.current
     // 用 Calendar 获取当前时分，完全兼容低版本安卓
     val currentCalendar = Calendar.getInstance()
     val initialHour = currentCalendar.get(Calendar.HOUR_OF_DAY)
@@ -227,7 +226,11 @@ fun ScheduleTimePickerBottomSheet(
                         onConfirm(finalDateTimeStr)
                     } else {
                         // 用户没选日期时的兜底提示
-                        Toast.makeText(LocalContext.current, "请先选择日期", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            "请先选择日期",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
