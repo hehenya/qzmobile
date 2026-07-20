@@ -2378,21 +2378,25 @@ fun MessageInput(
 
                 // 发送按钮（支持长按）
                 Box {
+                    // 1. 预先定义一个 Modifier 变量，把 pointerInput 独立出来
+                    val longPressModifier = Modifier
+                        .size(40.dp)
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onLongPress = {
+                                    onShowScheduleMenuChange(true)
+                                }
+                            )
+                        }
+
+                    // 2. 把定义好的 Modifier 直接传进去
                     IconButton(
                         onClick = {
                             if (!showScheduleMenu) {
                                 onSendClick()
                             }
                         },
-                        modifier = Modifier
-                            .size(40.dp)
-                            .pointerInput(Unit) {
-                                detectTapGestures(
-                                    onLongPress = {
-                                        onShowScheduleMenuChange(true)
-                                    }
-                                )
-                            },
+                        modifier = longPressModifier,
                         enabled = inputText.isNotBlank() || selectedImages.isNotEmpty()
                     ) {
                         Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "发送")
