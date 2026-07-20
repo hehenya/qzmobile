@@ -484,3 +484,19 @@ data class AnnouncementListResponse(
     val messages: List<Message> = emptyList(),
     val pagination: MessagePagination? = null
 )
+@Serializable
+data class ScheduledMessage(
+    val id: Int,
+    val content: String,
+    val images: List<String> = emptyList(),
+    @SerialName("is_markdown") val isMarkdown: Boolean = false,
+    @SerialName("scheduled_at") val scheduledAt: String,
+    @SerialName("scheduled_at_display") val scheduledAtDisplay: String,
+    val status: Int = 0
+)
+
+@Serializable
+data class ScheduleListResponse(
+    val success: Boolean,
+    @SerialName("scheduled_messages") val messages: List<ScheduledMessage> = emptyList()
+)

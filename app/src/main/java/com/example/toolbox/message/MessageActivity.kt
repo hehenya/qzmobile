@@ -385,7 +385,7 @@ fun MessageDetailScreen(
     val settingsStorage = remember { com.example.toolbox.settings.SettingsStorage(context) }
     val bubbleCornerRadius by settingsStorage.bubbleCornerRadiusFlow.collectAsState(initial = 16f)
     val bubbleOpacity by settingsStorage.bubbleOpacityFlow.collectAsState(initial = 0.9f)
-    
+    val backgroundUrl by viewModel.backgroundUrl.collectAsState()
     val hazeState = remember { HazeState() }
     val scope = rememberCoroutineScope()
     val clipboard = LocalClipboard.current
@@ -393,33 +393,7 @@ fun MessageDetailScreen(
     val density = LocalDensity.current
     val isUploading by viewModel.isUploading.collectAsState()
     val uploadProgress by viewModel.uploadProgress.collectAsState()
-    var showScheduleMenu by remember { mutableStateOf(false) }
-    var showTimePicker by remember { mutableStateOf(false) }
-    var showScheduledList by remember { mutableStateOf(false) }
-    if (showTimePicker) {
-        ScheduleTimePickerBottomSheet(
-            onDismiss = { showTimePicker = false },
-            onConfirm = { dateTimeStr ->
-                viewModel.scheduleMessage(dateTimeStr, uiState.inputText, uiState.selectedImages)
-                showTimePicker = false
-            }
-        )
-    }
 
-    if (showScheduledList) {
-        ScheduledMessageListOverlay(
-            messages = uiState.scheduledMessages,
-            backgroundUrl = backgroundUrl.value,
-            onDismiss = { showScheduledList = false },
-            onCancel = { viewModel.cancelScheduledMessage(it) },
-            // 👇 UI层才能拿到的LocalContext和ClipboardManager移到这里
-            onCopy = { content -> 
-                val clipboardManager = LocalContext.current.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                clipboardManager.setPrimaryClip(ClipData.newPlainText("text", content))
-                Toast.makeText(LocalContext.current, "已复制", Toast.LENGTH_SHORT).show()
-            }
-        )
-    }
 
     LaunchedEffect(
         uiState.messages.size,
@@ -2707,7 +2681,7 @@ fun ScheduledMessageListOverlay(
                                 onLongClick = { showMenu.value = true }
                             ),
                         shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 1.0f)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(msg.content, style = MaterialTheme.typography.bodyMedium)

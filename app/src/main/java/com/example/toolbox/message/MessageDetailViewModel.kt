@@ -50,7 +50,8 @@ import com.example.toolbox.AppJson
 import com.example.toolbox.data.AnnouncementResponse
 import kotlinx.serialization.json.Json
 import com.example.toolbox.TokenManager
-
+import com.example.toolbox.data.ScheduledMessage
+import com.example.toolbox.data.ScheduleListResponse
 class MessageDetailViewModel(
     private val token: String,
     private val chatType: Int,
@@ -1612,21 +1613,7 @@ data class BackgroundData(
     @SerialName("target_id") val targetId: Int,
     @SerialName("background_url") val backgroundUrl: String = ""
 )
-@Serializable
-data class ScheduledMessage(
-    val id: Int,
-    val content: String,
-    val images: List<String> = emptyList(),
-    @SerialName("is_markdown") val isMarkdown: Boolean = false,
-    @SerialName("scheduled_at") val scheduledAt: String,
-    @SerialName("scheduled_at_display") val scheduledAtDisplay: String,
-    val status: Int = 0
-)
-@Serializable
-data class ScheduleListResponse(
-    val success: Boolean,
-    @SerialName("scheduled_messages") val messages: List<ScheduledMessage> = emptyList()
-)
+
 
 class MessageDetailViewModelFactory(
     private val token: String,
