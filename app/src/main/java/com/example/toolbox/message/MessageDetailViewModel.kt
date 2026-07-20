@@ -102,34 +102,7 @@ class MessageDetailViewModel(
 
     private val _targetMessageId = MutableStateFlow<String?>(null)
     val targetMessageId: StateFlow<String?> = _targetMessageId.asStateFlow()
-    if (showScheduledList) {
-        ScheduledMessageListOverlay(
-            messages = uiState.scheduledMessages,
-            backgroundUrl = viewModel.backgroundUrl.value,
-            onDismiss = { showScheduledList = false },
-            onCancel = { viewModel.cancelScheduledMessage(it) },
-            onCopy = { content -> 
-                val clipboardManager = LocalContext.current.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                clipboardManager.setPrimaryClip(ClipData.newPlainText("text", content))
-                Toast.makeText(LocalContext.current, "已复制", Toast.LENGTH_SHORT).show()
-            }
-        )
-    }
-
-    // 全屏或底部弹窗：定时消息列表
-    if (showScheduledList) {
-        ScheduledMessageListOverlay(
-            messages = uiState.scheduledMessages,
-            backgroundUrl = viewModel.backgroundUrl.value,
-            onDismiss = { showScheduledList = false },
-            onCancel = { viewModel.cancelScheduledMessage(it) },
-            onCopy = { content -> 
-                val clipboardManager = LocalContext.current.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                clipboardManager.setPrimaryClip(ClipData.newPlainText("text", content))
-                Toast.makeText(LocalContext.current, "已复制", Toast.LENGTH_SHORT).show()
-            }
-        )
-    }
+    
     init {
         val app = MyApplication.instance
         currentUserId = if (app != null) TokenManager.getUserID(app) else 0

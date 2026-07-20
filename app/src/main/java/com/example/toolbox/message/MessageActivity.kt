@@ -143,6 +143,8 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
+import com.example.toolbox.data.ScheduledMessage
+import com.example.toolbox.data.ScheduleListResponse
 
 // ---- Activity ----
 class MessageDetailActivity : ComponentActivity() {
