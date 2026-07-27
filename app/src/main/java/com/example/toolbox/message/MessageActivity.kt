@@ -189,8 +189,15 @@ fun ScheduledMessageItem(
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                     Spacer(Modifier.height(4.dp))
+                    val timeText = remember(msg.scheduledAt) {
+                        try {
+                            val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                            val date = sdf.parse(msg.scheduledAt)
+                            SimpleDateFormat("HH:mm", Locale.getDefault()).format(date!!)
+                        } catch (_: Exception) { "" }
+                    }
                     Text(
-                        msg.scheduledAtDisplay,
+                        timeText,
                         fontSize = 10.sp,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
                         modifier = Modifier.align(Alignment.End)
@@ -483,7 +490,7 @@ fun ScheduledMessageListOverlay(
         ) { innerPadding ->
             val groupedMessages = remember(messages) {
                 messages.groupBy { it.scheduledAt.take(10) }
-                    .toSortedMap(Comparator.reverseOrder())
+                    .toSortedMap(Comparator<String> { a, b -> b.compareTo(a) })
             }
             LazyColumn(
                 modifier = Modifier
@@ -732,18 +739,7 @@ class MessageDetailActivity : ComponentActivity() {
                                             navigationIcon = { FilledTonalIconButton(onClick = { finish() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回") } }
                                         )
                                         
-                                        if (announcementMessage != null && uiState.chatType == 2) {
-                                            AnnouncementBanner(
-                                                message = announcementMessage!!,
-                                                onClick = {
-                                                    val intent = Intent(this@MessageDetailActivity, AnnouncementDetailActivity::class.java).apply {
-                                                        putExtra("group_id", uiState.chatId)
-                                                        putExtra("is_admin", uiState.isAdmin)
-                                                    }
-                                                    startActivity(intent)
-                                                }
-                                            )
-                                        }
+
                                     }
                                 }
                             }
@@ -1055,7 +1051,18 @@ fun MessageDetailScreen(
                     }
                 }
             }
-
+            if (uiState.chatType == 2 && uiState.latestAnnouncement != null) {
+                AnnouncementBanner(
+                    message = uiState.latestAnnouncement!!,
+                    onClick = {
+                        val intent = Intent(context, AnnouncementDetailActivity::class.java).apply {
+                            putExtra("group_id", uiState.chatId)
+                            putExtra("is_admin", uiState.isAdmin)
+                        }
+                        context.startActivity(intent)
+                    }
+                )
+            } //123
             Box(modifier = Modifier
                 .weight(1f)
                 .padding(top = innerPadding.calculateTopPadding())  // 添加这行
