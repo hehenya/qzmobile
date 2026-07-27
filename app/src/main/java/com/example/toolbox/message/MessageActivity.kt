@@ -148,6 +148,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import com.example.toolbox.message.GroupInfoActivity
 import com.example.toolbox.message.ScheduledMessageListOverlay
 import java.util.Calendar
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScheduleTimePickerBottomSheet(
@@ -156,21 +160,26 @@ fun ScheduleTimePickerBottomSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
-    // 用 Calendar 获取当前时分，完全兼容低版本安卓
     val currentCalendar = Calendar.getInstance()
-    val initialHour = currentCalendar.get(Calendar.HOUR_OF_DAY)
-    val initialMinute = currentCalendar.get(Calendar.MINUTE)
 
-    // 日期状态
-    val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = currentCalendar.timeInMillis
-    )
-    // 时间状态（24小时制）
-    val timePickerState = rememberTimePickerState(
-        initialHour = initialHour,
-        initialMinute = initialMinute,
-        is24Hour = true
-    )
+    // 年、月、日、时、分状态
+    var selectedYear by remember { mutableIntStateOf(currentCalendar.get(Calendar.YEAR)) }
+    var selectedMonth by remember { mutableIntStateOf(currentCalendar.get(Calendar.MONTH) + 1) } // 1-12
+    var selectedDay by remember { mutableIntStateOf(currentCalendar.get(Calendar.DAY_OF_MONTH)) }
+    var selectedHour by remember { mutableIntStateOf(currentCalendar.get(Calendar.HOUR_OF_DAY)) }
+    var selectedMinute by remember { mutableIntStateOf(currentCalendar.get(Calendar.MINUTE)) }
+
+    // 年份范围
+    val yearRange = (currentCalendar.get(Calendar.YEAR) - 5)..(currentCalendar.get(Calendar.YEAR) + 5)
+
+    // 根据年月计算最大天数
+    val maxDay = remember(selectedYear, selectedMonth) {
+        Calendar.getInstance().apply {
+            set(Calendar.YEAR, selectedYear)
+            set(Calendar.MONTH, selectedMonth - 1)
+            set(Calendar.DAY_OF_MONTH, 1)
+        }.getActualMaximum(Calendar.DAY_OF_MONTH)
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -182,58 +191,94 @@ fun ScheduleTimePickerBottomSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(24.dp)
-                .height(480.dp), // 👈 高度需要增加，容纳两个选择器
+                .height(340.dp),  // 适配滑轮高度
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("定时发送", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
-
-            Text("选择日期", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(4.dp))
-            // 日期选择器
-            DatePicker(
-                state = datePickerState,
-                modifier = Modifier.fillMaxWidth().height(200.dp)
+            Text(
+                "定时发送",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
             )
+            Spacer(Modifier.height(16.dp))
+
+            // 日期选择区（年、月、日）
+            Text("选择日期", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth().height(120.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 年
+                WheelPicker(
+                    items = yearRange.toList(),
+                    selected = selectedYear,
+                    onItemSelected = { selectedYear = it },
+                    modifier = Modifier.weight(1f)
+                )
+                Text("年", modifier = Modifier.padding(horizontal = 4.dp))
+
+                // 月
+                WheelPicker(
+                    items = (1..12).toList(),
+                    selected = selectedMonth,
+                    onItemSelected = { selectedMonth = it },
+                    modifier = Modifier.weight(1f)
+                )
+                Text("月", modifier = Modifier.padding(horizontal = 4.dp))
+
+                // 日
+                WheelPicker(
+                    items = (1..maxDay).toList(),
+                    selected = selectedDay.coerceIn(1, maxDay),
+                    onItemSelected = { selectedDay = it },
+                    modifier = Modifier.weight(1f)
+                )
+                Text("日", modifier = Modifier.padding(horizontal = 4.dp))
+            }
 
             Spacer(Modifier.height(16.dp))
 
+            // 时间选择区（时、分）
             Text("选择时间", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(4.dp))
-            // 时间选择器（内联模式）
-            TimePicker(
-                state = timePickerState,
-                modifier = Modifier.fillMaxWidth().height(150.dp)
-            )
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth().height(120.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                WheelPicker(
+                    items = (0..23).toList(),
+                    selected = selectedHour,
+                    onItemSelected = { selectedHour = it },
+                    modifier = Modifier.weight(1f)
+                )
+                Text("时", modifier = Modifier.padding(horizontal = 4.dp))
+
+                WheelPicker(
+                    items = (0..59).toList(),
+                    selected = selectedMinute,
+                    onItemSelected = { selectedMinute = it },
+                    modifier = Modifier.weight(1f)
+                )
+                Text("分", modifier = Modifier.padding(horizontal = 4.dp))
+            }
 
             Spacer(Modifier.height(24.dp))
 
-            // 底部确认按钮
             Button(
                 onClick = {
-                    val selectedDateMillis = datePickerState.selectedDateMillis
-                    if (selectedDateMillis != null) {
-                        // 1. 取出用户选择的日期
-                        val calendar = Calendar.getInstance().apply { timeInMillis = selectedDateMillis }
-                        // 2. 取出用户选择的时间
-                        calendar.set(Calendar.HOUR_OF_DAY, timePickerState.hour)
-                        calendar.set(Calendar.MINUTE, timePickerState.minute)
-                        calendar.set(Calendar.SECOND, 0)
-                        calendar.set(Calendar.MILLISECOND, 0)
-
-                        // 3. 格式化为 yyyy-MM-dd HH:mm:ss
-                        val formatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-                        val finalDateTimeStr = formatter.format(calendar.time)
-
-                        onConfirm(finalDateTimeStr)
-                    } else {
-                        // 用户没选日期时的兜底提示
-                        Toast.makeText(
-                            context,
-                            "请先选择日期",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                    val calendar = Calendar.getInstance().apply {
+                        set(Calendar.YEAR, selectedYear)
+                        set(Calendar.MONTH, selectedMonth - 1)
+                        set(Calendar.DAY_OF_MONTH, selectedDay)
+                        set(Calendar.HOUR_OF_DAY, selectedHour)
+                        set(Calendar.MINUTE, selectedMinute)
+                        set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 0)
                     }
+                    val formatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                    onConfirm(formatter.format(calendar.time))
                 },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
@@ -243,7 +288,87 @@ fun ScheduleTimePickerBottomSheet(
         }
     }
 }
-@OptIn(ExperimentalMaterial3Api::class) 
+
+/**
+ * 通用滚轮选择器组件
+ * @param items 数据列表
+ * @param selected 当前选中项
+ * @param onItemSelected 选中回调
+ */
+@Composable
+fun WheelPicker(
+    items: List<Int>,
+    selected: Int,
+    onItemSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val itemHeight = 40.dp
+    val visibleItems = 3
+
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+
+    // 初始化位置到选中项
+    LaunchedEffect(items, selected) {
+        val index = items.indexOf(selected)
+        if (index >= 0) {
+            listState.scrollToItem(index)
+        }
+    }
+
+    Box(modifier = modifier.height(itemHeight * visibleItems)) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            flingBehavior = rememberSnapFlingBehavior(lazyListState = listState),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // 顶部占位，使首尾项能滚到中间
+            item { Spacer(Modifier.height(itemHeight)) }
+            items(items.size) { index ->
+                val isSelected = items[index] == selected
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(itemHeight)
+                        .clickable {
+                            onItemSelected(items[index])
+                            coroutineScope.launch {
+                                listState.animateScrollToItem(index)
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = items[index].toString(),
+                        fontSize = if (isSelected) 18.sp else 14.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            // 底部占位
+            item { Spacer(Modifier.height(itemHeight)) }
+        }
+
+        // 中间选中指示条
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(itemHeight)
+                .align(Alignment.Center)
+                .background(
+                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
+                    RoundedCornerShape(8.dp)
+                )
+        )
+    }
+}
+
+// 需要导入
+//
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScheduledMessageListOverlay(
     messages: List<ScheduledMessage>,
@@ -252,8 +377,8 @@ fun ScheduledMessageListOverlay(
     onCancel: (Int) -> Unit,
     onCopy: (String) -> Unit
 ) {
+    val context = LocalContext.current
     Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f))) {
-        // 背景图
         if (backgroundUrl != null && backgroundUrl.isNotEmpty()) {
             AsyncImage(
                 model = backgroundUrl,
@@ -263,91 +388,148 @@ fun ScheduledMessageListOverlay(
             )
         }
 
-        Column(modifier = Modifier.fillMaxSize()) {
-            // 顶部导航栏
-            TopAppBar(
-                title = { Text("定时消息") },
-                navigationIcon = {
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
-            )
-
-            // 消息列表
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = { Text("定时消息") },
+                    navigationIcon = {
+                        IconButton(onClick = onDismiss) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                    )
+                )
+            }
+        ) { paddingValues ->  
             LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(horizontal = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(messages) { msg ->
                     val showMenu = remember { mutableStateOf(false) }
-                    
-                    // 气泡样式
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .combinedClickable(
-                                onClick = { showMenu.value = true },
-                                onLongClick = { showMenu.value = true }
-                            ),
-                        shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 1.0f)
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(msg.content, style = MaterialTheme.typography.bodyMedium)
-                            if (msg.images.isNotEmpty()) {
-                                Spacer(Modifier.height(8.dp))
-                                AsyncImage(
-                                    model = msg.images.first(),
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp))
-                                )
-                            }
-                            Spacer(Modifier.height(8.dp))
+                        // 计划时间提示
+                        Surface(
+                            modifier = Modifier.padding(vertical = 4.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        ) {
                             Text(
-                                "计划于 ${msg.scheduledAtDisplay} 发送",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary
+                                text = msg.scheduledAtDisplay,  // 例如 "计划于 07月21日 09:00 发送"
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                             )
                         }
-                    }
 
-                    // 点击消息后弹出的菜单 (复制、取消发送)
-                    if (showMenu.value) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Card(
-                                shape = RoundedCornerShape(16.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                                modifier = Modifier.padding(16.dp)
+                        // 消息气泡（仿聊天气泡）
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .combinedClickable(
+                                    onClick = { showMenu.value = true },
+                                    onLongClick = { showMenu.value = true }
+                                )
+                        ) {
+                            Surface(
+                                modifier = Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .padding(start = 80.dp), // 留出左侧空间模拟“自己的消息”靠右
+                                shape = RoundedCornerShape(
+                                    topStart = 16.dp,
+                                    topEnd = 16.dp,
+                                    bottomStart = 16.dp,
+                                    bottomEnd = 4.dp
+                                ),
+                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)
                             ) {
-                                Column {
+                                Column(modifier = Modifier.padding(12.dp)) {
                                     if (msg.content.isNotBlank()) {
-                                        TextButton(
-                                            onClick = { 
-                                                onCopy(msg.content)
-                                                showMenu.value = false
-                                            }
-                                        ) {
-                                            Icon(Icons.Default.ContentCopy, null, Modifier.size(16.dp))
-                                            Spacer(Modifier.width(8.dp))
-                                            Text("复制")
+                                        Text(
+                                            msg.content,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    }
+                                    if (msg.images.isNotEmpty()) {
+                                        Spacer(Modifier.height(6.dp))
+                                        AsyncImage(
+                                            model = msg.images.first(),
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier
+                                                .size(80.dp)
+                                                .clip(RoundedCornerShape(8.dp))
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // 气泡下方的操作菜单（常驻或点击弹出）
+                        AnimatedVisibility(
+                            visible = showMenu.value,
+                            enter = fadeIn() + expandVertically(),
+                            exit = fadeOut() + shrinkVertically()
+                        ) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 32.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceEvenly
+                                ) {
+                                    TextButton(onClick = {
+                                        onCancel(msg.id)
+                                        showMenu.value = false
+                                    }) {
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            null,
+                                            Modifier.size(16.dp),
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(
+                                            "取消",
+                                            color = MaterialTheme.colorScheme.error,
+                                            fontSize = 13.sp
+                                        )
+                                    }
+
+                                    if (msg.content.isNotBlank()) {
+                                        TextButton(onClick = {
+                                            onCopy(msg.content)
+                                            showMenu.value = false
+                                        }) {
+                                            Icon(
+                                                Icons.Default.ContentCopy,
+                                                null,
+                                                Modifier.size(16.dp)
+                                            )
+                                            Spacer(Modifier.width(4.dp))
+                                            Text("复制", fontSize = 13.sp)
                                         }
                                     }
-                                    TextButton(
-                                        onClick = { 
-                                            onCancel(msg.id)
-                                            showMenu.value = false
-                                        },
-                                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                                    ) {
-                                        Icon(Icons.Default.Delete, null, Modifier.size(16.dp))
-                                        Spacer(Modifier.width(8.dp))
-                                        Text("取消发送")
-                                    }
+
                                     TextButton(onClick = { showMenu.value = false }) {
-                                        Text("关闭")
+                                        Text("关闭", fontSize = 13.sp)
                                     }
                                 }
                             }
@@ -801,7 +983,9 @@ fun MessageDetailScreen(
     BackHandler(enabled = selectionMode) {
         viewModel.exitSelectionMode()
     }
-
+    BackHandler(enabled = showScheduledList) {
+        showScheduledList = false
+    }
     Box(modifier = Modifier.fillMaxSize()) {
         val backgroundUrl by viewModel.backgroundUrl.collectAsState()
         backgroundUrl?.takeIf { it.isNotEmpty() }?.let { bgUrl ->
@@ -2392,18 +2576,9 @@ fun MessageInput(
                     )
                 )
                 Spacer(Modifier.width(5.dp))
-                Box {
-                    BadgedBox(
-                        badge = {
-                            if (hasScheduled) {
-                                Badge(
-                                    containerColor = MaterialTheme.colorScheme.error,
-                                    contentColor = Color.White,
-                                    modifier = Modifier.size(8.dp)
-                                ) {}
-                            }
-                        }
-                    ) {
+                // 根据 hasScheduled 决定是否显示整个按钮
+                Box(modifier = Modifier.size(32.dp)) {
+                    if (hasScheduled) {
                         IconButton(onClick = onScheduledListClick, modifier = Modifier.size(32.dp)) {
                             Icon(Icons.Default.Event, contentDescription = "定时消息", tint = MaterialTheme.colorScheme.onSurface)
                         }

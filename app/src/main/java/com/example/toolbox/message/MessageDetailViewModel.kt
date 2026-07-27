@@ -634,6 +634,7 @@ class MessageDetailViewModel(
                 
                 // 成功后清空输入框并刷新列表
                 _uiState.update { it.copy(inputText = "", selectedImages = emptyList()) }
+                DraftManager.removeDraft(chatType, chatId)
                 loadScheduledList()
                 _toastMessage.emit("定时消息已设置")
             } catch (e: Exception) {
