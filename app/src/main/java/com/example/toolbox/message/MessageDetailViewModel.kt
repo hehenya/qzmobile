@@ -39,7 +39,6 @@ import java.util.Date
 import java.util.Locale
 import com.example.toolbox.data.ActiveDay
 import com.example.toolbox.data.ActiveDaysResponse
-import java.time.YearMonth
 import com.example.toolbox.DraftManager
 import androidx.compose.runtime.DisposableEffect
 import com.example.toolbox.CacheManager
@@ -594,8 +593,8 @@ class MessageDetailViewModel(
                         if (response.isSuccessful) {
                             val resp = AppJson.json.decodeFromString<ScheduleListResponse>(response.body?.string() ?: "")
                             if (resp.success) {
-                                _uiState.update { 
-                                    it.copy(scheduledMessages = resp.messages, hasScheduled = resp.messages.isNotEmpty()) 
+                                _uiState.update {
+                                    it.copy(scheduledMessages = resp.messages, hasScheduled = resp.messages.isNotEmpty())
                                 }
                             }
                         }
@@ -633,7 +632,7 @@ class MessageDetailViewModel(
                 withContext(Dispatchers.IO) { client.newCall(request).execute() }
                 
                 // 成功后清空输入框并刷新列表
-                _uiState.update { it.copy(inputText = "", selectedImages = emptyList()) }
+                _uiState.update { it.copy(inputText = "", selectedImages = emptyList(), hasScheduled = true) }
                 DraftManager.removeDraft(chatType, chatId)
                 loadScheduledList()
                 _toastMessage.emit("定时消息已设置")
@@ -1405,26 +1404,19 @@ class MessageDetailViewModel(
     val showHeatmap: StateFlow<Boolean> = _showHeatmap.asStateFlow()
 
     // ✅ 正确声明 _heatmapYearMonth
-    private val _heatmapYearMonth = MutableStateFlow(getCurrentYearMonth())
-    val heatmapYearMonth: StateFlow<YearMonth> = _heatmapYearMonth.asStateFlow()
+    private val _heatmapYearMonth = MutableStateFlow(Calendar.getInstance())
+    val heatmapYearMonth: StateFlow<Calendar> = _heatmapYearMonth.asStateFlow()
 
     private val _isLoadingActiveDays = MutableStateFlow(false)
     val isLoadingActiveDays: StateFlow<Boolean> = _isLoadingActiveDays.asStateFlow()
 
-    private val loadedYearMonths = mutableSetOf<YearMonth>()
+    private val loadedYearMonths = mutableSetOf<String>()
 
-    // ✅ 兼容 API 23 的 YearMonth.now() 替代
-    private fun getCurrentYearMonth(): YearMonth {
-        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            YearMonth.now()
-        } else {
-            val calendar = Calendar.getInstance()
-            YearMonth.of(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH) + 1)
-        }
-    }
 
-    fun loadActiveDays(yearMonth: YearMonth = getCurrentYearMonth()) {
-        if (yearMonth in loadedYearMonths) return
+
+    fun loadActiveDays(yearMonth: Calendar = Calendar.getInstance()) {
+        val cacheKey = "${yearMonth.get(Calendar.YEAR)}-${yearMonth.get(Calendar.MONTH) + 1}"
+        if (cacheKey in loadedYearMonths) return   // 注意括号！
         viewModelScope.launch {
             _isLoadingActiveDays.value = true
             try {
@@ -1454,7 +1446,7 @@ class MessageDetailViewModel(
                             val result = jsonParser.decodeFromString<ActiveDaysResponse>(body)
                             if (result.success) {
                                 _activeDays.value = result.activeDays
-                                loadedYearMonths.add(yearMonth)
+                                loadedYearMonths.add(cacheKey)   // 缓存字符串key
                             }
                         }
                     }
@@ -1471,48 +1463,61 @@ class MessageDetailViewModel(
         val yearMonth = if (dateString != null) {
             parseDateString(dateString)
         } else {
-            getCurrentYearMonth()
+            Calendar.getInstance()  // 当前时间
         }
         _heatmapYearMonth.value = yearMonth
         loadActiveDays(yearMonth)
         _showHeatmap.value = true
     }
-    
-    private fun parseDateString(dateString: String): YearMonth {
+
+    private fun parseDateString(dateString: String): Calendar {
+        val cleaned = dateString
+            .replace("年", "-")
+            .replace("月", "-")
+            .replace("日", "")
+        val parts = cleaned.split("-").filter { it.isNotBlank() }
+
+        val cal = Calendar.getInstance()
         return try {
-            val cleaned = dateString
-                .replace("年", "-")
-                .replace("月", "-")
-                .replace("日", "")
-            val parts = cleaned.split("-").filter { it.isNotBlank() }
-    
-            if (parts.size == 2) {
-                val month = parts[0].toIntOrNull() ?: return YearMonth.now()
-                YearMonth.of(YearMonth.now().year, month)
-            } else if (parts.size >= 3) {
-                val year = parts[0].toIntOrNull() ?: return YearMonth.now()
-                val month = parts[1].toIntOrNull() ?: return YearMonth.now()
-                YearMonth.of(year, month)
-            } else {
-                YearMonth.now()
+            when {
+                parts.size == 2 -> {
+                    val month = parts[0].toIntOrNull() ?: return cal
+                    cal.set(Calendar.MONTH, month - 1)
+                    cal
+                }
+                parts.size >= 3 -> {
+                    val year = parts[0].toIntOrNull() ?: return cal
+                    val month = parts[1].toIntOrNull() ?: return cal
+                    cal.set(Calendar.YEAR, year)
+                    cal.set(Calendar.MONTH, month - 1)
+                    cal
+                }
+                else -> cal
             }
         } catch (e: Exception) {
-            YearMonth.now()
+            cal
         }
     }
     fun hideHeatmap() {
         _showHeatmap.value = false
     }
     fun previousMonth() {
-        val newMonth = _heatmapYearMonth.value.minusMonths(1)
-        _heatmapYearMonth.value = newMonth
-        loadActiveDays(newMonth)
+        val newCal = _heatmapYearMonth.value.clone() as Calendar
+        newCal.add(Calendar.MONTH, -1)
+        _heatmapYearMonth.value = newCal
+        loadActiveDays(newCal)
     }
+
     fun nextMonth() {
-        val newMonth = _heatmapYearMonth.value.plusMonths(1)
-        if (!newMonth.isAfter(YearMonth.now())) {
-            _heatmapYearMonth.value = newMonth
-            loadActiveDays(newMonth)
+        val newCal = _heatmapYearMonth.value.clone() as Calendar
+        val now = Calendar.getInstance()
+        // 不能超过当前月
+        if (newCal.get(Calendar.YEAR) < now.get(Calendar.YEAR) ||
+            (newCal.get(Calendar.YEAR) == now.get(Calendar.YEAR) && newCal.get(Calendar.MONTH) < now.get(Calendar.MONTH))
+        ) {
+            newCal.add(Calendar.MONTH, 1)
+            _heatmapYearMonth.value = newCal
+            loadActiveDays(newCal)
         }
     }
         private fun loadGroupInfo() {

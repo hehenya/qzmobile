@@ -403,7 +403,7 @@ fun ScheduledMessageListOverlay(
                     )
                 )
             }
-            
+
         ) { paddingValues ->
             LazyColumn(
                 modifier = Modifier
