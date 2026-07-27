@@ -490,7 +490,7 @@ fun ScheduledMessageListOverlay(
         ) { innerPadding ->
             val groupedMessages = remember(messages) {
                 messages.groupBy { it.scheduledAt.take(10) }
-                    .toSortedMap(Comparator<String> { a, b -> b.compareTo(a) })
+                    .toSortedMap(Comparator<String> { a, b -> a.compareTo(b) })   // 升序：旧的日期在上
             }
             LazyColumn(
                 modifier = Modifier
@@ -541,7 +541,7 @@ fun ScheduledMessageListOverlay(
                                 }
                             }
                         }
-                        items(msgs, key = { it.id }) { msg ->
+                        items(msgs.sortedBy { it.scheduledAt }, key = { it.id }) { msg ->
                             ScheduledMessageItem(
                                 msg = msg,
                                 onCancel = { onCancel(msg.id) },
@@ -738,7 +738,18 @@ class MessageDetailActivity : ComponentActivity() {
                                             },
                                             navigationIcon = { FilledTonalIconButton(onClick = { finish() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回") } }
                                         )
-                                        
+                                        if (announcementMessage != null && uiState.chatType == 2) {
+                                            AnnouncementBanner(
+                                                message = announcementMessage!!,
+                                                onClick = {
+                                                    val intent = Intent(this@MessageDetailActivity, AnnouncementDetailActivity::class.java).apply {
+                                                        putExtra("group_id", uiState.chatId)
+                                                        putExtra("is_admin", uiState.isAdmin)
+                                                    }
+                                                    startActivity(intent)
+                                                }
+                                            )
+                                        }
 
                                     }
                                 }
@@ -1051,18 +1062,7 @@ fun MessageDetailScreen(
                     }
                 }
             }
-            if (uiState.chatType == 2 && uiState.latestAnnouncement != null) {
-                AnnouncementBanner(
-                    message = uiState.latestAnnouncement!!,
-                    onClick = {
-                        val intent = Intent(context, AnnouncementDetailActivity::class.java).apply {
-                            putExtra("group_id", uiState.chatId)
-                            putExtra("is_admin", uiState.isAdmin)
-                        }
-                        context.startActivity(intent)
-                    }
-                )
-            } //123
+
             Box(modifier = Modifier
                 .weight(1f)
                 .padding(top = innerPadding.calculateTopPadding())  // 添加这行
