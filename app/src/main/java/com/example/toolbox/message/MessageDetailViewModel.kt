@@ -628,9 +628,9 @@ class MessageDetailViewModel(
                     .post(body.toString().toRequestBody("application/json".toMediaType()))
                     .header("x-access-token", token)
                     .build()
-                
+
                 withContext(Dispatchers.IO) { client.newCall(request).execute() }
-                
+
                 // 成功后清空输入框并刷新列表
                 _uiState.update { it.copy(inputText = "", selectedImages = emptyList(), hasScheduled = true) }
                 DraftManager.removeDraft(chatType, chatId)
