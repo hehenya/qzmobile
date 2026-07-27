@@ -27,9 +27,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.toolbox.TokenManager
 import com.example.toolbox.data.ActiveDay
 import com.example.toolbox.ui.theme.ToolBoxTheme
-import java.time.LocalDate
-import java.time.YearMonth
-import java.time.format.DateTimeFormatter
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 class HeatmapActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,15 +46,34 @@ class HeatmapActivity : ComponentActivity() {
         }
     }
 
-    private fun parseYearMonth(s: String): YearMonth {
-        if (s.isBlank()) return YearMonth.now()
+    // 将日期字符串解析为 Calendar（保留年月，日设为1）
+    private fun parseYearMonth(s: String): Calendar {
+        val cal = Calendar.getInstance()
+        if (s.isBlank()) return cal
+
         return try {
             val cleaned = s.replace("年", "-").replace("月", "-").replace("日", "")
             val parts = cleaned.split("-").filter { it.isNotBlank() }
-            if (parts.size == 2) YearMonth.of(YearMonth.now().year, parts[0].toInt())
-            else if (parts.size >= 3) YearMonth.of(parts[0].toInt(), parts[1].toInt())
-            else YearMonth.now()
-        } catch (_: Exception) { YearMonth.now() }
+            when {
+                parts.size == 2 -> {
+                    val month = parts[0].toIntOrNull() ?: return cal
+                    cal.set(Calendar.MONTH, month - 1)
+                    cal.set(Calendar.DAY_OF_MONTH, 1)
+                    cal
+                }
+                parts.size >= 3 -> {
+                    val year = parts[0].toIntOrNull() ?: return cal
+                    val month = parts[1].toIntOrNull() ?: return cal
+                    cal.set(Calendar.YEAR, year)
+                    cal.set(Calendar.MONTH, month - 1)
+                    cal.set(Calendar.DAY_OF_MONTH, 1)
+                    cal
+                }
+                else -> cal
+            }
+        } catch (_: Exception) {
+            cal
+        }
     }
 }
 
@@ -62,27 +81,37 @@ class HeatmapActivity : ComponentActivity() {
 @Composable
 fun HeatmapScreen(
     token: String, chatType: Int, chatId: Int,
-    initialYearMonth: YearMonth, onBack: () -> Unit
+    initialYearMonth: Calendar, onBack: () -> Unit
 ) {
     val viewModel: MessageDetailViewModel = viewModel(
         factory = MessageDetailViewModelFactory(token, chatType, chatId)
     )
-    val today = LocalDate.now()
-    val todayYM = YearMonth.from(today)
+    val todayCal = Calendar.getInstance()
 
+    // 生成所有月份的 Calendar 列表（从2020年1月到当前月）
     val allMonths = remember {
-        val list = mutableListOf<YearMonth>()
-        var ym = YearMonth.of(2020, 1)
-        while (!ym.isAfter(todayYM)) {
-            list.add(ym)
-            ym = ym.plusMonths(1)
+        val list = mutableListOf<Calendar>()
+        val startCal = Calendar.getInstance().apply {
+            set(Calendar.YEAR, 2020)
+            set(Calendar.MONTH, 0) // 1月
+            set(Calendar.DAY_OF_MONTH, 1)
+        }
+        while (startCal.before(todayCal) || startCal == todayCal) {
+            list.add(startCal.clone() as Calendar)
+            startCal.add(Calendar.MONTH, 1)
         }
         list
     }
 
-    val listState = rememberLazyListState(
-        initialFirstVisibleItemIndex = allMonths.indexOf(initialYearMonth).coerceAtLeast(0)
-    )
+    // 计算初始滚动位置
+    val initialIndex = remember(initialYearMonth) {
+        allMonths.indexOfFirst { cal ->
+            cal.get(Calendar.YEAR) == initialYearMonth.get(Calendar.YEAR) &&
+                    cal.get(Calendar.MONTH) == initialYearMonth.get(Calendar.MONTH)
+        }.coerceAtLeast(0)
+    }
+
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
 
     var currentVisibleMonth by remember { mutableStateOf(initialYearMonth) }
 
@@ -98,7 +127,7 @@ fun HeatmapScreen(
             TopAppBar(
                 title = {
                     Text(
-                        currentVisibleMonth.format(DateTimeFormatter.ofPattern("yyyy年M月")),
+                        formatCalendar(currentVisibleMonth),
                         fontWeight = FontWeight.Medium,
                         fontSize = 18.sp
                     )
@@ -115,36 +144,55 @@ fun HeatmapScreen(
             state = listState,
             modifier = Modifier.fillMaxSize().padding(pd)
         ) {
-            itemsIndexed(allMonths) { _, ym ->
+            itemsIndexed(allMonths) { _, calendar ->
                 MonthItem(
-                    yearMonth = ym,
+                    yearMonthCalendar = calendar,
                     viewModel = viewModel,
-                    today = today,
-                    todayYM = todayYM
+                    todayCal = todayCal
                 )
             }
         }
     }
 }
 
+// 格式化 Calendar 为 "yyyy年M月"
+private fun formatCalendar(cal: Calendar): String {
+    val sdf = SimpleDateFormat("yyyy年M月", Locale.getDefault())
+    return sdf.format(cal.time)
+}
+
 @Composable
 private fun MonthItem(
-    yearMonth: YearMonth,
+    yearMonthCalendar: Calendar,
     viewModel: MessageDetailViewModel,
-    today: LocalDate,
-    todayYM: YearMonth
+    todayCal: Calendar
 ) {
-    // ✅ 一次性加载，不重复请求
+    // 调用 ViewModel 加载数据
     LaunchedEffect(Unit) {
-        viewModel.loadActiveDays(yearMonth)
+        viewModel.loadActiveDays(yearMonthCalendar)
     }
 
     val activeDays by viewModel.activeDays.collectAsState()
     val loading by viewModel.isLoadingActiveDays.collectAsState()
 
-    val daysInMonth = yearMonth.lengthOfMonth()
-    val firstDow = yearMonth.atDay(1).dayOfWeek.value
-    val map = remember(activeDays) { activeDays.associate { it.date to it.msgCount } }
+    // 获取该月的天数和第一天是周几（周一=1,...周日=7）
+    val maxDay = yearMonthCalendar.getActualMaximum(Calendar.DAY_OF_MONTH)
+    val firstDayOfWeek = with(yearMonthCalendar.clone() as Calendar) {
+        set(Calendar.DAY_OF_MONTH, 1)
+        get(Calendar.DAY_OF_WEEK) // 周日=1, 周一=2, ... 周六=7
+    }
+    // 转换为周一=1 ... 周日=7
+    val firstDow = if (firstDayOfWeek == Calendar.SUNDAY) 7 else firstDayOfWeek - 1
+
+    // 建立日期字符串到消息数的映射（格式 "yyyy-MM-dd"）
+    val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    val map = remember(activeDays) {
+        val m = mutableMapOf<String, Int>()
+        activeDays.forEach { day ->
+            m[day.date] = day.msgCount
+        }
+        m
+    }
     val max = remember(activeDays) { activeDays.maxOfOrNull { it.msgCount } ?: 1 }
 
     Column(
@@ -153,7 +201,7 @@ private fun MonthItem(
             .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
         Text(
-            yearMonth.format(DateTimeFormatter.ofPattern("yyyy年M月")),
+            formatCalendar(yearMonthCalendar),
             fontWeight = FontWeight.Medium,
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -173,7 +221,7 @@ private fun MonthItem(
                 CircularProgressIndicator(strokeWidth = 2.dp)
             }
         } else {
-            val total = firstDow - 1 + daysInMonth
+            val total = firstDow - 1 + maxDay
             val rows = (total + 6) / 7
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 for (r in 0 until rows) {
@@ -181,12 +229,13 @@ private fun MonthItem(
                         for (c in 0..6) {
                             val d = r * 7 + c - firstDow + 2
                             Box(Modifier.weight(1f)) {
-                                if (d in 1..daysInMonth) {
-                                    val date = yearMonth.atDay(d)
-                                    val key = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
-                                    val cnt = map[key] ?: 0
-                                    val isToday = date == today
-                                    val isFuture = date.isAfter(today) && yearMonth == todayYM
+                                if (d in 1..maxDay) {
+                                    val calClone = yearMonthCalendar.clone() as Calendar
+                                    calClone.set(Calendar.DAY_OF_MONTH, d)
+                                    val dateKey = dateFormat.format(calClone.time)
+                                    val cnt = map[dateKey] ?: 0
+                                    val isToday = isSameDay(calClone, todayCal)
+                                    val isFuture = calClone.after(todayCal) && calClone.get(Calendar.MONTH) == todayCal.get(Calendar.MONTH) && calClone.get(Calendar.YEAR) == todayCal.get(Calendar.YEAR)
 
                                     Box(
                                         Modifier
@@ -218,4 +267,9 @@ private fun MonthItem(
             }
         }
     }
+}
+
+private fun isSameDay(cal1: Calendar, cal2: Calendar): Boolean {
+    return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+            cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
 }
