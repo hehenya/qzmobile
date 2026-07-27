@@ -409,7 +409,7 @@ fun ScheduledMessageListOverlay(
     onDismiss: () -> Unit,
     onCancel: (Int) -> Unit,
     onCopy: (String) -> Unit,
-    viewModel: MessageDetailViewModel   // 👈 需要传入 viewModel
+    viewModel: MessageDetailViewModel
 ) {
     var showTimePicker by remember { mutableStateOf(false) }
     var inputText by remember { mutableStateOf("") }
@@ -442,29 +442,30 @@ fun ScheduledMessageListOverlay(
             bottomBar = {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-                    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                    shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         TextField(
                             value = inputText,
                             onValueChange = { inputText = it },
                             modifier = Modifier.weight(1f),
-                            placeholder = { Text("快速定时消息...") },
-                            maxLines = 3,
+                            placeholder = { Text("定时消息...") },
+                            maxLines = 5,
                             colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent,
+                                focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
                                 focusedIndicatorColor = Color.Transparent,
                                 unfocusedIndicatorColor = Color.Transparent
-                            )
+                            ),
+                            shape = RoundedCornerShape(20.dp)
                         )
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(5.dp))
                         IconButton(
                             onClick = { if (inputText.isNotBlank()) showTimePicker = true },
                             enabled = inputText.isNotBlank()
@@ -472,22 +473,26 @@ fun ScheduledMessageListOverlay(
                             Icon(
                                 Icons.AutoMirrored.Filled.Send,
                                 contentDescription = "定时发送",
-                                tint = if (inputText.isNotBlank()) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                tint = if (inputText.isNotBlank()) MaterialTheme.colorScheme.onSurface
+                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                             )
                         }
                     }
                 }
             }
         ) { innerPadding ->
+            val groupedMessages = remember(messages) {
+                messages.groupBy { it.scheduledAt.take(10) }
+                    .toSortedMap(Comparator.reverseOrder())
+            }
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
                     .padding(horizontal = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                if (messages.isEmpty()) {
+                if (groupedMessages.isEmpty()) {
                     item {
                         Box(
                             Modifier.fillMaxWidth().height(200.dp),
@@ -497,30 +502,62 @@ fun ScheduledMessageListOverlay(
                         }
                     }
                 } else {
-                    items(messages, key = { it.id }) { msg ->
-                        ScheduledMessageItem(
-                            msg = msg,
-                            onCancel = { onCancel(msg.id) },
-                            onCopy = { onCopy(msg.content) }
-                        )
+                    groupedMessages.forEach { (dateKey, msgs) ->
+                        item(key = "header_$dateKey") {
+                            val displayDate = remember(dateKey) {
+                                try {
+                                    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                                    val date = sdf.parse(dateKey) ?: Date()
+                                    val cal = Calendar.getInstance().apply { time = date }
+                                    val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+                                    if (cal.get(Calendar.YEAR) == currentYear) {
+                                        SimpleDateFormat("M月d日", Locale.getDefault()).format(date)
+                                    } else {
+                                        SimpleDateFormat("yyyy年M月d日", Locale.getDefault()).format(date)
+                                    }
+                                } catch (_: Exception) { dateKey }
+                            }
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                ) {
+                                    Text(
+                                        text = "消息将于${displayDate}发送",
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+                        }
+                        items(msgs, key = { it.id }) { msg ->
+                            ScheduledMessageItem(
+                                msg = msg,
+                                onCancel = { onCancel(msg.id) },
+                                onCopy = { onCopy(msg.content) }
+                            )
+                        }
                     }
                 }
             }
         }
-    }
 
-    if (showTimePicker) {
-        ScheduleTimePickerBottomSheet(
-            onDismiss = { showTimePicker = false },
-            onConfirm = { timeStr ->
-                viewModel.scheduleMessage(timeStr, inputText, emptyList())
-                inputText = ""
-                showTimePicker = false
-            }
-        )
+        if (showTimePicker) {
+            ScheduleTimePickerBottomSheet(
+                onDismiss = { showTimePicker = false },
+                onConfirm = { timeStr ->
+                    viewModel.scheduleMessage(timeStr, inputText, emptyList())
+                    inputText = ""
+                    showTimePicker = false
+                }
+            )
+        }
     }
 }
-
 
 // ---- Activity ----
 class MessageDetailActivity : ComponentActivity() {
