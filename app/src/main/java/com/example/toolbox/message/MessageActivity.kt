@@ -145,6 +145,7 @@ import androidx.compose.material3.rememberTimePickerState
 import com.example.toolbox.data.ScheduledMessage
 import com.example.toolbox.data.ScheduleListResponse
 import androidx.compose.ui.input.pointer.pointerInput
+import com.example.toolbox.message.GroupInfoActivity
 import java.util.Calendar
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1321,6 +1322,37 @@ fun MessageDetailScreen(
             }
         )
     }
+    // 定时消息列表覆盖层
+    if (showScheduledList) {
+        ScheduledMessageListOverlay(
+            messages = uiState.scheduledMessages,
+            backgroundUrl = backgroundUrl.value,
+            onDismiss = { showScheduledList = false },
+            onCancel = { id -> viewModel.cancelScheduledMessage(id) },
+            onCopy = { text ->
+                val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                clipboardManager.setPrimaryClip(ClipData.newPlainText("text", text))
+                Toast.makeText(context, "已复制", Toast.LENGTH_SHORT).show()
+            }
+        )
+    }
+
+    // 定时消息时间选择器
+    if (showTimePicker) {
+        ScheduleTimePickerBottomSheet(
+            onDismiss = { showTimePicker = false },
+            onConfirm = { timeStr ->
+                val text = uiState.inputText
+                val images = uiState.selectedImages
+                if (text.isNotBlank() || images.isNotEmpty()) {
+                    viewModel.scheduleMessage(timeStr, text, images)
+                } else {
+                    Toast.makeText(context, "请先输入消息内容", Toast.LENGTH_SHORT).show()
+                }
+                showTimePicker = false
+            }
+        )
+    }
 }
 
 
@@ -2379,18 +2411,20 @@ fun MessageInput(
 
                 Spacer(Modifier.width(2.dp))
 
-                // 发送按钮（支持长按）
-                // ---- 发送按钮（支持长按） ----
+                val isSendEnabled = inputText.isNotBlank() || selectedImages.isNotEmpty()
+
                 Box(
                     modifier = Modifier.size(40.dp)
                         .combinedClickable(
                             onClick = {
-                                if (!showScheduleMenu) {
+                                if (isSendEnabled && !showScheduleMenu) {
                                     onSendClick()
                                 }
                             },
                             onLongClick = {
-                                onShowScheduleMenuChange(true)
+                                if (isSendEnabled) {
+                                    onShowScheduleMenuChange(true)
+                                }
                             }
                         ),
                     contentAlignment = Alignment.Center
@@ -2398,7 +2432,10 @@ fun MessageInput(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Send,
                         contentDescription = "发送",
-                        tint = MaterialTheme.colorScheme.onSurface
+                        tint = if (isSendEnabled)
+                            MaterialTheme.colorScheme.onSurface
+                        else
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                     )
 
                     // 长按菜单 (TG风格)

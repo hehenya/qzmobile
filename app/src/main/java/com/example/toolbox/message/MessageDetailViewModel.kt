@@ -53,6 +53,7 @@ import com.example.toolbox.TokenManager
 import com.example.toolbox.data.ScheduledMessage
 import com.example.toolbox.data.ScheduleListResponse
 import org.json.JSONArray
+import java.util.Calendar
 class MessageDetailViewModel(
     private val token: String,
     private val chatType: Int,
@@ -359,7 +360,7 @@ class MessageDetailViewModel(
                     val merged = (_atMessages.value + newAtMessages).distinctBy { it.effectiveMsgId }
                     _atMessages.value = merged
                     _hasAtMessage.value = merged.isNotEmpty()
-                    Toast.makeText(MyApplication.instance, "newAtMessages=${newAtMessages.size}, merged=${merged.size}", Toast.LENGTH_SHORT).show()
+
                     if (chatType == 1 && result.chatBackgroundUrl.isNotEmpty()) {
                         _backgroundUrl.value = result.chatBackgroundUrl
                     }
@@ -1401,7 +1402,18 @@ class MessageDetailViewModel(
     private val _showHeatmap = MutableStateFlow(false)
     val showHeatmap: StateFlow<Boolean> = _showHeatmap.asStateFlow()
 
-    private val _heatmapYearMonth = MutableStateFlow(YearMonth.now())
+    mapYearMonth = MutableStateFlow(getCurrentYearMonth())
+
+    // 在 ViewModel 中加一个辅助函数
+    private fun getCurrentYearMonth(): YearMonth {
+        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            YearMonth.now()
+        } else {
+            val calendar = Calendar.getInstance()
+            // Calendar.MONTH 从 0 开始，YearMonth 从 1 开始，所以要 +1
+            YearMonth.of(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH) + 1)
+        }
+    }
     val heatmapYearMonth: StateFlow<YearMonth> = _heatmapYearMonth.asStateFlow()
 
     private val _isLoadingActiveDays = MutableStateFlow(false)
