@@ -146,6 +146,7 @@ import com.example.toolbox.data.ScheduledMessage
 import com.example.toolbox.data.ScheduleListResponse
 import androidx.compose.ui.input.pointer.pointerInput
 import com.example.toolbox.message.GroupInfoActivity
+import com.example.toolbox.message.ScheduledMessageListOverlay
 import java.util.Calendar
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1326,7 +1327,7 @@ fun MessageDetailScreen(
     if (showScheduledList) {
         ScheduledMessageListOverlay(
             messages = uiState.scheduledMessages,
-            backgroundUrl = backgroundUrl.value,
+            backgroundUrl = backgroundUrl,
             onDismiss = { showScheduledList = false },
             onCancel = { id -> viewModel.cancelScheduledMessage(id) },
             onCopy = { text ->
