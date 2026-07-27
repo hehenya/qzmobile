@@ -403,7 +403,8 @@ fun ScheduledMessageListOverlay(
                     )
                 )
             }
-        ) { paddingValues ->  
+            
+        ) { paddingValues ->
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
