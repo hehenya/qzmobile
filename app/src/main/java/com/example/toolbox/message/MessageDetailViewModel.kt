@@ -1396,31 +1396,34 @@ class MessageDetailViewModel(
             }
         }
     }
+    // ---- 热力图相关状态 ----
     private val _activeDays = MutableStateFlow<List<ActiveDay>>(emptyList())
     val activeDays: StateFlow<List<ActiveDay>> = _activeDays.asStateFlow()
 
     private val _showHeatmap = MutableStateFlow(false)
     val showHeatmap: StateFlow<Boolean> = _showHeatmap.asStateFlow()
 
-    mapYearMonth = MutableStateFlow(getCurrentYearMonth())
+    // ✅ 正确声明 _heatmapYearMonth
+    private val _heatmapYearMonth = MutableStateFlow(getCurrentYearMonth())
+    val heatmapYearMonth: StateFlow<YearMonth> = _heatmapYearMonth.asStateFlow()
 
-    // 在 ViewModel 中加一个辅助函数
+    private val _isLoadingActiveDays = MutableStateFlow(false)
+    val isLoadingActiveDays: StateFlow<Boolean> = _isLoadingActiveDays.asStateFlow()
+
+    private val loadedYearMonths = mutableSetOf<YearMonth>()
+
+    // ✅ 兼容 API 23 的 YearMonth.now() 替代
     private fun getCurrentYearMonth(): YearMonth {
         return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             YearMonth.now()
         } else {
             val calendar = Calendar.getInstance()
-            // Calendar.MONTH 从 0 开始，YearMonth 从 1 开始，所以要 +1
             YearMonth.of(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH) + 1)
         }
     }
-    val heatmapYearMonth: StateFlow<YearMonth> = _heatmapYearMonth.asStateFlow()
 
-    private val _isLoadingActiveDays = MutableStateFlow(false)
-    val isLoadingActiveDays: StateFlow<Boolean> = _isLoadingActiveDays.asStateFlow()
-    private val loadedYearMonths = mutableSetOf<YearMonth>()
-    fun loadActiveDays(yearMonth: YearMonth = YearMonth.now()) {
-        if (yearMonth in loadedYearMonths) return  
+    fun loadActiveDays(yearMonth: YearMonth = getCurrentYearMonth()) {
+        if (yearMonth in loadedYearMonths) return
         viewModelScope.launch {
             _isLoadingActiveDays.value = true
             try {
@@ -1428,21 +1431,21 @@ class MessageDetailViewModel(
                     .connectTimeout(10, TimeUnit.SECONDS)
                     .readTimeout(10, TimeUnit.SECONDS)
                     .build()
-                
+
                 val jsonBody = JSONObject().apply {
                     put("chat_type", chatType)
                     put("chat_id", chatId)
                     put("page", 1)
-                    put("per_page", 31) 
+                    put("per_page", 31)
                 }.toString()
-                
+
                 val requestBody = jsonBody.toRequestBody("application/json; charset=utf-8".toMediaType())
                 val request = Request.Builder()
                     .url("${ApiAddress}chat/active_days")
                     .post(requestBody)
                     .addHeader("x-access-token", token)
                     .build()
-                
+
                 withContext(Dispatchers.IO) {
                     client.newCall(request).execute().use { response ->
                         val body = response.body?.string()
@@ -1450,7 +1453,7 @@ class MessageDetailViewModel(
                             val result = jsonParser.decodeFromString<ActiveDaysResponse>(body)
                             if (result.success) {
                                 _activeDays.value = result.activeDays
-                                loadedYearMonths.add(yearMonth)  
+                                loadedYearMonths.add(yearMonth)
                             }
                         }
                     }
@@ -1462,11 +1465,12 @@ class MessageDetailViewModel(
             }
         }
     }
+
     fun showHeatmap(dateString: String? = null) {
         val yearMonth = if (dateString != null) {
             parseDateString(dateString)
         } else {
-            YearMonth.now()
+            getCurrentYearMonth()
         }
         _heatmapYearMonth.value = yearMonth
         loadActiveDays(yearMonth)
