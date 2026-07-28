@@ -13,7 +13,9 @@ object DraftManager {
     fun saveDraft(chatType: Int, chatId: Int, draft: String) {
         prefs?.edit()?.apply {
             putString("draft_${chatType}_${chatId}", draft)
-            putString("draft_${chatType}_${chatId}_time", System.currentTimeMillis().toString())
+            // 使用标准日期字符串代替时间戳
+            val sdf = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
+            putString("draft_${chatType}_${chatId}_time", sdf.format(java.util.Date()))
             apply()
         }
     }

@@ -926,6 +926,23 @@ fun MessageDetailScreen(
     val floatingAvatarUrl = floatingAvatarState.second
     val floatingAvatarIsMine = floatingAvatarState.third
 
+// 额外检查：确保第一条可见消息确实属于该用户，且头像真的不可见
+    val firstVisibleIndex = remember {
+        derivedStateOf { listState.layoutInfo.visibleItemsInfo.firstOrNull()?.index }
+    }
+
+    val shouldHideFloating = remember(density) {
+        derivedStateOf {
+            val topMsg = uiState.messages.getOrNull(firstVisibleIndex.value ?: -1)
+            topMsg != null && !topMsg.isRecalled && !topMsg.isSystem && !topMsg.isMine &&
+                    listState.layoutInfo.visibleItemsInfo.firstOrNull()?.let { itemInfo ->
+                        with(density) {
+                            itemInfo.offset > 0 && itemInfo.size > 44.dp.toPx()
+                        }
+                    } ?: false
+        }
+    }
+
     val topVisibleMessage by remember {
         derivedStateOf {
             val visibleItems = listState.layoutInfo.visibleItemsInfo
@@ -1253,7 +1270,7 @@ fun MessageDetailScreen(
                     )
                 }
 
-                if (showFloatingAvatar) {
+                if (showFloatingAvatar && !shouldHideFloating.value) {
                     AsyncImage(
                         model = floatingAvatarUrl,
                         contentDescription = null,
