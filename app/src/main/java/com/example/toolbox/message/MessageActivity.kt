@@ -166,8 +166,15 @@ fun ScheduledMessageItem(
             .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.End   // 靠右，模仿自己的消息
     ) {
-        Box(modifier = Modifier.widthIn(max = 280.dp)) {
-            // 聊天气泡
+        // 左侧占位：头像宽度36dp + 间距8dp = 44dp
+        Spacer(modifier = Modifier.width(44.dp))
+
+        // 气泡容器
+        Box(
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .widthIn(max = 260.dp)   // 最大宽度
+        ) {
             Surface(
                 modifier = Modifier
                     .combinedClickable(
@@ -178,7 +185,7 @@ fun ScheduledMessageItem(
                     topStart = 16.dp,
                     topEnd = 16.dp,
                     bottomStart = 16.dp,
-                    bottomEnd = 4.dp    // 右侧小尾巴
+                    bottomEnd = 4.dp
                 ),
                 color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)
             ) {
@@ -205,7 +212,6 @@ fun ScheduledMessageItem(
                 }
             }
 
-            // 长按/点击菜单
             DropdownMenu(
                 expanded = showMenu,
                 onDismissRequest = { showMenu = false }
@@ -1833,7 +1839,14 @@ fun MessageBubble(
                     }
                 }
 
-                Box(modifier = Modifier.weight(1f, fill = false)) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .then(
+                            if (isMine) Modifier.padding(start = 44.dp)  // 自己的消息：左侧留空
+                            else Modifier.padding(end = 44.dp)            // 别人的消息：右侧留空
+                        )
+                ) {
                     Column(horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
                         Card(
                             shape = RoundedCornerShape(
@@ -1846,6 +1859,7 @@ fun MessageBubble(
                                             else (bubbleCornerRadius * 0.3f).dp 
                                             else bubbleCornerRadius.dp
                             ),
+                            modifier = Modifier.widthIn(max = 260.dp),
                             colors = CardDefaults.cardColors(
                                 containerColor = when {
                                     message.images.isNotEmpty() && message.content.isBlank() -> Color.Transparent
