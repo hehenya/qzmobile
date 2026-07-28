@@ -2619,16 +2619,12 @@ fun MessageInput(
                     )
                 )
                 Spacer(Modifier.width(5.dp))
-                // 根据 hasScheduled 决定是否显示整个按钮
-                Box(modifier = Modifier.size(32.dp)) {
-                    if (hasScheduled) {
-                        IconButton(onClick = onScheduledListClick, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Default.Event, contentDescription = "定时消息", tint = MaterialTheme.colorScheme.onSurface)
-                        }
+                if (hasScheduled) {
+                    IconButton(onClick = onScheduledListClick, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Event, contentDescription = "定时消息", tint = MaterialTheme.colorScheme.onSurface)
                     }
+                    Spacer(Modifier.width(2.dp))
                 }
-
-                Spacer(Modifier.width(2.dp))
 
                 val isSendEnabled = inputText.isNotBlank() || selectedImages.isNotEmpty()
 
