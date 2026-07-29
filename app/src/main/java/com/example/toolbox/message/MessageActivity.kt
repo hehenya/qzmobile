@@ -1097,7 +1097,8 @@ fun MessageDetailScreen(
                         reverseLayout = true,
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                         // 👇 核心：预留底部空间，让悬浮输入框不会遮挡最后一条消息！
-                        contentPadding = PaddingValues(bottom = 75.dp)
+                        // contentPadding = PaddingValues(bottom = 75.dp)
+                        contentPadding = PaddingValues(top = 120.dp)
                     ) {
                         items(
                             items = uiState.messages,
@@ -2777,7 +2778,9 @@ fun MessageInput(
                             fontSize = 16.sp,
                             lineHeight = 20.sp
                         ),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .offset(y = 2.dp) // 👈 核心修正：将实际输入文字整体向上微调 2dp
                     )
 
                     // 自定义占位符
