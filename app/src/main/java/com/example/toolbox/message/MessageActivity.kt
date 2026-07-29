@@ -775,14 +775,13 @@ fun MessageDetailScreen(
     val isUploading by viewModel.isUploading.collectAsState()
     val uploadProgress by viewModel.uploadProgress.collectAsState()
 
-
     LaunchedEffect(
         uiState.messages.size,
         uiState.groupInfo,
         uiState.otherUser,
         uiState.isLoading
     ) {
-
+        // 初始化加载效果
     }
 
     LaunchedEffect(viewModel) {
@@ -808,7 +807,6 @@ fun MessageDetailScreen(
     val selectionMode = uiState.selectionMode
     val selectedMessages = uiState.selectedMessages
     var showMenuMsgId by remember { mutableStateOf<String?>(null) }
-
 
     val floatingAvatarState by remember {
         derivedStateOf {
@@ -876,7 +874,6 @@ fun MessageDetailScreen(
     val floatingAvatarUrl = floatingAvatarState.second
     val floatingAvatarIsMine = floatingAvatarState.third
 
-// 额外检查：确保第一条可见消息确实属于该用户，且头像真的不可见
     val firstVisibleIndex = remember {
         derivedStateOf { listState.layoutInfo.visibleItemsInfo.firstOrNull()?.index }
     }
@@ -976,15 +973,18 @@ fun MessageDetailScreen(
         )
     }
 
-
-
     BackHandler(enabled = selectionMode) {
         viewModel.exitSelectionMode()
     }
     BackHandler(enabled = showScheduledList) {
         showScheduledList = false
     }
+
+    // ==============================
+    // 👇 悬浮布局核心结构 👇
+    // ==============================
     Box(modifier = Modifier.fillMaxSize()) {
+        // 1. 统一的背景层
         val backgroundUrl by viewModel.backgroundUrl.collectAsState()
         backgroundUrl?.takeIf { it.isNotEmpty() }?.let { bgUrl ->
             AsyncImage(
@@ -995,6 +995,7 @@ fun MessageDetailScreen(
             )
         }
 
+        // 2. 主要内容区（好友提示 + 消息列表）
         Column(modifier = Modifier.fillMaxSize()) {
             if (uiState.chatType == 1 && uiState.relationship != "friend") {
                 Surface(
@@ -1036,9 +1037,10 @@ fun MessageDetailScreen(
                 }
             }
 
+            // 消息列表层
             Box(modifier = Modifier
                 .weight(1f)
-                .padding(top = innerPadding.calculateTopPadding())  // 添加这行
+                .padding(top = innerPadding.calculateTopPadding())
             ) {
                 PullToRefreshBox(
                     isRefreshing = uiState.isRefreshing,
@@ -1049,7 +1051,9 @@ fun MessageDetailScreen(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
                         reverseLayout = true,
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        // 👇 核心：预留底部空间，让悬浮输入框不会遮挡最后一条消息！
+                        contentPadding = PaddingValues(bottom = 160.dp)
                     ) {
                         items(
                             items = uiState.messages,
@@ -1092,10 +1096,8 @@ fun MessageDetailScreen(
                             val isCurrentMsg = message.effectiveMsgId == showMenuMsgId
                             val itemAlpha = if (isMenuOpen && !isCurrentMsg) 0.4f else 1f
 
-                            // 滚动到目标消息
                             LaunchedEffect(targetMessageId) {
                                 if (targetMessageId != null) {
-                                    // 等待目标消息出现再滚动，最多等 2 秒
                                     withTimeoutOrNull(2000) {
                                         snapshotFlow {
                                             uiState.messages.firstOrNull { it.effectiveMsgId == targetMessageId }
@@ -1232,7 +1234,6 @@ fun MessageDetailScreen(
                             .clip(CircleShape)
                             .combinedClickable(
                                 onClick = {
-                                    // 点击进入用户主页
                                     topVisibleMessage?.senderId?.let { senderId ->
                                         val intent = Intent(context, UserInfoActivity::class.java).apply {
                                             putExtra("userId", senderId)
@@ -1250,8 +1251,8 @@ fun MessageDetailScreen(
                                                 } else {
                                                     "${uiState.inputText} @$name "
                                                 }
-                                                viewModel.updateInputText(newText)   // 只更新一次文本
-                                                viewModel.addMentionUser(senderId, name)  // 只添加用户ID
+                                                viewModel.updateInputText(newText)
+                                                viewModel.addMentionUser(senderId, name)
                                             }
                                         }
                                     }
@@ -1266,7 +1267,6 @@ fun MessageDetailScreen(
                         onClick = {
                             val firstAtMessage = uiState.atMessages.firstOrNull()
                             if (firstAtMessage != null) {
-                                // 调试 Toast：显示即将跳转的消息 ID
                                 Toast.makeText(context, "点击跳转: ${firstAtMessage.effectiveMsgId}", Toast.LENGTH_SHORT).show()
                                 viewModel.jumpToAtMessage(firstAtMessage.effectiveMsgId)
                             }
@@ -1276,6 +1276,7 @@ fun MessageDetailScreen(
                             .padding(bottom = 80.dp, end = 16.dp)
                     )
                 }
+
                 AnimatedScrollToBottomButton(
                     visible = showScrollToBottom,
                     unreadCount = unreadCount,
@@ -1285,212 +1286,217 @@ fun MessageDetailScreen(
                         .padding(16.dp)
                 )
             }
+        }
 
-            if (selectionMode) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .hazeEffect(state = hazeState, style = HazeMaterials.thin())
-                        .padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    Button(onClick = { viewModel.recallSelectedMessages() }) {
-                        Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null)
-                        Spacer(Modifier.width(4.dp))
-                        Text("撤回")
-                    }
+        // ==============================
+        // 👇 3. 悬浮在底部的操作栏 (无任何省略) 👇
+        // ==============================
+        if (selectionMode) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = innerPadding.calculateBottomPadding())
+                    .hazeEffect(state = hazeState, style = HazeMaterials.thin())
+                    .padding(12.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                Button(onClick = { viewModel.recallSelectedMessages() }) {
+                    Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null)
+                    Spacer(Modifier.width(4.dp))
+                    Text("撤回")
+                }
 
-                    Button(onClick = { /* 转发选中 */ }) {
-                        Icon(Icons.Filled.Share, null, Modifier.size(18.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("转发")
+                Button(onClick = { /* 转发选中 */ }) {
+                    Icon(Icons.Filled.Share, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("转发")
+                }
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(bottom = innerPadding.calculateBottomPadding())
+            ) {
+                replyTo?.let { repliedMessage ->
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
+                        shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
+                    ) {
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                Modifier
+                                    .width(3.dp)
+                                    .height(32.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.primary,
+                                        RoundedCornerShape(2.dp)
+                                    )
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    repliedMessage.displayName,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    if (repliedMessage.contentType == 7 || repliedMessage.isSticker) "表情消息"
+                                    else if (repliedMessage.content.isEmpty() && repliedMessage.images.isNotEmpty()) "[图片]"
+                                    else if (repliedMessage.content.isEmpty()) "消息"
+                                    else repliedMessage.content,
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            IconButton(
+                                onClick = { viewModel.clearReplyTo() },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(Icons.Default.Close, "取消引用", Modifier.size(16.dp))
+                            }
+                        }
                     }
                 }
 
-            } else {
-                Column {
-                    replyTo?.let { repliedMessage ->
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
-                            shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
+                uiState.editingMessage?.let { editingMsg ->
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f),
+                        shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    Modifier
-                                        .width(3.dp)
-                                        .height(32.dp)
-                                        .background(
-                                            MaterialTheme.colorScheme.primary,
-                                            RoundedCornerShape(2.dp)
-                                        )
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    "编辑消息",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
-                                Spacer(Modifier.width(8.dp))
-                                Column(Modifier.weight(1f)) {
-                                    Text(
-                                        repliedMessage.displayName,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                    Text(
-                                        if (repliedMessage.contentType == 7 || repliedMessage.isSticker) "表情消息"
-                                        else if (repliedMessage.content.isEmpty() && repliedMessage.images.isNotEmpty()) "[图片]"
-                                        else if (repliedMessage.content.isEmpty()) "消息"
-                                        else repliedMessage.content,
-                                        fontSize = 12.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                IconButton(
-                                    onClick = { viewModel.clearReplyTo() },
-                                    modifier = Modifier.size(24.dp)
-                                ) {
-                                    Icon(Icons.Default.Close, "取消引用", Modifier.size(16.dp))
-                                }
+                                Text(
+                                    editingMsg.content.take(30).ifEmpty { "图片消息" },
+                                    fontSize = 11.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                                )
+                            }
+                            IconButton(
+                                onClick = { viewModel.cancelEditMessage() },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(Icons.Default.Close, "取消编辑", Modifier.size(16.dp))
                             }
                         }
                     }
 
-                    uiState.editingMessage?.let { editingMsg ->
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f),
-                            shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
+                    if (uiState.editingImages.isNotEmpty()) {
+                        LazyRow(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Default.Edit,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Column(Modifier.weight(1f)) {
-                                    Text(
-                                        "编辑消息",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                            items(uiState.editingImages.size) { index ->
+                                Box(Modifier.size(60.dp).clip(RoundedCornerShape(4.dp))) {
+                                    AsyncImage(
+                                        model = uiState.editingImages[index],
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
                                     )
-                                    Text(
-                                        editingMsg.content.take(30).ifEmpty { "图片消息" },
-                                        fontSize = 11.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
-                                    )
-                                }
-                                IconButton(
-                                    onClick = { viewModel.cancelEditMessage() },
-                                    modifier = Modifier.size(24.dp)
-                                ) {
-                                    Icon(Icons.Default.Close, "取消编辑", Modifier.size(16.dp))
-                                }
-                            }
-                        }
-
-                        // 编辑时的图片预览
-                        if (uiState.editingImages.isNotEmpty()) {
-                            LazyRow(
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                items(uiState.editingImages.size) { index ->
-                                    Box(Modifier.size(60.dp).clip(RoundedCornerShape(4.dp))) {
-                                        AsyncImage(
-                                            model = uiState.editingImages[index],
-                                            contentDescription = null,
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                        IconButton(
-                                            onClick = { viewModel.removeEditingImage(index) },
-                                            modifier = Modifier.align(Alignment.TopEnd).size(18.dp)
-                                                .background(Color.Black.copy(alpha = 0.5f), CircleShape)
-                                        ) {
-                                            Icon(Icons.Default.Close, "移除", Modifier.size(10.dp), tint = Color.White)
-                                        }
+                                    IconButton(
+                                        onClick = { viewModel.removeEditingImage(index) },
+                                        modifier = Modifier.align(Alignment.TopEnd).size(18.dp)
+                                            .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                                    ) {
+                                        Icon(Icons.Default.Close, "移除", Modifier.size(10.dp), tint = Color.White)
                                     }
                                 }
                             }
                         }
                     }
-                    val emojiPanelVisible by viewModel.emojiPanelVisible.collectAsState()
-                    val emojis by viewModel.emojis.collectAsState()
-                    val isLoadingEmojis by viewModel.isLoadingEmojis.collectAsState()
+                }
 
+                val emojiPanelVisible by viewModel.emojiPanelVisible.collectAsState()
+                val emojis by viewModel.emojis.collectAsState()
+                val isLoadingEmojis by viewModel.isLoadingEmojis.collectAsState()
 
+                MessageInput(
+                    inputText = if (uiState.editingMessage != null) uiState.editingContent else uiState.inputText,
+                    selectedImages = uiState.selectedImages,
+                    isMarkdown = uiState.isMarkdown,
+                    onTextChange = {
+                        if (uiState.editingMessage != null) {
+                            viewModel.updateEditingContent(it)
+                        } else {
+                            viewModel.onInputTextChanged(it)
+                        }
+                    },
+                    onSendClick = {
+                        if (uiState.editingMessage != null) {
+                            viewModel.submitEditMessage()
+                        } else {
+                            viewModel.sendMessage()
+                        }
+                    },
+                    onAddImageClick = { imagePicker.launch("image/*") },
+                    onRemoveImage = { viewModel.removeImage(it) },
+                    onToggleMarkdown = {
+                        if (uiState.editingMessage != null) {
+                            viewModel.toggleEditingMarkdown()
+                        } else {
+                            viewModel.toggleMarkdown()
+                        }
+                    },
+                    innerPadding = innerPadding,
+                    isUploading = isUploading,
+                    uploadProgress = uploadProgress,
+                    onCancelUpload = { viewModel.cancelUpload() },
+                    onEmojiClick = { viewModel.toggleEmojiPanel() },
+                    hasScheduled = uiState.hasScheduled,
+                    onScheduledListClick = { showScheduledList = true },
+                    showScheduleMenu = showScheduleMenu,
+                    onShowScheduleMenuChange = { showScheduleMenu = it },
+                    onScheduleMenuConfirm = { showTimePicker = true },
+                    hazeState = hazeState
+                )
 
-                    MessageInput(
-                        inputText = if (uiState.editingMessage != null) uiState.editingContent else uiState.inputText,
-                        selectedImages = uiState.selectedImages,
-                        isMarkdown = uiState.isMarkdown,
-                        onTextChange = {
-                            if (uiState.editingMessage != null) {
-                                viewModel.updateEditingContent(it)
-                            } else {
-                                viewModel.onInputTextChanged(it)
-                            }
-                        },
-                        onSendClick = {
-                            if (uiState.editingMessage != null) {
-                                viewModel.submitEditMessage()
-                            } else {
-                                viewModel.sendMessage()
-                            }
-                        },
-                        onAddImageClick = { imagePicker.launch("image/*") },
-                        onRemoveImage = { viewModel.removeImage(it) },
-                        onToggleMarkdown = {
-                            if (uiState.editingMessage != null) {
-                                viewModel.toggleEditingMarkdown()
-                            } else {
-                                viewModel.toggleMarkdown()
-                            }
-                        },
-                        innerPadding = innerPadding,
-                        isUploading = isUploading,
-                        uploadProgress = uploadProgress,
-                        onCancelUpload = { viewModel.cancelUpload() },
-                        onEmojiClick = { viewModel.toggleEmojiPanel() },
-                        hasScheduled = uiState.hasScheduled,
-                        onScheduledListClick = { showScheduledList = true },
-                        showScheduleMenu = showScheduleMenu,
-                        onShowScheduleMenuChange = { showScheduleMenu = it },
-                        onScheduleMenuConfirm = { showTimePicker = true },
-                        hazeState = hazeState
-
+                AnimatedVisibility(
+                    visible = emojiPanelVisible,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    EmojiPanel(
+                        emojis = emojis,
+                        isLoading = isLoadingEmojis,
+                        onEmojiClick = { viewModel.sendEmoji(it) },
+                        onEmojiLongPress = { viewModel.deleteEmoji(it) },
+                        modifier = Modifier.height(260.dp)
                     )
-                    AnimatedVisibility(
-                        visible = emojiPanelVisible,
-                        enter = fadeIn() + expandVertically(),
-                        exit = fadeOut() + shrinkVertically()
-                    ) {
-                        EmojiPanel(
-                            emojis = emojis,
-                            isLoading = isLoadingEmojis,
-                            onEmojiClick = { viewModel.sendEmoji(it) },
-                            onEmojiLongPress = { viewModel.deleteEmoji(it) },
-                            modifier = Modifier.height(260.dp)
-                        )
-
-                    }
                 }
             }
         }
     }
-    // 热力图弹窗
 
     if (recallDialog.isOpen) {
         AlertDialog(
@@ -1509,7 +1515,7 @@ fun MessageDetailScreen(
             }
         )
     }
-    // 定时消息列表覆盖层
+
     if (showScheduledList) {
         ScheduledMessageListOverlay(
             messages = uiState.scheduledMessages,
@@ -1521,11 +1527,10 @@ fun MessageDetailScreen(
                 clipboardManager.setPrimaryClip(ClipData.newPlainText("text", text))
                 Toast.makeText(context, "已复制", Toast.LENGTH_SHORT).show()
             },
-            viewModel = viewModel   // 👈 必须传 viewModel
+            viewModel = viewModel
         )
     }
 
-    // 定时消息时间选择器
     if (showTimePicker) {
         ScheduleTimePickerBottomSheet(
             onDismiss = { showTimePicker = false },
@@ -2543,7 +2548,8 @@ fun MessageInput(
     onScheduleMenuConfirm: () -> Unit,
     hazeState: HazeState
 ) {
-    // 定义统一颜色
+    // 核心颜色（保留半透明深色，解决“太透了”的问题）
+    val inputBarBg = Color(0xFF2C2D35).copy(alpha = 0.7f)
     val textColor = Color(0xFFE0E0E0)
     val placeholderColor = Color(0xFF888888)
     val sendBtnBg = Color(0xFF1E90FF)
@@ -2557,17 +2563,17 @@ fun MessageInput(
             .padding(horizontal = 8.dp, vertical = 4.dp)
             .padding(bottom = innerPadding.calculateBottomPadding())
             .heightIn(max = 150.dp)
-            // 👇 绝对的透明 + 去噪点，和顶栏完全一模一样
+            // 👇 核心修正：使用和顶栏完全一致的模糊样式（不带噪点）
             .hazeEffect(
                 state = hazeState,
                 style = HazeMaterials.thin().copy(noiseFactor = 0f)
             ),
-        color = Color.Transparent, // 👈 核心改动：去掉底部的半透明蒙层，完全和顶栏一致！
+        color = inputBarBg, // 👈 半透明深色底色
         shape = RoundedCornerShape(30.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp)) {
 
-            // --- 图片预览 ---
+            // --- 图片/上传预览层 ---
             if (isUploading) {
                 UploadProgressBar(progress = uploadProgress, onCancel = onCancelUpload)
             } else if (selectedImages.isNotEmpty()) {
@@ -2584,18 +2590,18 @@ fun MessageInput(
                 Spacer(Modifier.height(6.dp))
             }
 
-            // --- 核心布局 ---
+            // --- 核心排版 ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Bottom
             ) {
-                // 1. 表情
+                // 1. 表情按钮
                 IconButton(onClick = onEmojiClick, modifier = Modifier.size(36.dp)) {
                     Icon(imageVector = Icons.Default.Face, contentDescription = "表情", tint = iconColor)
                 }
                 Spacer(modifier = Modifier.width(4.dp))
 
-                // 2. 紧凑输入框
+                // 2. 紧凑输入框（无MD徽章，打字自动撑开）
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -2656,7 +2662,7 @@ fun MessageInput(
                     }
                 }
 
-                // 4. 日历图标（按需显示）
+                // 4. 日历图标（按需显示，没有则自动让输入框伸长）
                 if (hasScheduled) {
                     IconButton(onClick = onScheduledListClick, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.Event, contentDescription = "定时消息", tint = iconColor)
@@ -2664,7 +2670,7 @@ fun MessageInput(
                     Spacer(modifier = Modifier.width(4.dp))
                 }
 
-                // 5. 蓝色发送按钮
+                // 5. 蓝色纸飞机发送按钮
                 val isSendEnabled = inputText.isNotBlank() || selectedImages.isNotEmpty()
                 Box(
                     modifier = Modifier
