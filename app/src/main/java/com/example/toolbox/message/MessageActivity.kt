@@ -37,10 +37,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -64,15 +62,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.rememberGraphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.Clipboard
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalClipboard
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -88,21 +82,11 @@ import coil3.request.allowHardware
 import coil3.request.bitmapConfig
 import coil3.request.crossfade
 import com.example.toolbox.ApiAddress
-import com.example.toolbox.DraftManager
 import com.example.toolbox.R
 import com.example.toolbox.TokenManager
 import com.example.toolbox.community.UserInfoActivity
 import com.example.toolbox.data.*
-import com.example.toolbox.message.AnnouncementDetailActivity
-import com.example.toolbox.message.AnimatedAtMessageButton
-import com.example.toolbox.message.AnnouncementBanner
-import com.example.toolbox.message.EmojiPanel
-import com.example.toolbox.message.ForwardActivity
-import com.example.toolbox.message.HeatmapActivity
-import com.example.toolbox.message.MessageSharePreviewCard
-import com.example.toolbox.message.UploadProgressBar
 import com.example.toolbox.ui.theme.ToolBoxTheme
-import com.example.toolbox.utils.MarkdownRenderer
 import com.example.toolbox.utils.MultiImageViewer
 import com.example.toolbox.webview.WebViewActivity
 import com.hrm.markdown.renderer.Markdown
@@ -128,9 +112,7 @@ import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.BoxScope
+
 @Composable
 fun ScheduledMessageItem(
     msg: ScheduledMessage,
@@ -443,20 +425,8 @@ fun ScheduledMessageListOverlay(
                             .padding(horizontal = 8.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        TextField(
-                            value = inputText,
-                            onValueChange = { inputText = it },
-                            modifier = Modifier.weight(1f),
-                            placeholder = { Text("定时消息...") },
-                            maxLines = 5,
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent
-                            ),
-                            shape = RoundedCornerShape(20.dp)
-                        )
+
+
                         Spacer(Modifier.width(5.dp))
                         IconButton(
                             onClick = { if (inputText.isNotBlank()) showTimePicker = true },
@@ -811,7 +781,7 @@ fun MessageDetailScreen(
         uiState.otherUser,
         uiState.isLoading
     ) {
-        
+
     }
 
     LaunchedEffect(viewModel) {
@@ -995,7 +965,7 @@ fun MessageDetailScreen(
             }
         }
     }
-    
+
     if (showImageViewer) {
         MultiImageViewer(
             images = imageViewerUrls,
@@ -1005,7 +975,7 @@ fun MessageDetailScreen(
         )
     }
 
-    
+
 
     BackHandler(enabled = selectionMode) {
         viewModel.exitSelectionMode()
@@ -1023,7 +993,7 @@ fun MessageDetailScreen(
                 modifier = Modifier.fillMaxSize()
             )
         }
-        
+
         Column(modifier = Modifier.fillMaxSize()) {
             if (uiState.chatType == 1 && uiState.relationship != "friend") {
                 Surface(
@@ -1314,7 +1284,7 @@ fun MessageDetailScreen(
                         .padding(16.dp)
                 )
             }
-          
+
             if (selectionMode) {
                 Row(
                     modifier = Modifier
@@ -1328,14 +1298,14 @@ fun MessageDetailScreen(
                         Spacer(Modifier.width(4.dp))
                         Text("撤回")
                     }
-                    
+
                     Button(onClick = { /* 转发选中 */ }) {
                         Icon(Icons.Filled.Share, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
                         Text("转发")
                     }
                 }
-            
+
             } else {
                 Column {
                     replyTo?.let { repliedMessage ->
@@ -1459,17 +1429,17 @@ fun MessageDetailScreen(
                     val emojis by viewModel.emojis.collectAsState()
                     val isLoadingEmojis by viewModel.isLoadingEmojis.collectAsState()
 
-                    
+
 
                     MessageInput(
                         inputText = if (uiState.editingMessage != null) uiState.editingContent else uiState.inputText,
                         selectedImages = uiState.selectedImages,
                         isMarkdown = uiState.isMarkdown,
-                        onTextChange = { 
+                        onTextChange = {
                             if (uiState.editingMessage != null) {
                                 viewModel.updateEditingContent(it)
                             } else {
-                                viewModel.onInputTextChanged(it) 
+                                viewModel.onInputTextChanged(it)
                             }
                         },
                         onSendClick = {
@@ -1497,8 +1467,9 @@ fun MessageDetailScreen(
                         onScheduledListClick = { showScheduledList = true },
                         showScheduleMenu = showScheduleMenu,
                         onShowScheduleMenuChange = { showScheduleMenu = it },
-                        onScheduleMenuConfirm = { showTimePicker = true }
-                        
+                        onScheduleMenuConfirm = { showTimePicker = true },
+                        hazeState = hazeState
+
                     )
                     AnimatedVisibility(
                         visible = emojiPanelVisible,
@@ -1512,14 +1483,14 @@ fun MessageDetailScreen(
                             onEmojiLongPress = { viewModel.deleteEmoji(it) },
                             modifier = Modifier.height(260.dp)
                         )
-                        
+
                     }
                 }
             }
         }
     }
     // 热力图弹窗
-    
+
     if (recallDialog.isOpen) {
         AlertDialog(
             onDismissRequest = { viewModel.hideRecallDialog() },
@@ -1757,18 +1728,18 @@ fun MessageBubble(
         Column(modifier = Modifier.fillMaxWidth()) {
             if (showDate && dateString != null) {
                 Box(
-                    Modifier.fillMaxWidth().padding(vertical = 8.dp), 
+                    Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Surface(
-                        shape = RoundedCornerShape(12.dp), 
+                        shape = RoundedCornerShape(12.dp),
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
-                        modifier = Modifier.clickable { onDateClick?.invoke(dateString) } 
+                        modifier = Modifier.clickable { onDateClick?.invoke(dateString) }
                     ) {
                         Text(
-                            dateString, 
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), 
-                            fontSize = 12.sp, 
+                            dateString,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                            fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -1846,13 +1817,13 @@ fun MessageBubble(
                     Column(horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
                         Card(
                             shape = RoundedCornerShape(
-                                topStart = bubbleCornerRadius.dp, 
+                                topStart = bubbleCornerRadius.dp,
                                 topEnd = bubbleCornerRadius.dp,
-                                bottomStart = if (isMine) bubbleCornerRadius.dp 
-                                            else if (!isNewerSameSender) bubbleCornerRadius.dp 
+                                bottomStart = if (isMine) bubbleCornerRadius.dp
+                                            else if (!isNewerSameSender) bubbleCornerRadius.dp
                                             else (bubbleCornerRadius * 0.3f).dp,
-                                bottomEnd = if (isMine) if (!isNewerSameSender) bubbleCornerRadius.dp 
-                                            else (bubbleCornerRadius * 0.3f).dp 
+                                bottomEnd = if (isMine) if (!isNewerSameSender) bubbleCornerRadius.dp
+                                            else (bubbleCornerRadius * 0.3f).dp
                                             else bubbleCornerRadius.dp
                             ),
                             modifier = Modifier.widthIn(max = 260.dp),
@@ -2002,8 +1973,8 @@ fun MessageBubble(
                                         .align(if (isMine) Alignment.End else Alignment.Start)
                                         .clickable { onTimeClick?.invoke() }  // 添加点击事件
                                 ) {
-                                    if (message.content.isNotBlank()) { 
-                                        Text(timestampDisplay, fontSize = 10.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)) 
+                                    if (message.content.isNotBlank()) {
+                                        Text(timestampDisplay, fontSize = 10.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
                                     }
                                     if (message.editTime != null) Text("已编辑", fontSize = 10.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f), modifier = Modifier.padding(start = 4.dp))
                                 }
@@ -2058,7 +2029,7 @@ fun MessageBubble(
                                     leadingIcon = { Icon(Icons.Default.Campaign, null, Modifier.size(18.dp)) }
                                 )
                             }
-                            
+
                         }
                         DropdownMenuItem(
                             text = { Text("转发") },
@@ -2080,7 +2051,7 @@ fun MessageBubble(
                                 },
                                 leadingIcon = { Icon(Icons.Default.Edit, null, Modifier.size(18.dp)) }
                             )
-                            
+
                         }
                         if (message.isSticker || message.contentType == 7) {
                             DropdownMenuItem(
@@ -2093,14 +2064,14 @@ fun MessageBubble(
                                 onClick = { onShowMenuChanged?.invoke(null); onCollectSticker?.invoke(message) },
                                 leadingIcon = { Icon(Icons.Filled.FavoriteBorder, null, Modifier.size(18.dp)) }
                             )
-                            
+
                             if (message.isMine) {
                                 DropdownMenuItem(
                                     text = { Text("删除表情") },
                                     onClick = { onShowMenuChanged?.invoke(null); onDeleteSticker?.invoke(message) },
                                     leadingIcon = { Icon(Icons.Filled.Delete, null, Modifier.size(18.dp)) }
                                 )
-                                
+
                             }
                         }
                         if (message.images.isNotEmpty()) {
@@ -2315,7 +2286,7 @@ private fun MessageSharePreviewCard(
     val context = LocalContext.current
     val clipboard = LocalClipboard.current
     val softwareImageLoader = remember { AppImageLoaders.getCoil3Loader(context) }
-    
+
     Surface(
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
@@ -2568,14 +2539,15 @@ fun MessageInput(
     onScheduledListClick: () -> Unit,
     showScheduleMenu: Boolean,
     onShowScheduleMenuChange: (Boolean) -> Unit,
-    onScheduleMenuConfirm: () -> Unit
+    onScheduleMenuConfirm: () -> Unit,
+    hazeState: HazeState
 ) {
-    // 参考图颜色定义
-    val inputBarBg = Color(0xFF2C2D35)      // 输入栏深色背景
-    val textColor = Color(0xFFE0E0E0)       // 输入文字颜色
-    val placeholderColor = Color(0xFF888888)// 占位提示文字颜色
-    val sendBtnBg = Color(0xFF1E90FF)       // 蓝色发送按钮背景
-    val iconColor = Color(0xFFCCCCCC)       // 图标默认颜色
+    // 核心颜色
+    val inputBarBg = Color(0xFF2C2D35).copy(alpha = 0.85f)
+    val textColor = Color(0xFFE0E0E0)
+    val placeholderColor = Color(0xFF888888)
+    val sendBtnBg = Color(0xFF1E90FF)
+    val iconColor = Color(0xFFCCCCCC)
 
     var showAttachmentMenu by remember { mutableStateOf(false) }
 
@@ -2584,13 +2556,14 @@ fun MessageInput(
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 4.dp)
             .padding(bottom = innerPadding.calculateBottomPadding())
-            .heightIn(max = 150.dp), // 核心：限制最大高度，防撑爆屏幕
+            .heightIn(max = 150.dp) // 防止撑爆
+            .hazeEffect(state = hazeState, style = HazeMaterials.thin()),
         color = inputBarBg,
-        shape = RoundedCornerShape(30.dp)   // 胶囊大圆角
+        shape = RoundedCornerShape(30.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp)) {
 
-            // --- 图片/上传预览层 ---
+            // --- 图片预览 ---
             if (isUploading) {
                 UploadProgressBar(progress = uploadProgress, onCancel = onCancelUpload)
             } else if (selectedImages.isNotEmpty()) {
@@ -2607,32 +2580,37 @@ fun MessageInput(
                 Spacer(Modifier.height(6.dp))
             }
 
-            // --- 核心排版 (Row) ---
+            // --- 核心布局 ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Bottom // 多行时按钮固定在下边框
+                verticalAlignment = Alignment.Bottom // 打字时往上长，按钮始终贴底
             ) {
-                // 1. 表情按钮
+                // 表情
                 IconButton(onClick = onEmojiClick, modifier = Modifier.size(36.dp)) {
                     Icon(imageVector = Icons.Default.Face, contentDescription = "表情", tint = iconColor)
                 }
-
                 Spacer(modifier = Modifier.width(4.dp))
 
-                // 2. 多行输入框 + MD 徽章 (使用隔离后的写法)
+                // 输入框区域
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 4.dp)
                 ) {
+                    // 干净利落的输入框
                     TextField(
                         value = inputText,
                         onValueChange = onTextChange,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(end = 36.dp), // 给 MD 留出安全区
                         placeholder = { Text(text = "输入消息", color = placeholderColor, fontSize = 16.sp) },
-                        textStyle = TextStyle(color = textColor, fontSize = 16.sp),
-                        minLines = 1,
-                        maxLines = 5,
+                        textStyle = TextStyle(
+                            color = textColor,
+                            fontSize = 16.sp,
+                            lineHeight = 20.sp
+                        ),
+                        maxLines = 5, // 只留这一个核心属性，自动撑开
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.Transparent,
                             unfocusedContainerColor = Color.Transparent,
@@ -2644,13 +2622,13 @@ fun MessageInput(
                         shape = RoundedCornerShape(0.dp)
                     )
 
-                    // 直接调用独立的函数，编译器绝对不会再报 RowScope 错误了
+                    // MD 徽章
                     MarkdownBadge(isMarkdown = isMarkdown, sendBtnBg = sendBtnBg)
                 }
 
                 Spacer(modifier = Modifier.width(4.dp))
 
-                // 3. 回形针附件菜单
+                // 附件菜单
                 Box {
                     IconButton(onClick = { showAttachmentMenu = true }, modifier = Modifier.size(36.dp)) {
                         Icon(imageVector = Icons.Outlined.AttachFile, contentDescription = "附件", tint = iconColor)
@@ -2683,7 +2661,7 @@ fun MessageInput(
                     }
                 }
 
-                // 4. 日历图标（按需显示，且连同间距一起隐藏）
+                // 日历图标（没有时自动消失，让输入框伸长）
                 if (hasScheduled) {
                     IconButton(onClick = onScheduledListClick, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.Event, contentDescription = "定时消息", tint = iconColor)
@@ -2691,7 +2669,7 @@ fun MessageInput(
                     Spacer(modifier = Modifier.width(4.dp))
                 }
 
-                // 5. 最右侧蓝色相机发送键
+                // 发送按钮
                 val isSendEnabled = inputText.isNotBlank() || selectedImages.isNotEmpty()
                 Box(
                     modifier = Modifier
@@ -2713,7 +2691,7 @@ fun MessageInput(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.CameraAlt,
+                        imageVector = Icons.AutoMirrored.Filled.Send,
                         contentDescription = "发送",
                         tint = Color.White,
                         modifier = Modifier.size(24.dp)
@@ -2737,7 +2715,7 @@ fun MessageInput(
         }
     }
 }
-            
+
 @Composable
 fun UploadProgressBar(progress: Float, onCancel: () -> Unit, modifier: Modifier = Modifier) {
     val percent = ((progress.coerceIn(0f, 1f)) * 100f).toInt()
@@ -3082,7 +3060,6 @@ private fun MarkdownBadge(
     isMarkdown: Boolean,
     sendBtnBg: Color
 ) {
-
     Box(
         modifier = Modifier
             .fillMaxSize()
