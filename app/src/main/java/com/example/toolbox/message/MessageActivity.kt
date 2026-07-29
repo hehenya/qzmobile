@@ -8,10 +8,16 @@ import android.content.ClipboardManager
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
+import android.text.Layout
+import android.text.StaticLayout
+import android.text.TextPaint
 import android.view.View
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -21,28 +27,36 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
@@ -50,108 +64,73 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.Clipboard
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import coil3.request.allowHardware
 import coil3.request.bitmapConfig
 import coil3.request.crossfade
-import coil3.request.allowHardware
 import com.example.toolbox.ApiAddress
 import com.example.toolbox.DraftManager
 import com.example.toolbox.R
 import com.example.toolbox.TokenManager
-import com.example.toolbox.data.EditDialogState
-import com.example.toolbox.data.displayAvatar
-import com.example.toolbox.data.displayName
-import com.example.toolbox.data.effectiveMsgId
+import com.example.toolbox.community.UserInfoActivity
+import com.example.toolbox.data.*
+import com.example.toolbox.message.AnnouncementDetailActivity
+import com.example.toolbox.message.AnimatedAtMessageButton
+import com.example.toolbox.message.AnnouncementBanner
+import com.example.toolbox.message.EmojiPanel
+import com.example.toolbox.message.ForwardActivity
+import com.example.toolbox.message.HeatmapActivity
+import com.example.toolbox.message.MessageSharePreviewCard
+import com.example.toolbox.message.UploadProgressBar
 import com.example.toolbox.ui.theme.ToolBoxTheme
 import com.example.toolbox.utils.MarkdownRenderer
 import com.example.toolbox.utils.MultiImageViewer
 import com.example.toolbox.webview.WebViewActivity
+import com.hrm.markdown.renderer.Markdown
+import com.hrm.markdown.renderer.MarkdownTheme
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.util.*
 import java.util.concurrent.TimeUnit
-import com.example.toolbox.data.displayTag
-import com.example.toolbox.data.Message
-import androidx.compose.material.icons.filled.EmojiEmotions
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.material.icons.filled.Share
-import android.graphics.Paint
-import android.text.TextPaint
-import android.text.Layout
-import android.text.StaticLayout
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.ui.graphics.rememberGraphicsLayer
-import androidx.compose.ui.graphics.asAndroidBitmap
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import kotlinx.coroutines.launch
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.filled.SaveAlt
-import androidx.compose.material.icons.filled.Campaign
-import androidx.compose.material.icons.filled.PushPin
-import com.example.toolbox.message.AnnouncementDetailActivity
-import com.example.toolbox.message.AnimatedAtMessageButton
-import com.example.toolbox.message.AnnouncementBanner
-import com.example.toolbox.message.EmojiPanel
-import com.example.toolbox.message.MessageSharePreviewCard
-import com.example.toolbox.message.UploadProgressBar
-import com.example.toolbox.utils.MultiImageViewer
-import com.example.toolbox.message.ForwardActivity
-import com.example.toolbox.message.HeatmapActivity
-import com.example.toolbox.community.UserInfoActivity
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.coroutines.delay
-import com.hrm.markdown.renderer.Markdown
-import com.hrm.markdown.renderer.MarkdownTheme
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.material3.TimePicker
-import androidx.compose.material3.rememberTimePickerState
-import com.example.toolbox.data.ScheduledMessage
-import com.example.toolbox.data.ScheduleListResponse
-import androidx.compose.ui.input.pointer.pointerInput
-import com.example.toolbox.message.GroupInfoActivity
-import com.example.toolbox.message.ScheduledMessageListOverlay
-import java.util.Calendar
-import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.BoxScope
 @Composable
 fun ScheduledMessageItem(
     msg: ScheduledMessage,
@@ -2585,68 +2564,140 @@ fun MessageInput(
     onTextChange: (String) -> Unit, onSendClick: () -> Unit, onAddImageClick: () -> Unit,
     onRemoveImage: (Int) -> Unit, onToggleMarkdown: () -> Unit, innerPadding: PaddingValues,
     isUploading: Boolean = false, uploadProgress: Float = 0f, onCancelUpload: () -> Unit = {},
-    onEmojiClick: () -> Unit = {},hasScheduled: Boolean,
+    onEmojiClick: () -> Unit = {}, hasScheduled: Boolean,
     onScheduledListClick: () -> Unit,
     showScheduleMenu: Boolean,
     onShowScheduleMenuChange: (Boolean) -> Unit,
     onScheduleMenuConfirm: () -> Unit
 ) {
+    // 参考图颜色定义
+    val inputBarBg = Color(0xFF2C2D35)      // 输入栏深色背景
+    val textColor = Color(0xFFE0E0E0)       // 输入文字颜色
+    val placeholderColor = Color(0xFF888888)// 占位提示文字颜色
+    val sendBtnBg = Color(0xFF1E90FF)       // 蓝色发送按钮背景
+    val iconColor = Color(0xFFCCCCCC)       // 图标默认颜色
+
     var showAttachmentMenu by remember { mutableStateOf(false) }
+
     Surface(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp).border(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f), RoundedCornerShape(20.dp)),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-        shape = RoundedCornerShape(20.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .padding(bottom = innerPadding.calculateBottomPadding())
+            .heightIn(max = 150.dp), // 核心：限制最大高度，防撑爆屏幕
+        color = inputBarBg,
+        shape = RoundedCornerShape(30.dp)   // 胶囊大圆角
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp).padding(bottom = innerPadding.calculateBottomPadding())) {
-            if (isUploading) { UploadProgressBar(progress = uploadProgress, onCancel = onCancelUpload) }
-            else if (selectedImages.isNotEmpty()) {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp)) {
+
+            // --- 图片/上传预览层 ---
+            if (isUploading) {
+                UploadProgressBar(progress = uploadProgress, onCancel = onCancelUpload)
+            } else if (selectedImages.isNotEmpty()) {
                 LazyRow(modifier = Modifier.fillMaxWidth().height(80.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     items(selectedImages.size) { index ->
                         Box(modifier = Modifier.size(70.dp).clip(RoundedCornerShape(8.dp))) {
                             AsyncImage(model = selectedImages[index], contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                            IconButton(onClick = { onRemoveImage(index) }, modifier = Modifier.align(Alignment.TopEnd).size(20.dp).background(color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f), shape = CircleShape)) { Icon(Icons.Default.Close, contentDescription = "移除", modifier = Modifier.size(12.dp)) }
+                            IconButton(onClick = { onRemoveImage(index) }, modifier = Modifier.align(Alignment.TopEnd).size(20.dp).background(color = Color.Black.copy(alpha = 0.7f), shape = CircleShape)) {
+                                Icon(Icons.Default.Close, contentDescription = "移除", tint = Color.White, modifier = Modifier.size(12.dp))
+                            }
                         }
                     }
                 }
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(6.dp))
             }
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Box {
-                    IconButton(onClick = { showAttachmentMenu = true }, modifier = Modifier.size(40.dp)) { Icon(Icons.Default.MoreVert, contentDescription = "附件", tint = MaterialTheme.colorScheme.onSurface) }
-                    DropdownMenu(expanded = showAttachmentMenu, onDismissRequest = { showAttachmentMenu = false }) {
-                        DropdownMenuItem(text = { Text("发送图片") }, onClick = { showAttachmentMenu = false; onAddImageClick() }, leadingIcon = { Icon(Icons.Default.Image, null) })
-                        DropdownMenuItem(text = { Text(if (isMarkdown) "Markdown 模式 (开)" else "Markdown 模式 (关)") }, onClick = { showAttachmentMenu = false; onToggleMarkdown() }, leadingIcon = { Icon(painter = painterResource(R.drawable.markdown), contentDescription = null, modifier = Modifier.size(24.dp)) })
-                    }
+
+            // --- 核心排版 (Row) ---
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Bottom // 多行时按钮固定在下边框
+            ) {
+                // 1. 表情按钮
+                IconButton(onClick = onEmojiClick, modifier = Modifier.size(36.dp)) {
+                    Icon(imageVector = Icons.Default.Face, contentDescription = "表情", tint = iconColor)
                 }
-                IconButton(onClick = onEmojiClick, modifier = Modifier.size(40.dp)) {
-                    Icon(Icons.Filled.EmojiEmotions, contentDescription = "表情", tint = MaterialTheme.colorScheme.onSurface)
-                }
-                Spacer(Modifier.width(5.dp))
-                TextField(
-                    value = inputText, onValueChange = onTextChange,
+
+                Spacer(modifier = Modifier.width(4.dp))
+
+                // 2. 多行输入框 + MD 徽章 (使用隔离后的写法)
+                Box(
                     modifier = Modifier
                         .weight(1f)
-                        .background(Color.Transparent, RoundedCornerShape(20.dp)),
-                    placeholder = { Text("输入消息...") }, shape = RoundedCornerShape(20.dp), maxLines = 5,
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
+                        .padding(horizontal = 4.dp)
+                ) {
+                    TextField(
+                        value = inputText,
+                        onValueChange = onTextChange,
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text(text = "输入消息", color = placeholderColor, fontSize = 16.sp) },
+                        textStyle = TextStyle(color = textColor, fontSize = 16.sp),
+                        minLines = 1,
+                        maxLines = 5,
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            disabledIndicatorColor = Color.Transparent,
+                            errorIndicatorColor = Color.Transparent
+                        ),
+                        shape = RoundedCornerShape(0.dp)
                     )
-                )
-                Spacer(Modifier.width(5.dp))
-                if (hasScheduled) {
-                    IconButton(onClick = onScheduledListClick, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Event, contentDescription = "定时消息", tint = MaterialTheme.colorScheme.onSurface)
-                    }
-                    Spacer(Modifier.width(2.dp))
+
+                    // 直接调用独立的函数，编译器绝对不会再报 RowScope 错误了
+                    MarkdownBadge(isMarkdown = isMarkdown, sendBtnBg = sendBtnBg)
                 }
 
-                val isSendEnabled = inputText.isNotBlank() || selectedImages.isNotEmpty()
+                Spacer(modifier = Modifier.width(4.dp))
 
+                // 3. 回形针附件菜单
+                Box {
+                    IconButton(onClick = { showAttachmentMenu = true }, modifier = Modifier.size(36.dp)) {
+                        Icon(imageVector = Icons.Outlined.AttachFile, contentDescription = "附件", tint = iconColor)
+                    }
+                    DropdownMenu(expanded = showAttachmentMenu, onDismissRequest = { showAttachmentMenu = false }) {
+                        DropdownMenuItem(text = { Text("发送图片") }, onClick = { showAttachmentMenu = false; onAddImageClick() }, leadingIcon = { Icon(Icons.Default.Image, null) })
+                        DropdownMenuItem(
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("Markdown 模式")
+                                    Spacer(Modifier.width(8.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .clip(CircleShape)
+                                            .background(if (isMarkdown) Color(0xFF4CAF50) else Color.Gray)
+                                    )
+                                }
+                            },
+                            onClick = { showAttachmentMenu = false; onToggleMarkdown() },
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.markdown),
+                                    contentDescription = null,
+                                    tint = if (isMarkdown) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        )
+                    }
+                }
+
+                // 4. 日历图标（按需显示，且连同间距一起隐藏）
+                if (hasScheduled) {
+                    IconButton(onClick = onScheduledListClick, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Event, contentDescription = "定时消息", tint = iconColor)
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
+
+                // 5. 最右侧蓝色相机发送键
+                val isSendEnabled = inputText.isNotBlank() || selectedImages.isNotEmpty()
                 Box(
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(sendBtnBg)
                         .combinedClickable(
                             onClick = {
                                 if (isSendEnabled && !showScheduleMenu) {
@@ -2662,15 +2713,11 @@ fun MessageInput(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Send,
+                        imageVector = Icons.Default.CameraAlt,
                         contentDescription = "发送",
-                        tint = if (isSendEnabled)
-                            MaterialTheme.colorScheme.onSurface
-                        else
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
                     )
-
-                    // 长按菜单 (TG风格)
                     DropdownMenu(
                         expanded = showScheduleMenu,
                         onDismissRequest = { onShowScheduleMenuChange(false) },
@@ -3027,6 +3074,33 @@ object AppImageLoaders {
                 .crossfade(true)
                 .allowHardware(false)
                 .build().also { _coil3Loader = it }
+        }
+    }
+}
+@Composable
+private fun MarkdownBadge(
+    isMarkdown: Boolean,
+    sendBtnBg: Color
+) {
+    // 独立出来，就不会混淆 RowScope 了
+    Box(modifier = Modifier.matchParentSize().padding(top = 6.dp, end = 4.dp), contentAlignment = Alignment.TopEnd) {
+        AnimatedVisibility(
+            visible = isMarkdown,
+            enter = fadeIn(animationSpec = tween(200)),
+            exit = fadeOut(animationSpec = tween(200))
+        ) {
+            Surface(
+                shape = RoundedCornerShape(4.dp),
+                color = sendBtnBg.copy(alpha = 0.15f),
+            ) {
+                Text(
+                    text = "MD",
+                    color = sendBtnBg,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                )
+            }
         }
     }
 }
