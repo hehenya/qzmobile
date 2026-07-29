@@ -3082,8 +3082,13 @@ private fun MarkdownBadge(
     isMarkdown: Boolean,
     sendBtnBg: Color
 ) {
-    // 独立出来，就不会混淆 RowScope 了
-    Box(modifier = Modifier.matchParentSize().padding(top = 6.dp, end = 4.dp), contentAlignment = Alignment.TopEnd) {
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = 6.dp, end = 4.dp),
+        contentAlignment = Alignment.TopEnd
+    ) {
         AnimatedVisibility(
             visible = isMarkdown,
             enter = fadeIn(animationSpec = tween(200)),
