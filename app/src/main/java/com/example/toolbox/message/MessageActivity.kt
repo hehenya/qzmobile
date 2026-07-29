@@ -1097,8 +1097,8 @@ fun MessageDetailScreen(
                         reverseLayout = true,
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                         // 👇 核心：预留底部空间，让悬浮输入框不会遮挡最后一条消息！
-                        // contentPadding = PaddingValues(bottom = 75.dp)
-                        contentPadding = PaddingValues(top = 120.dp)
+                        contentPadding = PaddingValues(bottom = 75.dp)
+                        //contentPadding = PaddingValues(top = 120.dp)
                     ) {
                         items(
                             items = uiState.messages,
@@ -2700,7 +2700,7 @@ fun MessageInput(
     hazeState: HazeState
 ) {
     // 核心颜色（半透明深色，保留毛玻璃质感）
-    val inputBarBg = Color(0xFF2C2D35).copy(alpha = 0.7f)
+    val inputBarBg = Color(0xFF2C2D35).copy(alpha = 0.9f)
     val textColor = Color(0xFFE0E0E0)
     val placeholderColor = Color(0xFF888888)
     val sendBtnBg = Color(0xFF1E90FF)
