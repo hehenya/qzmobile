@@ -1826,11 +1826,11 @@ fun MessageBubble(
                                 topStart = bubbleCornerRadius.dp,
                                 topEnd = bubbleCornerRadius.dp,
                                 bottomStart = if (isMine) bubbleCornerRadius.dp
-                                            else if (!isNewerSameSender) bubbleCornerRadius.dp
-                                            else (bubbleCornerRadius * 0.3f).dp,
+                                else if (!isNewerSameSender) bubbleCornerRadius.dp
+                                else (bubbleCornerRadius * 0.3f).dp,
                                 bottomEnd = if (isMine) if (!isNewerSameSender) bubbleCornerRadius.dp
-                                            else (bubbleCornerRadius * 0.3f).dp
-                                            else bubbleCornerRadius.dp
+                                else (bubbleCornerRadius * 0.3f).dp
+                                else bubbleCornerRadius.dp
                             ),
                             modifier = Modifier.widthIn(max = 260.dp),
                             colors = CardDefaults.cardColors(
@@ -2012,10 +2012,10 @@ fun MessageBubble(
                             leadingIcon = { Icon(Icons.Default.FormatQuote, null, Modifier.size(18.dp)) }
                         )
                         DropdownMenuItem(
-                                text = { Text("删除") },
-                                onClick = { onDeleteMessage?.invoke(message); onShowMenuChanged?.invoke(null) },
-                                leadingIcon = { Icon(Icons.Filled.Delete, null, Modifier.size(18.dp)) }
-                            )
+                            text = { Text("删除") },
+                            onClick = { onDeleteMessage?.invoke(message); onShowMenuChanged?.invoke(null) },
+                            leadingIcon = { Icon(Icons.Filled.Delete, null, Modifier.size(18.dp)) }
+                        )
                         if (isMine || isAdmin) {
                             DropdownMenuItem(
                                 text = { Text("撤回") },
@@ -2602,12 +2602,10 @@ fun MessageInput(
                 Spacer(modifier = Modifier.width(4.dp))
 
                 // 2. 紧凑输入框（无MD徽章，打字自动撑开）
-                // 输入框区域
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(horizontal = 4.dp),
-                    contentAlignment = Alignment.BottomStart // 👈 核心修正：强制整个容器的对齐基点都在底部
+                        .padding(horizontal = 4.dp)
                 ) {
                     BasicTextField(
                         value = inputText,
@@ -2619,13 +2617,12 @@ fun MessageInput(
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
-
-                    // 占位文本（删掉了原先的 Modifier.align，它会自动继承容器的 BottomStart）
                     if (inputText.isEmpty()) {
                         Text(
                             text = "输入消息",
                             color = placeholderColor,
-                            fontSize = 16.sp
+                            fontSize = 16.sp,
+                            modifier = Modifier.align(Alignment.CenterStart)
                         )
                     }
                 }
