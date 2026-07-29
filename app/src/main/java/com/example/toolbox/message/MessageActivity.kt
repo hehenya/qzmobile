@@ -112,6 +112,7 @@ import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
+import androidx.compose.foundation.text.BasicTextField
 
 @Composable
 fun ScheduledMessageItem(
@@ -2542,8 +2543,8 @@ fun MessageInput(
     onScheduleMenuConfirm: () -> Unit,
     hazeState: HazeState
 ) {
-    // 核心颜色
-    val inputBarBg = Color(0xFF2C2D35).copy(alpha = 0.85f)
+    // 核心颜色（调整为半透明，配合毛玻璃更舒服）
+    val inputBarBg = Color(0xFF2C2D35).copy(alpha = 0.7f) // 👈 调低了一点透明度，让毛玻璃质感透出来
     val textColor = Color(0xFFE0E0E0)
     val placeholderColor = Color(0xFF888888)
     val sendBtnBg = Color(0xFF1E90FF)
@@ -2556,8 +2557,12 @@ fun MessageInput(
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 4.dp)
             .padding(bottom = innerPadding.calculateBottomPadding())
-            .heightIn(max = 150.dp) // 防止撑爆
-            .hazeEffect(state = hazeState, style = HazeMaterials.thin()),
+            .heightIn(max = 150.dp)
+            // 👇 毛玻璃效果：去掉噪点 (noiseFactor = 0f)，和顶栏完全一样
+            .hazeEffect(
+                state = hazeState,
+                style = HazeMaterials.thin().copy(noiseFactor = 0f)
+            ),
         color = inputBarBg,
         shape = RoundedCornerShape(30.dp)
     ) {
@@ -2583,7 +2588,7 @@ fun MessageInput(
             // --- 核心布局 ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Bottom // 打字时往上长，按钮始终贴底
+                verticalAlignment = Alignment.Bottom
             ) {
                 // 表情
                 IconButton(onClick = onEmojiClick, modifier = Modifier.size(36.dp)) {
@@ -2591,44 +2596,36 @@ fun MessageInput(
                 }
                 Spacer(modifier = Modifier.width(4.dp))
 
-                // 输入框区域
+                // 紧凑的文本输入框 (无 TextField 默认高度，打字自动撑开)
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 4.dp)
                 ) {
-                    // 干净利落的输入框
-                    TextField(
+                    BasicTextField(
                         value = inputText,
                         onValueChange = onTextChange,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(end = 36.dp), // 给 MD 留出安全区
-                        placeholder = { Text(text = "输入消息", color = placeholderColor, fontSize = 16.sp) },
                         textStyle = TextStyle(
                             color = textColor,
                             fontSize = 16.sp,
                             lineHeight = 20.sp
                         ),
-                        maxLines = 5, // 只留这一个核心属性，自动撑开
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent,
-                            disabledIndicatorColor = Color.Transparent,
-                            errorIndicatorColor = Color.Transparent
-                        ),
-                        shape = RoundedCornerShape(0.dp)
+                        modifier = Modifier.fillMaxWidth()
                     )
-
-                    // MD 徽章
-                    MarkdownBadge(isMarkdown = isMarkdown, sendBtnBg = sendBtnBg)
+                    // 自定义占位符
+                    if (inputText.isEmpty()) {
+                        Text(
+                            text = "输入消息",
+                            color = placeholderColor,
+                            fontSize = 16.sp,
+                            modifier = Modifier.align(Alignment.CenterStart)
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(4.dp))
 
-                // 附件菜单
+                // 回形针菜单
                 Box {
                     IconButton(onClick = { showAttachmentMenu = true }, modifier = Modifier.size(36.dp)) {
                         Icon(imageVector = Icons.Outlined.AttachFile, contentDescription = "附件", tint = iconColor)
@@ -2661,7 +2658,7 @@ fun MessageInput(
                     }
                 }
 
-                // 日历图标（没有时自动消失，让输入框伸长）
+                // 日历图标
                 if (hasScheduled) {
                     IconButton(onClick = onScheduledListClick, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.Event, contentDescription = "定时消息", tint = iconColor)
