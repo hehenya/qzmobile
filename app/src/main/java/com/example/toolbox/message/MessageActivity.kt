@@ -241,7 +241,9 @@ fun ScheduleTimePickerBottomSheet(
             Text("选择日期", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(8.dp))
             Row(
-                modifier = Modifier.fillMaxWidth().height(120.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -258,7 +260,9 @@ fun ScheduleTimePickerBottomSheet(
             Text("选择时间", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(8.dp))
             Row(
-                modifier = Modifier.fillMaxWidth().height(120.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -389,7 +393,9 @@ fun ScheduledMessageListOverlay(
     var showTimePicker by remember { mutableStateOf(false) }
     var inputText by remember { mutableStateOf("") }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f))) {
+    Box(modifier = Modifier
+        .fillMaxSize()
+        .background(Color.Black.copy(alpha = 0.5f))) {
         if (backgroundUrl != null && backgroundUrl.isNotEmpty()) {
             AsyncImage(
                 model = backgroundUrl,
@@ -458,7 +464,9 @@ fun ScheduledMessageListOverlay(
                 if (groupedMessages.isEmpty()) {
                     item {
                         Box(
-                            Modifier.fillMaxWidth().height(200.dp),
+                            Modifier
+                                .fillMaxWidth()
+                                .height(200.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text("暂无定时消息", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -481,7 +489,9 @@ fun ScheduledMessageListOverlay(
                                 } catch (_: Exception) { dateKey }
                             }
                             Box(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Surface(
@@ -639,15 +649,36 @@ class MessageDetailActivity : ComponentActivity() {
                                                         modifier = Modifier
                                                             .fillMaxWidth()
                                                             .clickable {
-                                                                val intent = Intent(this@MessageDetailActivity, GroupInfoActivity::class.java).apply {
+                                                                val intent = Intent(
+                                                                    this@MessageDetailActivity,
+                                                                    GroupInfoActivity::class.java
+                                                                ).apply {
                                                                     putExtra("group_id", chatId)
                                                                     putExtra("is_joined", true)
-                                                                    putExtra("group_name", group.name)
-                                                                    putExtra("group_avatar", group.avatarUrl)
-                                                                    putExtra("group_description", group.description)
-                                                                    putExtra("group_members_count", group.membersCount)
-                                                                    putExtra("group_created_at", group.createdAt)
-                                                                    putExtra("group_is_private", group.isPrivate)
+                                                                    putExtra(
+                                                                        "group_name",
+                                                                        group.name
+                                                                    )
+                                                                    putExtra(
+                                                                        "group_avatar",
+                                                                        group.avatarUrl
+                                                                    )
+                                                                    putExtra(
+                                                                        "group_description",
+                                                                        group.description
+                                                                    )
+                                                                    putExtra(
+                                                                        "group_members_count",
+                                                                        group.membersCount
+                                                                    )
+                                                                    putExtra(
+                                                                        "group_created_at",
+                                                                        group.createdAt
+                                                                    )
+                                                                    putExtra(
+                                                                        "group_is_private",
+                                                                        group.isPrivate
+                                                                    )
                                                                 }
                                                                 startActivity(intent)
                                                             }
@@ -656,7 +687,9 @@ class MessageDetailActivity : ComponentActivity() {
                                                             model = if (group.avatarUrl.startsWith("http")) group.avatarUrl else "${ApiAddress}uploads/${group.avatarUrl}",
                                                             contentDescription = null,
                                                             contentScale = ContentScale.Crop,
-                                                            modifier = Modifier.size(36.dp).clip(CircleShape)
+                                                            modifier = Modifier
+                                                                .size(36.dp)
+                                                                .clip(CircleShape)
                                                         )
                                                         Spacer(Modifier.width(8.dp))
                                                         Column {
@@ -676,10 +709,21 @@ class MessageDetailActivity : ComponentActivity() {
                                                         modifier = Modifier
                                                             .fillMaxWidth()
                                                             .clickable {
-                                                                startActivity(Intent(this@MessageDetailActivity, UserInfoActivity::class.java).apply { putExtra("userId", otherUser.id) })
+                                                                startActivity(
+                                                                    Intent(
+                                                                        this@MessageDetailActivity,
+                                                                        UserInfoActivity::class.java
+                                                                    ).apply {
+                                                                        putExtra(
+                                                                            "userId",
+                                                                            otherUser.id
+                                                                        )
+                                                                    })
                                                             }
                                                     ) {
-                                                        AsyncImage(model = otherUser.avatar, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(36.dp).clip(CircleShape))
+                                                        AsyncImage(model = otherUser.avatar, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier
+                                                            .size(36.dp)
+                                                            .clip(CircleShape))
                                                         Spacer(Modifier.width(8.dp))
                                                         val typingText by viewModel.typingText.collectAsState()
                                                         Column {
@@ -1053,7 +1097,7 @@ fun MessageDetailScreen(
                         reverseLayout = true,
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                         // 👇 核心：预留底部空间，让悬浮输入框不会遮挡最后一条消息！
-                        contentPadding = PaddingValues(bottom = 160.dp)
+                        contentPadding = PaddingValues(bottom = 80.dp)
                     ) {
                         items(
                             items = uiState.messages,
@@ -1235,9 +1279,10 @@ fun MessageDetailScreen(
                             .combinedClickable(
                                 onClick = {
                                     topVisibleMessage?.senderId?.let { senderId ->
-                                        val intent = Intent(context, UserInfoActivity::class.java).apply {
-                                            putExtra("userId", senderId)
-                                        }
+                                        val intent =
+                                            Intent(context, UserInfoActivity::class.java).apply {
+                                                putExtra("userId", senderId)
+                                            }
                                         context.startActivity(intent)
                                     }
                                 },
@@ -1377,7 +1422,9 @@ fun MessageDetailScreen(
                         shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
@@ -1413,11 +1460,15 @@ fun MessageDetailScreen(
 
                     if (uiState.editingImages.isNotEmpty()) {
                         LazyRow(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 4.dp),
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             items(uiState.editingImages.size) { index ->
-                                Box(Modifier.size(60.dp).clip(RoundedCornerShape(4.dp))) {
+                                Box(Modifier
+                                    .size(60.dp)
+                                    .clip(RoundedCornerShape(4.dp))) {
                                     AsyncImage(
                                         model = uiState.editingImages[index],
                                         contentDescription = null,
@@ -1426,7 +1477,9 @@ fun MessageDetailScreen(
                                     )
                                     IconButton(
                                         onClick = { viewModel.removeEditingImage(index) },
-                                        modifier = Modifier.align(Alignment.TopEnd).size(18.dp)
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .size(18.dp)
                                             .background(Color.Black.copy(alpha = 0.5f), CircleShape)
                                     ) {
                                         Icon(Icons.Default.Close, "移除", Modifier.size(10.dp), tint = Color.White)
@@ -1554,7 +1607,9 @@ fun MessageDetailScreen(
 fun AnimatedScrollToBottomButton(visible: Boolean, unreadCount: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val animatedAlpha by animateFloatAsState(targetValue = if (visible) 1f else 0f, animationSpec = tween(300, easing = FastOutSlowInEasing), label = "alpha")
     val animatedScale by animateFloatAsState(targetValue = if (visible) 1f else 0.5f, animationSpec = tween(300, easing = FastOutSlowInEasing), label = "scale")
-    Box(modifier = modifier.wrapContentSize().graphicsLayer { alpha = animatedAlpha; scaleX = animatedScale; scaleY = animatedScale }) {
+    Box(modifier = modifier
+        .wrapContentSize()
+        .graphicsLayer { alpha = animatedAlpha; scaleX = animatedScale; scaleY = animatedScale }) {
         BadgedBox(badge = { if (unreadCount > 0) Badge(containerColor = MaterialTheme.colorScheme.error, contentColor = MaterialTheme.colorScheme.onError) { Text(if (unreadCount > 99) "99+" else unreadCount.toString(), fontSize = 10.sp) } }) {
             FloatingActionButton(onClick = onClick, shape = CircleShape, containerColor = MaterialTheme.colorScheme.surfaceContainerHigh, contentColor = MaterialTheme.colorScheme.onSurface, elevation = FloatingActionButtonDefaults.elevation(2.dp), modifier = Modifier.size(40.dp)) {
                 Icon(Icons.Default.KeyboardArrowDown, "滚动到底部", modifier = Modifier.size(18.dp))
@@ -1617,13 +1672,17 @@ fun MessageBubble(
         try { SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(message.sendTime)) } catch (_: Exception) { "" }
     }
     if (isRecalledMessage) {
-        Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
             Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), modifier = Modifier.widthIn(max = 250.dp)) {
                 Text(message.recallHint ?: "消息已撤回", fontSize = 12.sp, modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
             }
         }
     } else if (isSystemMessage) {
-        Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
             Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), modifier = Modifier.widthIn(max = 300.dp)) {
                 Text(message.content, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
             }
@@ -1647,7 +1706,13 @@ fun MessageBubble(
                         if (!isSelectionMode) onLongPress?.invoke()
                     }
                 )
-                .then(if (isSelected) Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(8.dp)) else Modifier),
+                .then(
+                    if (isSelected) Modifier.background(
+                        MaterialTheme.colorScheme.primary.copy(
+                            alpha = 0.1f
+                        ), RoundedCornerShape(8.dp)
+                    ) else Modifier
+                ),
             horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start,
             verticalAlignment = Alignment.Bottom
         ) {
@@ -1658,7 +1723,9 @@ fun MessageBubble(
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         imageLoader = imageLoader,
-                        modifier = Modifier.size(36.dp).clip(CircleShape)
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
                     )
                     Spacer(Modifier.width(8.dp))
                 } else {
@@ -1734,7 +1801,9 @@ fun MessageBubble(
         Column(modifier = Modifier.fillMaxWidth()) {
             if (showDate && dateString != null) {
                 Box(
-                    Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Surface(
@@ -1775,7 +1844,13 @@ fun MessageBubble(
                         top = if (isOlderSameSender) 0.dp else 4.dp,
                         bottom = if (isNewerSameSender) 0.dp else 4.dp
                     )
-                    .then(if (isSelected) Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(8.dp)) else Modifier),
+                    .then(
+                        if (isSelected) Modifier.background(
+                            MaterialTheme.colorScheme.primary.copy(
+                                alpha = 0.1f
+                            ), RoundedCornerShape(8.dp)
+                        ) else Modifier
+                    ),
                 verticalAlignment = avatarAlignment,
                 horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start
             ) {
@@ -1793,7 +1868,10 @@ fun MessageBubble(
                                 .combinedClickable(
                                     onClick = {
                                         message.senderId?.let { senderId ->
-                                            val intent = Intent(context, UserInfoActivity::class.java).apply {
+                                            val intent = Intent(
+                                                context,
+                                                UserInfoActivity::class.java
+                                            ).apply {
                                                 putExtra("userId", senderId)
                                             }
                                             context.startActivity(intent)
@@ -1847,15 +1925,22 @@ fun MessageBubble(
                                     val fi = message.forwardInfo!!
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.padding(bottom = 4.dp).clickable {
-                                            val intent = Intent(context, UserInfoActivity::class.java).apply {
-                                                putExtra("userId", fi.userId)
+                                        modifier = Modifier
+                                            .padding(bottom = 4.dp)
+                                            .clickable {
+                                                val intent = Intent(
+                                                    context,
+                                                    UserInfoActivity::class.java
+                                                ).apply {
+                                                    putExtra("userId", fi.userId)
+                                                }
+                                                context.startActivity(intent)
                                             }
-                                            context.startActivity(intent)
-                                        }
                                     ) {
                                         Text("转发自 ", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
-                                        AsyncImage(model = fi.avatarUrl, imageLoader = imageLoader, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(20.dp).clip(CircleShape))
+                                        AsyncImage(model = fi.avatarUrl, imageLoader = imageLoader, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier
+                                            .size(20.dp)
+                                            .clip(CircleShape))
                                         Spacer(Modifier.width(4.dp))
                                         Text(fi.username, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
                                     }
@@ -1886,7 +1971,10 @@ fun MessageBubble(
                                     val quoteTextColor = if (isMine) Color.White.copy(alpha = 0.9f) else MaterialTheme.colorScheme.onSurfaceVariant
                                     val quoteNameColor = if (isMine) Color.White else MaterialTheme.colorScheme.primary
                                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 2.dp)) {
-                                        Box(Modifier.width(3.dp).height(32.dp).background(quoteBarColor, RoundedCornerShape(2.dp)))
+                                        Box(Modifier
+                                            .width(3.dp)
+                                            .height(32.dp)
+                                            .background(quoteBarColor, RoundedCornerShape(2.dp)))
                                         Spacer(Modifier.width(8.dp))
                                         Column {
                                             Text(ref.senderUsername, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = quoteNameColor)
@@ -1894,7 +1982,11 @@ fun MessageBubble(
                                                 Text("表情消息", fontSize = 12.sp, color = quoteTextColor)
                                             } else {
                                                 if (ref.content.isNotBlank()) Text(ref.content, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, color = quoteTextColor)
-                                                if (ref.images.isNotEmpty()) AsyncImage(model = ref.images.first(), imageLoader = imageLoader, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(8.dp)).padding(top = 4.dp))
+                                                if (ref.images.isNotEmpty()) AsyncImage(model = ref.images.first(), imageLoader = imageLoader, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .height(100.dp)
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .padding(top = 4.dp))
                                             }
                                         }
                                     }
@@ -1924,7 +2016,10 @@ fun MessageBubble(
                                 if (message.images.isNotEmpty()) {
                                     Spacer(Modifier.height(4.dp)); val hasText = message.content.isNotBlank(); val imgCount = message.images.size
                                     if (imgCount == 1) {
-                                        Box(modifier = Modifier.widthIn(max = 200.dp).clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, 0) }) {
+                                        Box(modifier = Modifier
+                                            .widthIn(max = 200.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .clickable { onImageClick(message.images, 0) }) {
                                             AsyncImage(model = message.images[0], imageLoader = imageLoader, contentDescription = null, contentScale = ContentScale.FillWidth, modifier = Modifier.fillMaxWidth())
                                             if (!hasText) {
                                                 Text(
@@ -1934,35 +2029,84 @@ fun MessageBubble(
                                                     modifier = Modifier
                                                         .align(Alignment.BottomEnd)
                                                         .padding(6.dp)
-                                                        .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                                                        .background(
+                                                            Color.Black.copy(alpha = 0.5f),
+                                                            RoundedCornerShape(8.dp)
+                                                        )
                                                         .padding(horizontal = 5.dp, vertical = 2.dp)
                                                 )
                                             }
                                         }
                                     } else if (imgCount == 2) {
-                                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.height(180.dp).widthIn(max = 280.dp)) {
-                                            message.images.forEachIndexed { index, url -> AsyncImage(model = url, imageLoader = imageLoader, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, index) }) }
+                                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier
+                                            .height(180.dp)
+                                            .widthIn(max = 280.dp)) {
+                                            message.images.forEachIndexed { index, url -> AsyncImage(model = url, imageLoader = imageLoader, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier
+                                                .weight(1f)
+                                                .fillMaxHeight()
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .clickable { onImageClick(message.images, index) }) }
                                         }
-                                        if (!hasText) { Spacer(Modifier.height(2.dp)); Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) { Text(timestampDisplay, color = Color.White, fontSize = 11.sp, modifier = Modifier.background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(8.dp)).padding(horizontal = 5.dp, vertical = 2.dp)) } }
+                                        if (!hasText) { Spacer(Modifier.height(2.dp)); Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) { Text(timestampDisplay, color = Color.White, fontSize = 11.sp, modifier = Modifier
+                                            .background(
+                                                Color.Black.copy(alpha = 0.5f),
+                                                RoundedCornerShape(8.dp)
+                                            )
+                                            .padding(horizontal = 5.dp, vertical = 2.dp)) } }
                                     } else if (imgCount == 3) {
-                                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.height(200.dp).widthIn(max = 280.dp)) {
-                                            AsyncImage(model = message.images[0], imageLoader = imageLoader, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, 0) })
-                                            Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f).fillMaxHeight()) {
-                                                AsyncImage(model = message.images[1], imageLoader = imageLoader, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, 1) })
-                                                AsyncImage(model = message.images[2], imageLoader = imageLoader, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, 2) })
+                                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier
+                                            .height(200.dp)
+                                            .widthIn(max = 280.dp)) {
+                                            AsyncImage(model = message.images[0], imageLoader = imageLoader, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier
+                                                .weight(1f)
+                                                .fillMaxHeight()
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .clickable { onImageClick(message.images, 0) })
+                                            Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier
+                                                .weight(1f)
+                                                .fillMaxHeight()) {
+                                                AsyncImage(model = message.images[1], imageLoader = imageLoader, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier
+                                                    .weight(1f)
+                                                    .fillMaxWidth()
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .clickable { onImageClick(message.images, 1) })
+                                                AsyncImage(model = message.images[2], imageLoader = imageLoader, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier
+                                                    .weight(1f)
+                                                    .fillMaxWidth()
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .clickable { onImageClick(message.images, 2) })
                                             }
                                         }
-                                        if (!hasText) { Spacer(Modifier.height(2.dp)); Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) { Text(timestampDisplay, color = Color.White, fontSize = 11.sp, modifier = Modifier.background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(8.dp)).padding(horizontal = 5.dp, vertical = 2.dp)) } }
+                                        if (!hasText) { Spacer(Modifier.height(2.dp)); Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) { Text(timestampDisplay, color = Color.White, fontSize = 11.sp, modifier = Modifier
+                                            .background(
+                                                Color.Black.copy(alpha = 0.5f),
+                                                RoundedCornerShape(8.dp)
+                                            )
+                                            .padding(horizontal = 5.dp, vertical = 2.dp)) } }
                                     } else {
                                         val rows = (imgCount + 1) / 2
                                         Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.widthIn(max = 280.dp)) {
                                             for (row in 0 until rows) {
                                                 Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.height(120.dp)) {
-                                                    for (col in 0..1) { val idx = row * 2 + col; if (idx < imgCount) AsyncImage(model = message.images[idx], imageLoader = imageLoader, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).clickable { onImageClick(message.images, idx) }) else Spacer(Modifier.weight(1f)) }
+                                                    for (col in 0..1) { val idx = row * 2 + col; if (idx < imgCount) AsyncImage(model = message.images[idx], imageLoader = imageLoader, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier
+                                                        .weight(1f)
+                                                        .fillMaxHeight()
+                                                        .clip(RoundedCornerShape(8.dp))
+                                                        .clickable {
+                                                            onImageClick(
+                                                                message.images,
+                                                                idx
+                                                            )
+                                                        }) else Spacer(Modifier.weight(1f)) }
                                                 }
                                             }
                                         }
-                                        if (!hasText) { Spacer(Modifier.height(2.dp)); Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) { Text(timestampDisplay, color = Color.White, fontSize = 11.sp, modifier = Modifier.background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(8.dp)).padding(horizontal = 5.dp, vertical = 2.dp)) } }
+                                        if (!hasText) { Spacer(Modifier.height(2.dp)); Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomEnd) { Text(timestampDisplay, color = Color.White, fontSize = 11.sp, modifier = Modifier
+                                            .background(
+                                                Color.Black.copy(alpha = 0.5f),
+                                                RoundedCornerShape(8.dp)
+                                            )
+                                            .padding(horizontal = 5.dp, vertical = 2.dp)) } }
                                     }
                                 }
                                 if (message.linkInfo != null && message.linkInfo.isNotEmpty()) {
@@ -2320,11 +2464,15 @@ private fun MessageSharePreviewCard(
                         model = chatAvatar,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.size(40.dp).clip(CircleShape)
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
                     )
                 } else {
                     Box(
-                        modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(chatName.firstOrNull()?.toString()?.uppercase() ?: "会", color = MaterialTheme.colorScheme.onPrimaryContainer)
@@ -2449,7 +2597,9 @@ private fun MessageSharePreviewCard(
                         }
                     }
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 6.dp),
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Text(
@@ -2548,8 +2698,8 @@ fun MessageInput(
     onScheduleMenuConfirm: () -> Unit,
     hazeState: HazeState
 ) {
-    // 核心颜色（保留半透明深色，解决“太透了”的问题）
-    val inputBarBg = Color(0xFF2C2D35).copy(alpha = 0.9f)
+    // 核心颜色（半透明深色，保留毛玻璃质感）
+    val inputBarBg = Color(0xFF2C2D35).copy(alpha = 0.7f)
     val textColor = Color(0xFFE0E0E0)
     val placeholderColor = Color(0xFF888888)
     val sendBtnBg = Color(0xFF1E90FF)
@@ -2563,25 +2713,36 @@ fun MessageInput(
             .padding(horizontal = 8.dp, vertical = 4.dp)
             .padding(bottom = innerPadding.calculateBottomPadding())
             .heightIn(max = 150.dp)
-            // 👇 核心修正：使用和顶栏完全一致的模糊样式（不带噪点）
             .hazeEffect(
                 state = hazeState,
                 style = HazeMaterials.thin().copy(noiseFactor = 0f)
             ),
-        color = inputBarBg, // 👈 半透明深色底色
+        color = inputBarBg,
         shape = RoundedCornerShape(30.dp)
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp)) {
+        Column(modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 6.dp)) {
 
             // --- 图片/上传预览层 ---
             if (isUploading) {
                 UploadProgressBar(progress = uploadProgress, onCancel = onCancelUpload)
             } else if (selectedImages.isNotEmpty()) {
-                LazyRow(modifier = Modifier.fillMaxWidth().height(80.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                LazyRow(modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     items(selectedImages.size) { index ->
-                        Box(modifier = Modifier.size(70.dp).clip(RoundedCornerShape(8.dp))) {
+                        Box(modifier = Modifier
+                            .size(70.dp)
+                            .clip(RoundedCornerShape(8.dp))) {
                             AsyncImage(model = selectedImages[index], contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                            IconButton(onClick = { onRemoveImage(index) }, modifier = Modifier.align(Alignment.TopEnd).size(20.dp).background(color = Color.Black.copy(alpha = 0.7f), shape = CircleShape)) {
+                            IconButton(onClick = { onRemoveImage(index) }, modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .size(20.dp)
+                                .background(
+                                    color = Color.Black.copy(alpha = 0.7f),
+                                    shape = CircleShape
+                                )) {
                                 Icon(Icons.Default.Close, contentDescription = "移除", tint = Color.White, modifier = Modifier.size(12.dp))
                             }
                         }
@@ -2601,11 +2762,13 @@ fun MessageInput(
                 }
                 Spacer(modifier = Modifier.width(4.dp))
 
-                // 2. 紧凑输入框（无MD徽章，打字自动撑开）
+                // 2. 输入框区域（修正了对齐问题）
+                // 2. 输入框区域
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 4.dp)
+                    // ✅ 移除 contentAlignment，避免作用域混淆
                 ) {
                     BasicTextField(
                         value = inputText,
@@ -2615,14 +2778,18 @@ fun MessageInput(
                             fontSize = 16.sp,
                             lineHeight = 20.sp
                         ),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.BottomStart) // ✅ 输入框贴底对齐
                     )
+
+                    // 自定义占位符
                     if (inputText.isEmpty()) {
                         Text(
                             text = "输入消息",
                             color = placeholderColor,
                             fontSize = 16.sp,
-                            modifier = Modifier.align(Alignment.CenterStart)
+                            modifier = Modifier.align(Alignment.BottomStart) // ✅ 占位符贴底对齐
                         )
                     }
                 }
@@ -2662,7 +2829,7 @@ fun MessageInput(
                     }
                 }
 
-                // 4. 日历图标（按需显示，没有则自动让输入框伸长）
+                // 4. 日历图标（按需显示）
                 if (hasScheduled) {
                     IconButton(onClick = onScheduledListClick, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.Event, contentDescription = "定时消息", tint = iconColor)
@@ -2670,7 +2837,7 @@ fun MessageInput(
                     Spacer(modifier = Modifier.width(4.dp))
                 }
 
-                // 5. 蓝色纸飞机发送按钮
+                // 5. 蓝色发送按钮
                 val isSendEnabled = inputText.isNotBlank() || selectedImages.isNotEmpty()
                 Box(
                     modifier = Modifier
@@ -2720,7 +2887,9 @@ fun MessageInput(
 @Composable
 fun UploadProgressBar(progress: Float, onCancel: () -> Unit, modifier: Modifier = Modifier) {
     val percent = ((progress.coerceIn(0f, 1f)) * 100f).toInt()
-    Row(modifier = modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier = modifier
+        .fillMaxWidth()
+        .padding(vertical = 8.dp, horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(progress = { progress.coerceIn(0f, 1f) }, modifier = Modifier.fillMaxSize(), strokeWidth = 3.dp, color = MaterialTheme.colorScheme.primary, trackColor = MaterialTheme.colorScheme.surfaceVariant)
             IconButton(onClick = onCancel, modifier = Modifier.size(24.dp)) { Icon(Icons.Default.Close, contentDescription = "取消上传", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(16.dp)) }
