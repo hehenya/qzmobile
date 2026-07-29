@@ -2602,10 +2602,12 @@ fun MessageInput(
                 Spacer(modifier = Modifier.width(4.dp))
 
                 // 2. 紧凑输入框（无MD徽章，打字自动撑开）
+                // 输入框区域
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(horizontal = 4.dp)
+                        .padding(horizontal = 4.dp),
+                    contentAlignment = Alignment.BottomStart // 👈 核心修正：强制整个容器的对齐基点都在底部
                 ) {
                     BasicTextField(
                         value = inputText,
@@ -2617,12 +2619,13 @@ fun MessageInput(
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    // 占位文本（删掉了原先的 Modifier.align，它会自动继承容器的 BottomStart）
                     if (inputText.isEmpty()) {
                         Text(
                             text = "输入消息",
                             color = placeholderColor,
-                            fontSize = 16.sp,
-                            modifier = Modifier.align(Alignment.CenterStart)
+                            fontSize = 16.sp
                         )
                     }
                 }
