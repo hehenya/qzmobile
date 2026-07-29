@@ -1097,8 +1097,8 @@ fun MessageDetailScreen(
                         reverseLayout = true,
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                         // 👇 核心：预留底部空间，让悬浮输入框不会遮挡最后一条消息！
-                        contentPadding = PaddingValues(bottom = 75.dp)
-                        //contentPadding = PaddingValues(top = 120.dp)
+                        // contentPadding = PaddingValues(bottom = 75.dp)
+                        contentPadding = PaddingValues(top = 75.dp, bottom = 8.dp)
                     ) {
                         items(
                             items = uiState.messages,
@@ -1733,13 +1733,15 @@ fun MessageBubble(
                     Spacer(Modifier.width(44.dp))
                 }
             }
-            Box {
+            Box(Modifier.heightIn(min = 80.dp)) {
                 AsyncImage(
                     model = message.content.ifEmpty { message.images.firstOrNull() ?: "" },
                     contentDescription = null,
                     imageLoader = imageLoader,
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
+                        .height(120.dp)          // 固定高度，可按需调整
+                        .widthIn(max = 200.dp)   // 限制最大宽度，保持比例
                         .clip(RoundedCornerShape(8.dp))
                         .clickable { onImageClick(listOf(message.content), 0) }
                 )
