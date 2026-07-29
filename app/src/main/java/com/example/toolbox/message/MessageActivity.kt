@@ -2549,7 +2549,7 @@ fun MessageInput(
     hazeState: HazeState
 ) {
     // 核心颜色（保留半透明深色，解决“太透了”的问题）
-    val inputBarBg = Color(0xFF2C2D35).copy(alpha = 0.7f)
+    val inputBarBg = Color(0xFF2C2D35).copy(alpha = 0.9f)
     val textColor = Color(0xFFE0E0E0)
     val placeholderColor = Color(0xFF888888)
     val sendBtnBg = Color(0xFF1E90FF)
