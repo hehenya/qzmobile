@@ -1097,7 +1097,7 @@ fun MessageDetailScreen(
                         reverseLayout = true,
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                         // 👇 核心：预留底部空间，让悬浮输入框不会遮挡最后一条消息！
-                        contentPadding = PaddingValues(bottom = 80.dp)
+                        contentPadding = PaddingValues(bottom = 75.dp)
                     ) {
                         items(
                             items = uiState.messages,
@@ -2762,13 +2762,12 @@ fun MessageInput(
                 }
                 Spacer(modifier = Modifier.width(4.dp))
 
-                // 2. 输入框区域（修正了对齐问题）
                 // 2. 输入框区域
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(horizontal = 4.dp)
-                    // ✅ 移除 contentAlignment，避免作用域混淆
+                        .padding(horizontal = 4.dp),
+                    contentAlignment = Alignment.BottomStart // 👈 将对齐统一交给父容器控制
                 ) {
                     BasicTextField(
                         value = inputText,
@@ -2778,9 +2777,7 @@ fun MessageInput(
                             fontSize = 16.sp,
                             lineHeight = 20.sp
                         ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .align(Alignment.BottomStart) // ✅ 输入框贴底对齐
+                        modifier = Modifier.fillMaxWidth()
                     )
 
                     // 自定义占位符
@@ -2789,7 +2786,9 @@ fun MessageInput(
                             text = "输入消息",
                             color = placeholderColor,
                             fontSize = 16.sp,
-                            modifier = Modifier.align(Alignment.BottomStart) // ✅ 占位符贴底对齐
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .offset(y = 2.dp) // ✅ 核心修正：向上微调 2dp，消除视觉下沉！
                         )
                     }
                 }
