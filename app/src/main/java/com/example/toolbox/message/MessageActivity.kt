@@ -2699,7 +2699,6 @@ fun MessageInput(
     onScheduleMenuConfirm: () -> Unit,
     hazeState: HazeState
 ) {
-    // 核心颜色（半透明深色，保留毛玻璃质感）
     val inputBarBg = Color(0xFF2C2D35).copy(alpha = 0.9f)
     val textColor = Color(0xFFE0E0E0)
     val placeholderColor = Color(0xFF888888)
@@ -2755,7 +2754,7 @@ fun MessageInput(
             // --- 核心排版 ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Bottom
+                verticalAlignment = Alignment.CenterVertically  // ① 改 Bottom → CenterVertically
             ) {
                 // 1. 表情按钮
                 IconButton(onClick = onEmojiClick, modifier = Modifier.size(36.dp)) {
@@ -2768,7 +2767,7 @@ fun MessageInput(
                     modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 4.dp),
-                    contentAlignment = Alignment.BottomStart // 👈 将对齐统一交给父容器控制
+                    contentAlignment = Alignment.CenterStart  // ② 改 BottomStart → CenterStart
                 ) {
                     BasicTextField(
                         value = inputText,
@@ -2778,24 +2777,19 @@ fun MessageInput(
                             fontSize = 16.sp,
                             lineHeight = 20.sp
                         ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .offset(y = 2.dp) // 👈 核心修正：将实际输入文字整体向上微调 2dp
+                        modifier = Modifier.fillMaxWidth()
+                        // ③ 移除 .offset(y = 2.dp)
                     )
 
-                    // 自定义占位符
                     if (inputText.isEmpty()) {
                         Text(
                             text = "输入消息",
                             color = placeholderColor,
-                            fontSize = 16.sp,
-                            modifier = Modifier
-                                .align(Alignment.BottomStart)
-                                .offset(y = 2.dp) // ✅ 核心修正：向上微调 2dp，消除视觉下沉！
+                            fontSize = 16.sp
+                            // ③ 移除 Modifier.align 和 offset，直接由 Box 的 contentAlignment 控制
                         )
                     }
                 }
-
 
                 Spacer(modifier = Modifier.width(4.dp))
 
@@ -2832,7 +2826,7 @@ fun MessageInput(
                     }
                 }
 
-                // 4. 日历图标（按需显示）
+                // 4. 日历图标
                 if (hasScheduled) {
                     IconButton(onClick = onScheduledListClick, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.Event, contentDescription = "定时消息", tint = iconColor)
