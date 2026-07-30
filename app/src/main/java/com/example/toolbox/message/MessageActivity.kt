@@ -113,6 +113,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.zIndex
 
 @Composable
 fun ScheduledMessageItem(
@@ -1097,6 +1098,7 @@ fun MessageDetailScreen(
                 modifier = Modifier
                     .weight(1f)
                     .padding(top = innerPadding.calculateTopPadding())
+                    .hazeSource(state = hazeState)
             ) {
                 PullToRefreshBox(
                     isRefreshing = uiState.isRefreshing,
