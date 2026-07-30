@@ -1072,9 +1072,14 @@ fun MessageDetailScreen(
                                     val token = TokenManager.get(context) ?: return@launch
                                     val friendId = uiState.otherUser?.id ?: return@launch
                                     if (sendFriendRequest(token, friendId)) {
-                                        Toast.makeText(context, "好友请求已发送", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(
+                                            context,
+                                            "好友请求已发送",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
                                     } else {
-                                        Toast.makeText(context, "发送失败", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, "发送失败", Toast.LENGTH_SHORT)
+                                            .show()
                                     }
                                 }
                             }
@@ -1088,9 +1093,10 @@ fun MessageDetailScreen(
             }
 
             // 消息列表层
-            Box(modifier = Modifier
-                .weight(1f)
-                .padding(top = innerPadding.calculateTopPadding())
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(top = innerPadding.calculateTopPadding())
             ) {
                 PullToRefreshBox(
                     isRefreshing = uiState.isRefreshing,
@@ -1154,14 +1160,23 @@ fun MessageDetailScreen(
                                             uiState.messages.firstOrNull { it.effectiveMsgId == targetMessageId }
                                         }.first { it != null }
                                     }
-                                    val targetIndex = uiState.messages.indexOfFirst { it.effectiveMsgId == targetMessageId }
+                                    val targetIndex =
+                                        uiState.messages.indexOfFirst { it.effectiveMsgId == targetMessageId }
                                     if (targetIndex != -1) {
                                         listState.animateScrollToItem(targetIndex)
-                                        Toast.makeText(context, "已滚动到索引 $targetIndex", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(
+                                            context,
+                                            "已滚动到索引 $targetIndex",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
                                         delay(3000)
                                         viewModel.clearTargetMessageId()
                                     } else {
-                                        Toast.makeText(context, "未找到目标消息，无法滚动", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(
+                                            context,
+                                            "未找到目标消息，无法滚动",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
                                     }
                                 }
                             }
@@ -1191,26 +1206,33 @@ fun MessageDetailScreen(
                                     isSelected = message.effectiveMsgId in selectedMessages,
                                     onLongPress = { viewModel.enterSelectionMode(message) },
                                     isFirstFromSender = isFirstFromSender,
-                                    onClickInSelectionMode = { viewModel.toggleMessageSelection(message) },
+                                    onClickInSelectionMode = {
+                                        viewModel.toggleMessageSelection(
+                                            message
+                                        )
+                                    },
                                     showMenu = showMenuMsgId == message.effectiveMsgId && !selectionMode,
                                     onShowMenuChanged = { msgId ->
                                         if (!selectionMode) {
-                                            showMenuMsgId = if (showMenuMsgId == msgId) null else msgId
+                                            showMenuMsgId =
+                                                if (showMenuMsgId == msgId) null else msgId
                                         }
                                     },
                                     onTimeClick = {
-                                        val intent = Intent(context, HeatmapActivity::class.java).apply {
-                                            putExtra("chat_type", uiState.chatType)
-                                            putExtra("chat_id", uiState.chatId)
-                                        }
+                                        val intent =
+                                            Intent(context, HeatmapActivity::class.java).apply {
+                                                putExtra("chat_type", uiState.chatType)
+                                                putExtra("chat_id", uiState.chatId)
+                                            }
                                         context.startActivity(intent)
                                     },
                                     onDateClick = { dateString ->
-                                        val intent = Intent(context, HeatmapActivity::class.java).apply {
-                                            putExtra("chat_type", uiState.chatType)
-                                            putExtra("chat_id", uiState.chatId)
-                                            putExtra("date_string", dateString)
-                                        }
+                                        val intent =
+                                            Intent(context, HeatmapActivity::class.java).apply {
+                                                putExtra("chat_type", uiState.chatType)
+                                                putExtra("chat_id", uiState.chatId)
+                                                putExtra("date_string", dateString)
+                                            }
                                         context.startActivity(intent)
                                     },
                                     onCollectSticker = { viewModel.collectSticker(it) },
@@ -1230,7 +1252,11 @@ fun MessageDetailScreen(
                                                 ).show()
                                                 viewModel.refresh()
                                             } else {
-                                                Toast.makeText(context, "操作失败，请重试", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(
+                                                    context,
+                                                    "操作失败，请重试",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
                                             }
                                         }
                                     },
@@ -1319,7 +1345,12 @@ fun MessageDetailScreen(
                         onClick = {
                             val firstAtMessage = uiState.atMessages.firstOrNull()
                             if (firstAtMessage != null) {
-                                Toast.makeText(context, "点击跳转: ${firstAtMessage.effectiveMsgId}", Toast.LENGTH_SHORT).show()
+                                // 调试 Toast：显示即将跳转的消息 ID
+                                Toast.makeText(
+                                    context,
+                                    "点击跳转: ${firstAtMessage.effectiveMsgId}",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                                 viewModel.jumpToAtMessage(firstAtMessage.effectiveMsgId)
                             }
                         },
@@ -1328,7 +1359,6 @@ fun MessageDetailScreen(
                             .padding(bottom = 80.dp, end = 16.dp)
                     )
                 }
-
                 AnimatedScrollToBottomButton(
                     visible = showScrollToBottom,
                     unreadCount = unreadCount,
@@ -1339,7 +1369,6 @@ fun MessageDetailScreen(
                 )
             }
         }
-
         // ==============================
         // 👇 3. 悬浮在底部的操作栏 (无任何省略) 👇
         // ==============================
