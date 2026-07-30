@@ -1359,13 +1359,17 @@ fun MessageDetailScreen(
                             .padding(bottom = 80.dp, end = 16.dp)
                     )
                 }
+
+
+                val shouldShowBottomButton = showScrollToBottom || unreadCount > 0
                 AnimatedScrollToBottomButton(
-                    visible = showScrollToBottom,
+                    visible = shouldShowBottomButton,
                     unreadCount = unreadCount,
                     onClick = scrollToBottom,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(16.dp)
+                        .padding(bottom = 80.dp, end = 16.dp)
+                        .zIndex(100f)
                 )
             }
         }
