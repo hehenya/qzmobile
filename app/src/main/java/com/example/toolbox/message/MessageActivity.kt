@@ -816,6 +816,7 @@ fun MessageDetailScreen(
     val clipboard = LocalClipboard.current
     var firstMessageId by remember { mutableStateOf<String?>(null) }
     val density = LocalDensity.current
+
     val isUploading by viewModel.isUploading.collectAsState()
     val uploadProgress by viewModel.uploadProgress.collectAsState()
 
@@ -848,6 +849,11 @@ fun MessageDetailScreen(
     var imageViewerUrls by remember { mutableStateOf<List<String>>(emptyList()) }
     var imageViewerInitialPage by remember { mutableIntStateOf(0) }
     val replyTo by viewModel.replyTo.collectAsState()
+    val bottomPaddingForList = when {
+        uiState.editingMessage != null || replyTo != null -> 140.dp
+        uiState.selectedImages.isNotEmpty() -> 100.dp
+        else -> 80.dp
+    }
     val selectionMode = uiState.selectionMode
     val selectedMessages = uiState.selectedMessages
     var showMenuMsgId by remember { mutableStateOf<String?>(null) }
@@ -1091,14 +1097,14 @@ fun MessageDetailScreen(
                     onRefresh = { viewModel.refresh() },
                     modifier = Modifier.fillMaxSize()
                 ) {
+
+
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
                         reverseLayout = true,
                         verticalArrangement = Arrangement.spacedBy(4.dp),
-                        // 👇 核心：预留底部空间，让悬浮输入框不会遮挡最后一条消息！
-                        // contentPadding = PaddingValues(bottom = 75.dp)
-                        contentPadding = PaddingValues(top = 75.dp, bottom = 8.dp)
+                        contentPadding = PaddingValues(top = 75.dp, bottom = bottomPaddingForList)
                     ) {
                         items(
                             items = uiState.messages,
@@ -1274,7 +1280,7 @@ fun MessageDetailScreen(
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
                             .align(if (floatingAvatarIsMine) Alignment.BottomEnd else Alignment.BottomStart)
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .padding(start = 8.dp, end = 8.dp, bottom = bottomPaddingForList)
                             .size(36.dp)
                             .clip(CircleShape)
                             .combinedClickable(
