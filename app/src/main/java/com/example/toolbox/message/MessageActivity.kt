@@ -1098,7 +1098,6 @@ fun MessageDetailScreen(
                 modifier = Modifier
                     .weight(1f)
                     .padding(top = innerPadding.calculateTopPadding())
-                    .hazeSource(state = hazeState)
             ) {
                 PullToRefreshBox(
                     isRefreshing = uiState.isRefreshing,
@@ -2742,7 +2741,7 @@ fun MessageInput(
     onScheduleMenuConfirm: () -> Unit,
     hazeState: HazeState
 ) {
-    val inputBarBg = Color(0xFF2C2D35).copy(alpha = 0.9f)
+    val inputBarBg = Color(0xFF2C2D35).copy(alpha = 0.95f)
     val textColor = Color(0xFFE0E0E0)
     val placeholderColor = Color(0xFF888888)
     val sendBtnBg = Color(0xFF1E90FF)
