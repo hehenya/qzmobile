@@ -1187,7 +1187,7 @@ fun MessageDetailScreen(
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(top = innerPadding.calculateTopPadding())
+
             ) {
                 PullToRefreshBox(
                     isRefreshing = uiState.isRefreshing,
@@ -1201,7 +1201,10 @@ fun MessageDetailScreen(
                         modifier = Modifier.fillMaxSize(),
                         reverseLayout = true,
                         verticalArrangement = Arrangement.spacedBy(4.dp),
-                        contentPadding = PaddingValues(top = 75.dp, bottom = bottomPaddingForList)
+                        contentPadding = PaddingValues(
+                            top = 75.dp,               // 视觉底部留白（距离输入框）
+                            bottom = innerPadding.calculateTopPadding() + 75.dp  // 视觉顶部留白（为顶栏腾出空间）
+                        )
                     ) {
                         items(
                             items = uiState.messages,
