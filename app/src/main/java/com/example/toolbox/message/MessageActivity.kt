@@ -670,199 +670,178 @@ class MessageDetailActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     contentWindowInsets = WindowInsets(0.dp),
                     topBar = {
-                        Box(modifier = Modifier.fillMaxWidth()) {
-                            Box(
-                                modifier = Modifier
-                                    .matchParentSize()
-                                    .hazeEffect(
-                                        state = hazeState,
-                                        style = HazeMaterials.thin().copy(
-                                            noiseFactor = 0f
-                                        ),
-                                        block = null
-                                    )
-                            )
-
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(0.5.dp)
-                                    .align(Alignment.BottomCenter)
-                                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
-                            )
-
-                            AnimatedContent(
-                                targetState = uiState.selectionMode,
-                                transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(200)) },
-                                label = "topbar"
-                            ) { isSelecting ->
-                                if (isSelecting) {
-                                    TopAppBar(
-                                        title = { Text("${uiState.selectedMessages.size} 条选中") },
-                                        navigationIcon = {
-                                            IconButton(onClick = { viewModel.exitSelectionMode() }) {
-                                                Icon(Icons.Default.Close, contentDescription = "退出多选")
+                        // ⚠️ 关键修改：直接使用 AnimatedContent，不再包裹全屏模糊 Box
+                        AnimatedContent(
+                            targetState = uiState.selectionMode,
+                            transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(200)) },
+                            label = "topbar"
+                        ) { isSelecting ->
+                            if (isSelecting) {
+                                TopAppBar(
+                                    title = { Text("${uiState.selectedMessages.size} 条选中") },
+                                    navigationIcon = {
+                                        IconButton(onClick = { viewModel.exitSelectionMode() }) {
+                                            Icon(Icons.Default.Close, contentDescription = "退出多选")
+                                        }
+                                    },
+                                    actions = {
+                                        if (uiState.selectedMessages.isNotEmpty()) {
+                                            val selectedIds = uiState.selectedMessages.toSet()
+                                            val selectedMsgs = uiState.messages.filter { it.effectiveMsgId in selectedIds }
+                                            if (selectedMsgs.isNotEmpty()) {
+                                                IconButton(onClick = {
+                                                    shareSheetMessages = selectedMsgs
+                                                    showShareSheet = true
+                                                    viewModel.exitSelectionMode()
+                                                }) {
+                                                    Icon(Icons.Default.Image, contentDescription = "分享消息")
+                                                }
                                             }
-                                        },
-                                        actions = {
-                                            if (uiState.selectedMessages.isNotEmpty()) {
-                                                val selectedIds = uiState.selectedMessages.toSet()
-                                                val selectedMsgs = uiState.messages.filter { it.effectiveMsgId in selectedIds }
-                                                if (selectedMsgs.isNotEmpty()) {
+                                            if (selectedMsgs.size == 1) {
+                                                val msg = selectedMsgs.first()
+                                                if (msg.content.isNotBlank()) {
                                                     IconButton(onClick = {
-                                                        shareSheetMessages = selectedMsgs
-                                                        showShareSheet = true
-                                                        viewModel.exitSelectionMode()
+                                                        val clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                                        clipboardManager.setPrimaryClip(ClipData.newPlainText("text", msg.content))
+                                                        Toast.makeText(this@MessageDetailActivity, "已复制", Toast.LENGTH_SHORT).show()
                                                     }) {
-                                                        Icon(Icons.Default.Image, contentDescription = "分享消息")
+                                                        Icon(Icons.Default.ContentCopy, contentDescription = "复制")
                                                     }
                                                 }
-                                                if (selectedMsgs.size == 1) {
-                                                    val msg = selectedMsgs.first()
-                                                    if (msg.content.isNotBlank()) {
-                                                        IconButton(onClick = {
-                                                            val clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                                            clipboardManager.setPrimaryClip(ClipData.newPlainText("text", msg.content))
-                                                            Toast.makeText(this@MessageDetailActivity, "已复制", Toast.LENGTH_SHORT).show()
-                                                        }) {
-                                                            Icon(Icons.Default.ContentCopy, contentDescription = "复制")
-                                                        }
-                                                    }
+                                                IconButton(onClick = {
+                                                    viewModel.setReplyTo(msg)
+                                                    viewModel.exitSelectionMode()
+                                                }) {
+                                                    Icon(Icons.Default.FormatQuote, contentDescription = "引用")
+                                                }
+                                                if (msg.isMine && msg.content.isNotBlank()) {
                                                     IconButton(onClick = {
-                                                        viewModel.setReplyTo(msg)
+                                                        viewModel.startEditMessage(msg)
                                                         viewModel.exitSelectionMode()
                                                     }) {
-                                                        Icon(Icons.Default.FormatQuote, contentDescription = "引用")
-                                                    }
-                                                    if (msg.isMine && msg.content.isNotBlank()) {
-                                                        IconButton(onClick = {
-                                                            viewModel.startEditMessage(msg)
-                                                            viewModel.exitSelectionMode()
-                                                        }) {
-                                                            Icon(Icons.Default.Edit, contentDescription = "编辑")
-                                                        }
+                                                        Icon(Icons.Default.Edit, contentDescription = "编辑")
                                                     }
                                                 }
                                             }
-                                        },
-                                        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
-                                    )
-                                } else {
-                                    Column {
-                                        var showMoreMenu by remember { mutableStateOf(false) }
+                                        }
+                                    },
+                                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                                )
+                            } else {
+                                Column {
+                                    var showMoreMenu by remember { mutableStateOf(false) }
 
-                                        FloatingChatTopBar(
-                                            hazeState = hazeState,
-                                            showBackButton = true,
-                                            onBackClick = { finish() },
-                                            title = {
-                                                if (chatType == 2 && uiState.groupInfo != null) {
-                                                    val group = uiState.groupInfo!!
-                                                    Row(
-                                                        verticalAlignment = Alignment.CenterVertically,
-                                                        modifier = Modifier
-                                                            .fillMaxSize()
-                                                            .clickable {
-                                                                val intent = Intent(
-                                                                    this@MessageDetailActivity,
-                                                                    GroupInfoActivity::class.java
-                                                                ).apply {
-                                                                    putExtra("group_id", chatId)
-                                                                    putExtra("is_joined", true)
-                                                                    putExtra("group_name", group.name)
-                                                                    putExtra("group_avatar", group.avatarUrl)
-                                                                    putExtra("group_description", group.description)
-                                                                    putExtra("group_members_count", group.membersCount)
-                                                                    putExtra("group_created_at", group.createdAt)
-                                                                    putExtra("group_is_private", group.isPrivate)
-                                                                }
-                                                                startActivity(intent)
+                                    FloatingChatTopBar(
+                                        hazeState = hazeState,
+                                        showBackButton = true,
+                                        onBackClick = { finish() },
+                                        title = {
+                                            if (chatType == 2 && uiState.groupInfo != null) {
+                                                val group = uiState.groupInfo!!
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    modifier = Modifier
+                                                        .fillMaxSize()
+                                                        .clickable {
+                                                            val intent = Intent(
+                                                                this@MessageDetailActivity,
+                                                                GroupInfoActivity::class.java
+                                                            ).apply {
+                                                                putExtra("group_id", chatId)
+                                                                putExtra("is_joined", true)
+                                                                putExtra("group_name", group.name)
+                                                                putExtra("group_avatar", group.avatarUrl)
+                                                                putExtra("group_description", group.description)
+                                                                putExtra("group_members_count", group.membersCount)
+                                                                putExtra("group_created_at", group.createdAt)
+                                                                putExtra("group_is_private", group.isPrivate)
                                                             }
-                                                    ) {
-                                                        AsyncImage(
-                                                            model = if (group.avatarUrl.startsWith("http")) group.avatarUrl else "${ApiAddress}uploads/${group.avatarUrl}",
-                                                            contentDescription = null,
-                                                            contentScale = ContentScale.Crop,
-                                                            modifier = Modifier
-                                                                .size(36.dp)
-                                                                .clip(CircleShape)
-                                                        )
-                                                        Spacer(Modifier.width(8.dp))
-                                                        Column {
-                                                            Text(group.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                                                            val typingText by viewModel.typingText.collectAsState()
-                                                            Text(
-                                                                typingText ?: "${group.membersCount} 名成员",
-                                                                fontSize = 12.sp,
-                                                                color = if (typingText != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                                            )
+                                                            startActivity(intent)
                                                         }
-                                                    }
-                                                } else if (uiState.otherUser != null) {
-                                                    val otherUser = uiState.otherUser!!
-                                                    Row(
-                                                        verticalAlignment = Alignment.CenterVertically,
-                                                        modifier = Modifier
-                                                            .fillMaxSize()
-                                                            .clickable {
-                                                                startActivity(
-                                                                    Intent(
-                                                                        this@MessageDetailActivity,
-                                                                        UserInfoActivity::class.java
-                                                                    ).apply {
-                                                                        putExtra("userId", otherUser.id)
-                                                                    }
-                                                                )
-                                                            }
-                                                    ) {
-                                                        AsyncImage(model = otherUser.avatar, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier
-                                                            .size(36.dp)
-                                                            .clip(CircleShape))
-                                                        Spacer(Modifier.width(8.dp))
-                                                        val typingText by viewModel.typingText.collectAsState()
-                                                        Column {
-                                                            Text(
-                                                                if (typingText != null) "正在输入中..." else otherUser.username,
-                                                                fontWeight = FontWeight.Bold,
-                                                                fontSize = 16.sp
-                                                            )
-                                                        }
-                                                    }
-                                                } else {
-                                                    Text("聊天详情")
-                                                }
-                                            },
-                                            onMoreClick = { showMoreMenu = true },
-                                            moreMenu = {
-                                                DropdownMenu(
-                                                    expanded = showMoreMenu,
-                                                    onDismissRequest = { showMoreMenu = false }
                                                 ) {
-                                                    DropdownMenuItem(
-                                                        text = { Text("刷新") },
-                                                        onClick = {
-                                                            showMoreMenu = false
-                                                            viewModel.refresh()
-                                                        },
-                                                        leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) }
+                                                    AsyncImage(
+                                                        model = if (group.avatarUrl.startsWith("http")) group.avatarUrl else "${ApiAddress}uploads/${group.avatarUrl}",
+                                                        contentDescription = null,
+                                                        contentScale = ContentScale.Crop,
+                                                        modifier = Modifier
+                                                            .size(36.dp)
+                                                            .clip(CircleShape)
                                                     )
-                                                    // 可在此添加更多菜单项
+                                                    Spacer(Modifier.width(8.dp))
+                                                    Column {
+                                                        Text(group.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                                        val typingText by viewModel.typingText.collectAsState()
+                                                        Text(
+                                                            typingText ?: "${group.membersCount} 名成员",
+                                                            fontSize = 12.sp,
+                                                            color = if (typingText != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                                        )
+                                                    }
                                                 }
+                                            } else if (uiState.otherUser != null) {
+                                                val otherUser = uiState.otherUser!!
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    modifier = Modifier
+                                                        .fillMaxSize()
+                                                        .clickable {
+                                                            startActivity(
+                                                                Intent(
+                                                                    this@MessageDetailActivity,
+                                                                    UserInfoActivity::class.java
+                                                                ).apply {
+                                                                    putExtra("userId", otherUser.id)
+                                                                }
+                                                            )
+                                                        }
+                                                ) {
+                                                    AsyncImage(model = otherUser.avatar, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier
+                                                        .size(36.dp)
+                                                        .clip(CircleShape))
+                                                    Spacer(Modifier.width(8.dp))
+                                                    val typingText by viewModel.typingText.collectAsState()
+                                                    Column {
+                                                        Text(
+                                                            if (typingText != null) "正在输入中..." else otherUser.username,
+                                                            fontWeight = FontWeight.Bold,
+                                                            fontSize = 16.sp
+                                                        )
+                                                    }
+                                                }
+                                            } else {
+                                                Text("聊天详情")
+                                            }
+                                        },
+                                        onMoreClick = { showMoreMenu = true },
+                                        moreMenu = {
+                                            DropdownMenu(
+                                                expanded = showMoreMenu,
+                                                onDismissRequest = { showMoreMenu = false }
+                                            ) {
+                                                DropdownMenuItem(
+                                                    text = { Text("刷新") },
+                                                    onClick = {
+                                                        showMoreMenu = false
+                                                        viewModel.refresh()
+                                                    },
+                                                    leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) }
+                                                )
+                                                // 可在此添加更多菜单项
+                                            }
+                                        }
+                                    )
+
+                                    if (announcementMessage != null && uiState.chatType == 2) {
+                                        AnnouncementBanner(
+                                            message = announcementMessage!!,
+                                            onClick = {
+                                                val intent = Intent(this@MessageDetailActivity, AnnouncementDetailActivity::class.java).apply {
+                                                    putExtra("group_id", uiState.chatId)
+                                                    putExtra("is_admin", uiState.isAdmin)
+                                                }
+                                                startActivity(intent)
                                             }
                                         )
-
-                                        if (announcementMessage != null && uiState.chatType == 2) {
-                                            AnnouncementBanner(
-                                                message = announcementMessage!!,
-                                                onClick = {
-                                                    val intent = Intent(this@MessageDetailActivity, AnnouncementDetailActivity::class.java).apply {
-                                                        putExtra("group_id", uiState.chatId)
-                                                        putExtra("is_admin", uiState.isAdmin)
-                                                    }
-                                                    startActivity(intent)
-                                                }
-                                            )
-                                        }
                                     }
                                 }
                             }
@@ -907,7 +886,6 @@ class MessageDetailActivity : ComponentActivity() {
         }
     }
 }
-
 @Composable
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 fun MessageDetailScreen(

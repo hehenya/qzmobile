@@ -20,7 +20,6 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 
-// ---------- 数据类 ----------
 data class ForwardTarget(
     val chatId: Int,
     val chatType: Int,
@@ -31,7 +30,6 @@ data class ForwardTarget(
     val key: Pair<Int, Int> get() = Pair(chatType, chatId)
 }
 
-// ---------- UI 状态 ----------
 data class ForwardUiState(
     val isOpen: Boolean = true,
     val isLoading: Boolean = false,
@@ -40,7 +38,6 @@ data class ForwardUiState(
     val selectedKeys: Set<Pair<Int, Int>> = emptySet(),
     val sourceMsgIds: List<String> = emptyList(),
     val sourceChatType: Int = 1,
-    val nextSourceIndex: Int = 0,
     val isSending: Boolean = false,
     val isLocked: Boolean = false,
     val isCompleted: Boolean = false,
@@ -53,20 +50,15 @@ data class ForwardUiState(
     val selectedTargets: List<ForwardTarget>
         get() = targets.filter { it.key in selectedKeys }
 
-    val pendingSourceCount: Int
-        get() = (sourceMsgIds.size - nextSourceIndex).coerceAtLeast(0)
-
     val canSend: Boolean
-        get() = selectedKeys.isNotEmpty() && pendingSourceCount > 0 && !isSending && !isCompleted
+        get() = selectedKeys.isNotEmpty() && sourceMsgIds.isNotEmpty() && !isSending && !isCompleted
 }
 
-// ---------- 事件 ----------
 sealed interface ForwardEvent {
     data class SourceForwarded(val msgId: String) : ForwardEvent
     data class Completed(val recipients: List<ForwardTarget>) : ForwardEvent
 }
 
-// ---------- ViewModel ----------
 class ForwardViewModel(private val token: String) : ViewModel() {
     private val _uiState = MutableStateFlow(ForwardUiState())
     val uiState: StateFlow<ForwardUiState> = _uiState.asStateFlow()
@@ -115,54 +107,41 @@ class ForwardViewModel(private val token: String) : ViewModel() {
         val snapshot = _uiState.value
         if (!snapshot.canSend) return
 
-        val recipientTargets = snapshot.selectedTargets
+        val targets = snapshot.selectedTargets
         _uiState.update { it.copy(isSending = true, isLocked = true, error = null) }
 
         viewModelScope.launch {
-            var index = snapshot.nextSourceIndex
-            while (index < snapshot.sourceMsgIds.size) {
-                val msgId = snapshot.sourceMsgIds[index]
-                val success = forwardSingleMessage(msgId, snapshot.sourceChatType, recipientTargets)
-                if (!success) {
-                    val completedCount = index
-                    _uiState.update {
-                        it.copy(
-                            nextSourceIndex = index,
-                            isSending = false,
-                            isLocked = true,
-                            error = if (completedCount == 0) "转发失败" else "已转发 $completedCount/${snapshot.sourceMsgIds.size} 条，转发失败"
-                        )
-                    }
-                    return@launch
+            var successCount = 0
+            var failCount = 0
+            for (msgId in snapshot.sourceMsgIds) {
+                for (target in targets) {
+                    val ok = forwardSingleMessage(msgId, target)
+                    if (ok) successCount++ else failCount++
                 }
-
-                _events.emit(ForwardEvent.SourceForwarded(msgId))
-                index++
-                _uiState.update { it.copy(nextSourceIndex = index) }
             }
 
-            _uiState.update { it.copy(isSending = false, isLocked = true, isCompleted = true, error = null) }
-            _events.emit(ForwardEvent.Completed(recipientTargets))
+            if (failCount == 0) {
+                _uiState.update { it.copy(isSending = false, isLocked = true, isCompleted = true) }
+                _events.emit(ForwardEvent.Completed(targets))
+            } else {
+                _uiState.update {
+                    it.copy(
+                        isSending = false,
+                        isLocked = true,
+                        error = "转发完成：成功 $successCount 条，失败 $failCount 条"
+                    )
+                }
+            }
         }
     }
 
-    private suspend fun forwardSingleMessage(
-        msgId: String,
-        @Suppress("UNUSED_PARAMETER") sourceChatType: Int,
-        recipients: List<ForwardTarget>
-    ): Boolean = withContext(Dispatchers.IO) {
+    private suspend fun forwardSingleMessage(msgId: String, target: ForwardTarget): Boolean = withContext(Dispatchers.IO) {
         try {
             val client = OkHttpClient()
             val json = JSONObject().apply {
                 put("message_id", msgId.toIntOrNull() ?: return@withContext false)
-                val arr = JSONArray()
-                recipients.forEach { r ->
-                    val obj = JSONObject()
-                    obj.put("chat_type", r.chatType)
-                    obj.put("chat_id", r.chatId)
-                    arr.put(obj)
-                }
-                put("recipients", arr)
+                put("target_chat_type", target.chatType)
+                put("target_chat_id", target.chatId)
             }
             val body = json.toString().toRequestBody("application/json".toMediaType())
             val request = Request.Builder()
@@ -170,8 +149,7 @@ class ForwardViewModel(private val token: String) : ViewModel() {
                 .post(body)
                 .header("x-access-token", token)
                 .build()
-            val response = client.newCall(request).execute()
-            response.isSuccessful
+            client.newCall(request).execute().use { it.isSuccessful }
         } catch (_: Exception) {
             false
         }

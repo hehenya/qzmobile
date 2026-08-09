@@ -27,19 +27,27 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil3.compose.AsyncImage
 import com.example.toolbox.TokenManager
 import com.example.toolbox.ui.theme.ToolBoxTheme
-import kotlinx.coroutines.launch
-
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
+import dev.chrisbanes.haze.materials.HazeMaterials
 
 class ForwardActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,10 +66,12 @@ class ForwardActivity : ComponentActivity() {
 
         setContent {
             ToolBoxTheme {
+                val hazeState = remember { HazeState() }
                 ForwardScreen(
                     token = token,
                     sourceChatType = sourceChatType,
                     messageIds = messageIds,
+                    hazeState = hazeState,
                     onBack = { finish() },
                     onNavigateToChat = { chatId, chatType ->
                         val intent = Intent(this@ForwardActivity, MessageDetailActivity::class.java).apply {
@@ -77,12 +87,13 @@ class ForwardActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalHazeMaterialsApi::class)
 @Composable
 fun ForwardScreen(
     token: String,
     sourceChatType: Int,
     messageIds: List<String>,
+    hazeState: HazeState,
     onBack: () -> Unit,
     onNavigateToChat: (chatId: Int, chatType: Int) -> Unit
 ) {
@@ -97,7 +108,6 @@ fun ForwardScreen(
 
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         viewModel.open(sourceChatType, messageIds)
@@ -118,7 +128,7 @@ fun ForwardScreen(
                         onNavigateToChat(target.chatId, target.chatType)
                     }
                 }
-                is ForwardEvent.SourceForwarded -> {}
+                else -> {}
             }
         }
     }
@@ -126,13 +136,13 @@ fun ForwardScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            TopAppBar(
+            FloatingChatTopBar(
+                hazeState = hazeState,
+                showBackButton = true,
+                onBackClick = { if (!uiState.isSending) onBack() },
                 title = { Text("转发消息") },
-                navigationIcon = {
-                    IconButton(onClick = { if (!uiState.isSending) onBack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                    }
-                }
+                onMoreClick = {},
+                moreMenu = {}
             )
         }
     ) { innerPadding ->
@@ -140,6 +150,7 @@ fun ForwardScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .hazeSource(hazeState)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 OutlinedTextField(
@@ -164,9 +175,7 @@ fun ForwardScreen(
 
                 if (uiState.error != null) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 4.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
@@ -190,7 +199,7 @@ fun ForwardScreen(
                     uiState.filteredTargets.isEmpty() -> {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Text(
-                                text = if (uiState.query.isBlank()) "暂无可转发的会话" else "未找到相关会话",
+                                if (uiState.query.isBlank()) "暂无可转发的会话" else "未找到相关会话",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -198,12 +207,7 @@ fun ForwardScreen(
                     else -> {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(
-                                start = 8.dp,
-                                end = 8.dp,
-                                top = 4.dp,
-                                bottom = 96.dp
-                            )
+                            contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 96.dp)
                         ) {
                             items(
                                 items = uiState.filteredTargets,
@@ -221,47 +225,93 @@ fun ForwardScreen(
                 }
             }
 
-            AnimatedVisibility(
+            androidx.compose.animation.AnimatedVisibility(
                 visible = uiState.selectedKeys.isNotEmpty(),
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = 20.dp, bottom = 24.dp),
-                enter = scaleIn(
-                    initialScale = 0.68f,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessMedium
-                    )
-                ) + fadeIn(animationSpec = tween(120)),
-                exit = scaleOut(
-                    targetScale = 0.78f,
-                    animationSpec = tween(120)
-                ) + fadeOut(animationSpec = tween(90))
+                enter = scaleIn(initialScale = 0.68f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)) + fadeIn(tween(120)),
+                exit = scaleOut(targetScale = 0.78f, animationSpec = tween(120)) + fadeOut(tween(90))
             ) {
                 FloatingActionButton(
                     onClick = { if (uiState.canSend) viewModel.send() },
                     shape = CircleShape,
-                    containerColor = if (uiState.canSend || uiState.isSending) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.surfaceVariant
-                    },
-                    contentColor = if (uiState.canSend || uiState.isSending) {
-                        MaterialTheme.colorScheme.onPrimary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    }
+                    containerColor = if (uiState.canSend || uiState.isSending) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = if (uiState.canSend || uiState.isSending) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                 ) {
                     if (uiState.isSending) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.dp
-                        )
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
                     } else {
                         Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "发送")
                     }
                 }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalHazeMaterialsApi::class)
+@Composable
+private fun FloatingChatTopBar(
+    hazeState: HazeState,
+    showBackButton: Boolean,
+    onBackClick: () -> Unit,
+    title: @Composable () -> Unit,
+    onMoreClick: () -> Unit,
+    moreMenu: @Composable BoxScope.() -> Unit
+) {
+    val controlSize = 48.dp
+    val buttonShape = CircleShape
+    val topBarColor = MaterialTheme.colorScheme.surface
+    val buttonHazeStyle = HazeMaterials.thin(containerColor = topBarColor).copy(blurRadius = 32.dp, noiseFactor = 0f)
+    val cardShape = RoundedCornerShape(24.dp)
+
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            topBarColor.copy(alpha = 0.8f),
+                            topBarColor.copy(alpha = 0.7f),
+                            topBarColor.copy(alpha = 0.6f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            if (showBackButton) {
+                Box(
+                    modifier = Modifier.size(controlSize)
+                        .shadow(2.dp, buttonShape).clip(buttonShape)
+                        .hazeEffect(state = hazeState, style = buttonHazeStyle, block = null)
+                        .clickable(onClick = onBackClick),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回", modifier = Modifier.size(24.dp))
+                }
+            }
+            Box(
+                modifier = Modifier.weight(1f).height(controlSize)
+                    .shadow(2.dp, cardShape).clip(cardShape)
+                    .hazeEffect(state = hazeState, style = buttonHazeStyle, block = null),
+                contentAlignment = Alignment.CenterStart
+            ) { title() }
+            Box(
+                modifier = Modifier.size(controlSize)
+                    .shadow(2.dp, buttonShape).clip(buttonShape)
+                    .hazeEffect(state = hazeState, style = buttonHazeStyle, block = null)
+                    .clickable(onClick = onMoreClick),
+                contentAlignment = Alignment.Center
+            ) {
+                moreMenu()
+                Icon(Icons.Default.MoreVert, contentDescription = "更多", modifier = Modifier.size(24.dp))
             }
         }
     }
@@ -284,52 +334,50 @@ private fun ForwardTargetRow(
         label = "bg"
     )
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
+    Box(
+        modifier = Modifier.fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(backgroundColor)
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(modifier = Modifier.size(52.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // 头像加载
+            AsyncImage(
+                model = target.avatarUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.size(52.dp).clip(CircleShape)
+            )
+            Spacer(Modifier.width(14.dp))
+            Text(
+                text = target.displayName,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        // 选中勾号
+        androidx.compose.animation.AnimatedVisibility(
+            visible = selected,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 4.dp, end = 4.dp),
+            enter = scaleIn(initialScale = 0.42f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)) + fadeIn(tween(100)),
+            exit = scaleOut(targetScale = 0.5f, animationSpec = tween(100)) + fadeOut(tween(80))
+        ) {
             Surface(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.size(22.dp),
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.primaryContainer
+                color = Color(0xFF4CAF50),
+                contentColor = Color.White
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text(target.displayName.firstOrNull()?.toString() ?: "?")
-                }
-            }
-
-            // 使用全限定名避免与 RowScope.AnimatedVisibility 冲突
-            androidx.compose.animation.AnimatedVisibility(
-                visible = selected,
-                modifier = Modifier.align(Alignment.BottomEnd),
-                enter = scaleIn(initialScale = 0.42f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)) + fadeIn(tween(100)),
-                exit = scaleOut(targetScale = 0.5f, animationSpec = tween(100)) + fadeOut(tween(80))
-            ) {
-                Surface(
-                    modifier = Modifier.size(22.dp),
-                    shape = CircleShape,
-                    color = Color(0xFF4CAF50),
-                    contentColor = Color.White
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Check, contentDescription = "已选择", modifier = Modifier.size(15.dp))
-                    }
+                    Icon(Icons.Default.Check, contentDescription = "已选择", modifier = Modifier.size(15.dp))
                 }
             }
         }
-        Spacer(modifier = Modifier.width(14.dp))
-        Text(
-            text = target.displayName,
-            style = MaterialTheme.typography.titleMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-        )
     }
 }
