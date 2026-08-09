@@ -840,7 +840,8 @@ class MessageDetailActivity : ComponentActivity() {
                                                     putExtra("is_admin", uiState.isAdmin)
                                                 }
                                                 startActivity(intent)
-                                            }
+                                            },
+                                            hazeState = hazeState
                                         )
                                     }
                                 }
@@ -3221,38 +3222,63 @@ private fun buildMessageShareBitmap(message: Message): Bitmap {
 
     return bitmap
 }
+@OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
 fun AnnouncementBanner(
     message: Message,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    hazeState: HazeState   // 新增参数，接收外部 hazeState
 ) {
-    Surface(
+    val controlShape = RoundedCornerShape(12.dp)
+    val containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 4.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                Icons.Default.PushPin,
-                contentDescription = "公告",
-                modifier = Modifier.size(18.dp),
-                tint = MaterialTheme.colorScheme.primary
+            .shadow(2.dp, controlShape)          // 投影
+            .clip(controlShape)                  // 裁剪圆角
+            .hazeEffect(                          // 毛玻璃效果（与顶栏按钮参数一致）
+                state = hazeState,
+                style = HazeMaterials.thin(containerColor = containerColor).copy(
+                    blurRadius = 32.dp,
+                    noiseFactor = 0f
+                ),
+                block = null
             )
-            Spacer(Modifier.width(8.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text("已置顶消息", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                Text(
-                    message.content.take(50),
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+            .clickable { onClick() }
+    ) {
+        // 内部内容保持原有样式
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = controlShape,
+            color = containerColor
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.PushPin,
+                    contentDescription = "公告",
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.primary
                 )
+                Spacer(Modifier.width(8.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "已置顶消息",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        message.content.take(50),
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
         }
     }
