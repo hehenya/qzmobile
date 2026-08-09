@@ -3234,7 +3234,8 @@ fun AnnouncementBanner(
     hazeState: HazeState   // 新增参数，接收外部 hazeState
 ) {
     val controlShape = RoundedCornerShape(12.dp)
-    val containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+    // 使用与顶栏按钮相同的容器色（不使用强制实色背景，依赖 hazeEffect）
+    val containerColor = MaterialTheme.colorScheme.surface
 
     Box(
         modifier = Modifier
@@ -3252,11 +3253,11 @@ fun AnnouncementBanner(
             )
             .clickable { onClick() }
     ) {
-        // 内部内容保持原有样式
+        // 内部内容保持原有样式，Surface 背景设为透明，视觉由 hazeEffect 提供
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = controlShape,
-            color = containerColor
+            color = Color.Transparent
         ) {
             Row(
                 modifier = Modifier.padding(12.dp),
