@@ -2846,7 +2846,11 @@ fun MessageInput(
             .heightIn(max = 150.dp)
             .hazeEffect(
                 state = hazeState,
-                style = HazeMaterials.thin().copy(noiseFactor = 0f)
+                style = HazeMaterials.thin(containerColor = inputBarBg).copy(
+                    blurRadius = 32.dp,
+                    noiseFactor = 0f
+                ),
+                block = null
             ),
         color = inputBarBg,
         shape = RoundedCornerShape(30.dp)
