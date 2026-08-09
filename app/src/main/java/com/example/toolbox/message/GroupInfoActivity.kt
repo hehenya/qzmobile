@@ -8,23 +8,32 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -40,6 +49,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
@@ -54,6 +64,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -71,21 +82,25 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
@@ -109,6 +124,88 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+// ---------- 新增数据类 ----------
+
+
+// ---------- CapsuleTabBar（参考项目样式） ----------
+@Composable
+fun CapsuleTabBar(
+    tabs: List<String>,
+    selectedTabIndex: Int,
+    onTabSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (tabs.isEmpty()) return
+
+    val selectedIndex = selectedTabIndex.coerceIn(tabs.indices)
+    val horizontalInset = 6.dp
+    val selectionMotion = tween<Dp>(
+        durationMillis = 260,
+        easing = FastOutSlowInEasing
+    )
+
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(40.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(horizontal = horizontalInset, vertical = 6.dp)
+    ) {
+        val tabWidth = maxWidth / tabs.size
+        val indicatorOffset by animateDpAsState(
+            targetValue = tabWidth * selectedIndex,
+            animationSpec = selectionMotion,
+            label = "capsule tab indicator offset"
+        )
+
+        Box(
+            modifier = Modifier
+                .offset(x = indicatorOffset)
+                .width(tabWidth)
+                .fillMaxHeight()
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.secondaryContainer)
+        )
+
+        Row(Modifier.fillMaxWidth().fillMaxHeight()) {
+            tabs.forEachIndexed { index, label ->
+                val selected = index == selectedIndex
+                val textColor by animateColorAsState(
+                    targetValue = if (selected) {
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    animationSpec = tween(durationMillis = 180),
+                    label = "capsule tab text color"
+                )
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .selectable(
+                            selected = selected,
+                            role = Role.Tab,
+                            onClick = { onTabSelected(index) }
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = textColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ---------- 群信息页面 ----------
 class GroupInfoActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -132,6 +229,18 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
     var isPickingBackground by remember { mutableStateOf(false) }
     var previewImageUri by remember { mutableStateOf<Uri?>(null) }
     var previewBgUrl by remember { mutableStateOf<String?>(null) }
+
+    // 新增状态：标签栏选择与标签管理弹窗
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    val tabs = listOf("信息", "成员", "媒体")
+    var showTagManageDialog by remember { mutableStateOf(false) }
+
+    // 媒体筛选类型（由 ViewModel 提供，这里假设存在）
+    val mediaType by viewModel.mediaType.collectAsState()
+    val mediaList by viewModel.mediaList.collectAsState()
+    val isLoadingMedia by viewModel.isLoadingMedia.collectAsState()
+    val mediaPage by viewModel.mediaPage.collectAsState()
+    val mediaTotalPages by viewModel.mediaTotalPages.collectAsState()
 
     val imagePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -188,6 +297,7 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
     LaunchedEffect(viewModel) { viewModel.toastMessage.collect { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() } }
     LaunchedEffect(viewModel) { viewModel.joinSuccess.collect { onBack() } }
 
+    // 原有各种弹窗
     if (uiState.showLeaveDialog) {
         AlertDialog(onDismissRequest = { viewModel.hideLeaveDialog() }, title = { Text("退出群聊") }, text = { Text("确定要退出该群聊吗？") },
             confirmButton = { Button(onClick = { viewModel.leaveGroup(onBack) }, enabled = !uiState.isLeaving) { if (uiState.isLeaving) CircularProgressIndicator(Modifier.size(16.dp)) else Text("确定") } },
@@ -198,6 +308,7 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
             confirmButton = { Button(onClick = { viewModel.dissolveGroup(onBack) }, enabled = !uiState.isDissolving, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { if (uiState.isDissolving) CircularProgressIndicator(Modifier.size(16.dp)) else Text("解散") } },
             dismissButton = { TextButton(onClick = { viewModel.hideDissolveDialog() }) { Text("取消") } })
     }
+    // 创建/编辑标签对话框（仍保留在 ViewModel 控制）
     if (uiState.showTagDialog) {
         AlertDialog(onDismissRequest = { viewModel.hideTagDialog() }, title = { Text(if (uiState.editingTag != null) "编辑标签" else "创建标签") }, text = {
             Column {
@@ -210,6 +321,54 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
         }, confirmButton = { Button(onClick = { val t = uiState.editingTag; if (t != null) viewModel.editTag(t.id, uiState.newTagName, uiState.newTagColor) else viewModel.createTag(uiState.newTagName, uiState.newTagColor) }) { Text("保存") } },
             dismissButton = { TextButton(onClick = { viewModel.hideTagDialog() }) { Text("取消") } })
     }
+
+    // 群标签管理弹窗（新增）
+    if (showTagManageDialog) {
+        AlertDialog(
+            onDismissRequest = { showTagManageDialog = false },
+            title = { Text("群标签管理") },
+            text = {
+                if (uiState.isLoadingTags) {
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                } else {
+                    LazyColumn {
+                        items(uiState.tags) { tag ->
+                            Row(
+                                Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Surface(
+                                        shape = RoundedCornerShape(4.dp),
+                                        color = try { Color(tag.color.toColorInt()) } catch (_: Exception) { MaterialTheme.colorScheme.primary },
+                                        modifier = Modifier.size(12.dp)
+                                    ) {}
+                                    Spacer(Modifier.width(12.dp))
+                                    Text(tag.name)
+                                }
+                                Row {
+                                    IconButton(onClick = {
+                                        showTagManageDialog = false
+                                        viewModel.showTagDialog(tag)
+                                    }) { Icon(Icons.Default.Edit, "编辑") }
+                                    IconButton(onClick = { viewModel.deleteTag(tag.id) }) { Icon(Icons.Default.Delete, "删除", tint = MaterialTheme.colorScheme.error) }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    showTagManageDialog = false
+                    viewModel.showTagDialog()
+                }) { Text("添加标签") }
+            },
+            dismissButton = { TextButton(onClick = { showTagManageDialog = false }) { Text("关闭") } }
+        )
+    }
+
     if (uiState.showEditDialog) {
         AlertDialog(onDismissRequest = { viewModel.hideEditDialog() }, title = { Text("编辑群信息") }, text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
@@ -230,35 +389,22 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
                     Spacer(Modifier.width(8.dp))
                     Switch(checked = uiState.editingJoinVerification, onCheckedChange = null, thumbContent = { Icon(if (uiState.editingJoinVerification) Icons.Default.Check else Icons.Default.Close, null, Modifier.size(SwitchDefaults.IconSize), tint = if (uiState.editingJoinVerification) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest) })
                 }
-// 允许分享
-Row(Modifier.fillMaxWidth().padding(16.dp).clickable { viewModel.updateEditingShareEnabled(!uiState.editingShareEnabled) }, verticalAlignment = Alignment.CenterVertically) {
-    Icon(Icons.Default.Share, "允许分享", Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
-    Spacer(Modifier.width(16.dp))
-    Column(Modifier.weight(1f)) {
-        Text("允许分享", style = MaterialTheme.typography.titleMedium)
-        Text("允许成员生成分享链接邀请他人加入", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-    Spacer(Modifier.width(8.dp))
-    Switch(checked = uiState.editingShareEnabled, onCheckedChange = null, thumbContent = {
-        Icon(if (uiState.editingShareEnabled) Icons.Default.Check else Icons.Default.Close, null, Modifier.size(SwitchDefaults.IconSize),
-            tint = if (uiState.editingShareEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest)
-    })
-}
-
-// 私有/公开
-Row(Modifier.fillMaxWidth().padding(16.dp).clickable { viewModel.updateEditingIsPrivate(!uiState.editingIsPrivate) }, verticalAlignment = Alignment.CenterVertically) {
-    Icon(if (uiState.editingIsPrivate) Icons.Default.Lock else Icons.Default.Public, "群类型", Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
-    Spacer(Modifier.width(16.dp))
-    Column(Modifier.weight(1f)) {
-        Text("私有群", style = MaterialTheme.typography.titleMedium)
-        Text(if (uiState.editingIsPrivate) "仅群成员可查看和搜索" else "所有人可搜索和加入", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-    Spacer(Modifier.width(8.dp))
-    Switch(checked = uiState.editingIsPrivate, onCheckedChange = null, thumbContent = {
-        Icon(if (uiState.editingIsPrivate) Icons.Default.Check else Icons.Default.Close, null, Modifier.size(SwitchDefaults.IconSize),
-            tint = if (uiState.editingIsPrivate) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest)
-    })
-}
+                // 允许分享
+                Row(Modifier.fillMaxWidth().padding(16.dp).clickable { viewModel.updateEditingShareEnabled(!uiState.editingShareEnabled) }, verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Share, "允许分享", Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(16.dp))
+                    Column(Modifier.weight(1f)) { Text("允许分享", style = MaterialTheme.typography.titleMedium); Text("允许成员生成分享链接邀请他人加入", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    Spacer(Modifier.width(8.dp))
+                    Switch(checked = uiState.editingShareEnabled, onCheckedChange = null, thumbContent = { Icon(if (uiState.editingShareEnabled) Icons.Default.Check else Icons.Default.Close, null, Modifier.size(SwitchDefaults.IconSize), tint = if (uiState.editingShareEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest) })
+                }
+                // 私有/公开
+                Row(Modifier.fillMaxWidth().padding(16.dp).clickable { viewModel.updateEditingIsPrivate(!uiState.editingIsPrivate) }, verticalAlignment = Alignment.CenterVertically) {
+                    Icon(if (uiState.editingIsPrivate) Icons.Default.Lock else Icons.Default.Public, "群类型", Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(16.dp))
+                    Column(Modifier.weight(1f)) { Text("私有群", style = MaterialTheme.typography.titleMedium); Text(if (uiState.editingIsPrivate) "仅群成员可查看和搜索" else "所有人可搜索和加入", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    Spacer(Modifier.width(8.dp))
+                    Switch(checked = uiState.editingIsPrivate, onCheckedChange = null, thumbContent = { Icon(if (uiState.editingIsPrivate) Icons.Default.Check else Icons.Default.Close, null, Modifier.size(SwitchDefaults.IconSize), tint = if (uiState.editingIsPrivate) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest) })
+                }
             }
         }, confirmButton = { Button(onClick = { viewModel.editGroupInfo(uiState.editingName, uiState.editingDescription, uiState.editingAvatarUrl, uiState.editingJoinVerification, uiState.editingShareEnabled, uiState.editingIsPrivate); viewModel.hideEditDialog() }, enabled = !uiState.isEditing) { if (uiState.isEditing) CircularProgressIndicator(Modifier.size(16.dp)) else Text("保存") } },
             dismissButton = { TextButton(onClick = { viewModel.hideEditDialog() }) { Text("取消") } })
@@ -266,7 +412,7 @@ Row(Modifier.fillMaxWidth().padding(16.dp).clickable { viewModel.updateEditingIs
 
     // 背景预览弹窗
     if (previewImageUri != null) {
-        val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val sdf = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
         val now = sdf.format(Date())
         AlertDialog(
             onDismissRequest = { previewImageUri = null; previewBgUrl = null; isPickingBackground = false },
@@ -344,15 +490,25 @@ Row(Modifier.fillMaxWidth().padding(16.dp).clickable { viewModel.updateEditingIs
                 var showMenu by remember { mutableStateOf(false) }
                 var showShareDialog by remember { mutableStateOf(false) }
                 if (uiState.isJoined) {
-                    if (uiState.myRole > 0) { IconButton(onClick = { viewModel.showEditDialog() }) { Icon(Icons.Default.Edit, contentDescription = "编辑群信息") } }
-                    if (uiState.group?.shareEnabled != false) { 
-                        IconButton(onClick = { showShareDialog = true }) { Icon(Icons.Default.Share, contentDescription = "分享群聊") }
-                    }
+                    // 三点菜单包含所有管理功能
                     Box {
                         IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, contentDescription = "更多") }
                         DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                            if (uiState.myRole == 2) DropdownMenuItem(text = { Text("解散群聊") }, onClick = { showMenu = false; viewModel.showDissolveDialog() }, leadingIcon = { Icon(Icons.Default.Delete, null) })
-                            else DropdownMenuItem(text = { Text("退出群聊") }, onClick = { showMenu = false; viewModel.showLeaveDialog() }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, null) })
+                            if (uiState.myRole > 0) {
+                                DropdownMenuItem(text = { Text("编辑群信息") }, onClick = { showMenu = false; viewModel.showEditDialog() }, leadingIcon = { Icon(Icons.Default.Edit, null) })
+                            }
+                            if (uiState.group?.shareEnabled != false) {
+                                DropdownMenuItem(text = { Text("分享群聊") }, onClick = { showMenu = false; showShareDialog = true }, leadingIcon = { Icon(Icons.Default.Share, null) })
+                            }
+                            DropdownMenuItem(text = { Text("聊天背景") }, onClick = { showMenu = false; isPickingBackground = true; imagePickerLauncher.launch("image/*") }, leadingIcon = { Icon(Icons.Default.Image, null) })
+                            if (uiState.myRole > 0) {
+                                DropdownMenuItem(text = { Text("群标签管理") }, onClick = { showMenu = false; showTagManageDialog = true }, leadingIcon = { Icon(Icons.Default.Edit, null) })
+                            }
+                            if (uiState.myRole == 2) {
+                                DropdownMenuItem(text = { Text("解散群聊") }, onClick = { showMenu = false; viewModel.showDissolveDialog() }, leadingIcon = { Icon(Icons.Default.Delete, null) })
+                            } else {
+                                DropdownMenuItem(text = { Text("退出群聊") }, onClick = { showMenu = false; viewModel.showLeaveDialog() }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, null) })
+                            }
                         }
                     }
                 }
@@ -374,39 +530,159 @@ Row(Modifier.fillMaxWidth().padding(16.dp).clickable { viewModel.updateEditingIs
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             if (uiState.isLoading && uiState.group == null) { CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) }
             else if (uiState.group != null) {
-                PullToRefreshBox(isRefreshing = uiState.isRefreshing, onRefresh = { viewModel.refresh() }, modifier = Modifier.fillMaxSize()) {
-                    val group = uiState.group!!
-                    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 16.dp)) {
-                        item {
-                            Column(Modifier.fillMaxWidth().padding(vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                AsyncImage(model = if (group.avatarUrl.startsWith("http")) group.avatarUrl else "${ApiAddress}uploads/${group.avatarUrl}", contentDescription = "群头像", contentScale = ContentScale.Crop, modifier = Modifier.size(100.dp).clip(CircleShape))
-                                Spacer(Modifier.height(16.dp)); Text(group.name, fontSize = 24.sp, fontWeight = FontWeight.Bold); Text("群号: ${group.id}", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
-                            }
-                        }
-                        item { SettingsGroup(title = "群聊信息", items = listOf(
-                            { SettingsItemCell(icon = Icons.Default.Person, title = "成员数", subtitle = "${group.membersCount} 名成员", onClick = { if (uiState.isJoined) context.startActivity(Intent(context, GroupMembersActivity::class.java).apply { putExtra("group_id", group.id) }) }) },
-                            { SettingsItemCell(icon = Icons.Default.DateRange, title = "创建时间", subtitle = formatGroupTime(group.createdAt), onClick = {}) },
-                            { if (group.isPrivate) SettingsItemCell(icon = Icons.Default.Lock, title = "群类型", subtitle = "私有群", onClick = {}, isDestructive = true) else SettingsItemCell(icon = Icons.Default.Public, title = "群类型", subtitle = "公开群", onClick = {}) }
-                        )) }
-                        if (uiState.isJoined) { item { SettingsGroup(title = "聊天设置", items = listOf({ SettingsItemCell(icon = Icons.Default.Image, title = "聊天背景", subtitle = "设置聊天页背景图", onClick = { isPickingBackground = true; imagePickerLauncher.launch("image/*") }) })) } }
-                        if (group.description.isNotBlank()) { item { SettingsGroup(title = "群聊简介", items = listOf({ SettingsCustomItem { Text(group.description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(16.dp)) } })) } }
-                        group.creator?.let { creator ->
-                            item { SettingsGroup(title = "群主", items = listOf({ SettingsCustomItem { Row(Modifier.fillMaxWidth().clickable { val intent = Intent(context, UserInfoActivity::class.java); intent.putExtra("userId", creator.id); context.startActivity(intent) }.padding(16.dp), verticalAlignment = Alignment.CenterVertically) { AsyncImage(model = if (creator.avatarUrl.startsWith("http")) creator.avatarUrl else "${ApiAddress}uploads/${creator.avatarUrl}", contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(40.dp).clip(CircleShape)); Spacer(Modifier.width(12.dp)); Text(creator.username, fontWeight = FontWeight.Bold) } } })) }
-                        }
-                        if (uiState.isJoined && uiState.myRole > 0) {
-                            item { SettingsGroup(title = "群标签", items = buildList {
-                                if (uiState.isLoadingTags) add { SettingsCustomItem { Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } } }
-                                else if (uiState.tags.isEmpty()) add { SettingsCustomItem { Text("暂无标签", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp)) } }
-                                else uiState.tags.forEach { tag -> add { SettingsCustomItem(onClick = { if (uiState.myRole > 0) viewModel.showTagDialog(tag) }) { Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) { Row(verticalAlignment = Alignment.CenterVertically) { Surface(shape = RoundedCornerShape(4.dp), color = try { Color(tag.color.toColorInt()) } catch (_: Exception) { MaterialTheme.colorScheme.primary }, modifier = Modifier.size(12.dp)) {}; Spacer(Modifier.width(12.dp)); Text(tag.name, style = MaterialTheme.typography.bodyLarge) }; if (uiState.myRole > 0) Icon(Icons.Default.Delete, contentDescription = "删除标签", modifier = Modifier.size(20.dp).clickable { viewModel.deleteTag(tag.id) }, tint = MaterialTheme.colorScheme.error) } } } }
-                                if (uiState.myRole > 0) add { SettingsCustomItem(onClick = { viewModel.showTagDialog() }) { Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp)); Spacer(Modifier.width(16.dp)); Text("添加标签", color = MaterialTheme.colorScheme.primary) } } }
-                            }) }
-                        }
-                        item { Spacer(Modifier.height(16.dp)); if (!uiState.isJoined) Button(onClick = { viewModel.joinGroup() }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), enabled = !uiState.isJoining) { if (uiState.isJoining) CircularProgressIndicator(Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp) else Text("加入群聊") } }
-                        item { Spacer(Modifier.height(innerPadding.calculateBottomPadding())) }
+                Column(Modifier.fillMaxSize()) {
+                    CapsuleTabBar(
+                        tabs = tabs,
+                        selectedTabIndex = selectedTab,
+                        onTabSelected = { selectedTab = it },
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                    when (selectedTab) {
+                        0 -> InfoTab(uiState, viewModel, context, innerPadding)
+                        1 -> MembersTab(uiState, context, innerPadding)
+                        2 -> MediaTab(mediaType, mediaList, isLoadingMedia, mediaPage, mediaTotalPages, viewModel, uiState, innerPadding)
                     }
                 }
             } else if (uiState.error != null) { Text("错误: ${uiState.error}", color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center)) }
         }
+    }
+}
+
+@Composable
+private fun InfoTab(uiState: GroupInfoUiState, viewModel: GroupInfoViewModel, context: android.content.Context, innerPadding: PaddingValues) {
+    PullToRefreshBox(isRefreshing = uiState.isRefreshing, onRefresh = { viewModel.refresh() }, modifier = Modifier.fillMaxSize()) {
+        val group = uiState.group!!
+        LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 16.dp)) {
+            item {
+                Column(Modifier.fillMaxWidth().padding(vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    AsyncImage(model = if (group.avatarUrl.startsWith("http")) group.avatarUrl else "${ApiAddress}uploads/${group.avatarUrl}", contentDescription = "群头像", contentScale = ContentScale.Crop, modifier = Modifier.size(100.dp).clip(CircleShape))
+                    Spacer(Modifier.height(16.dp)); Text(group.name, fontSize = 24.sp, fontWeight = FontWeight.Bold); Text("群号: ${group.id}", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+                }
+            }
+            item { SettingsGroup(title = "群聊信息", items = listOf(
+                { SettingsItemCell(icon = Icons.Default.Person, title = "成员数", subtitle = "${group.membersCount} 名成员", onClick = { if (uiState.isJoined) context.startActivity(Intent(context, GroupMembersActivity::class.java).apply { putExtra("group_id", group.id) }) }) },
+                { SettingsItemCell(icon = Icons.Default.DateRange, title = "创建时间", subtitle = formatGroupTime(group.createdAt), onClick = {}) },
+                { if (group.isPrivate) SettingsItemCell(icon = Icons.Default.Lock, title = "群类型", subtitle = "私有群", onClick = {}, isDestructive = true) else SettingsItemCell(icon = Icons.Default.Public, title = "群类型", subtitle = "公开群", onClick = {}) }
+            )) }
+            // 聊天背景和群标签已移至菜单，不再直接显示
+            if (group.description.isNotBlank()) { item { SettingsGroup(title = "群聊简介", items = listOf({ SettingsCustomItem { Text(group.description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(16.dp)) } })) } }
+            group.creator?.let { creator ->
+                item { SettingsGroup(title = "群主", items = listOf({ SettingsCustomItem { Row(Modifier.fillMaxWidth().clickable { val intent = Intent(context, UserInfoActivity::class.java); intent.putExtra("userId", creator.id); context.startActivity(intent) }.padding(16.dp), verticalAlignment = Alignment.CenterVertically) { AsyncImage(model = if (creator.avatarUrl.startsWith("http")) creator.avatarUrl else "${ApiAddress}uploads/${creator.avatarUrl}", contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(40.dp).clip(CircleShape)); Spacer(Modifier.width(12.dp)); Text(creator.username, fontWeight = FontWeight.Bold) } } })) }
+            }
+            item { Spacer(Modifier.height(16.dp)); if (!uiState.isJoined) Button(onClick = { viewModel.joinGroup() }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), enabled = !uiState.isJoining) { if (uiState.isJoining) CircularProgressIndicator(Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp) else Text("加入群聊") } }
+            item { Spacer(Modifier.height(innerPadding.calculateBottomPadding())) }
+        }
+    }
+}
+
+@Composable
+private fun MembersTab(uiState: GroupInfoUiState, context: android.content.Context, innerPadding: PaddingValues) {
+    Box(Modifier.fillMaxSize().padding(innerPadding)) {
+        if (!uiState.isJoined) {
+            Text("请先加入群聊", modifier = Modifier.align(Alignment.Center), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else {
+            Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                Text("成员数: ${uiState.group?.membersCount ?: 0}", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(12.dp))
+                Button(onClick = {
+                    uiState.group?.let { group ->
+                        context.startActivity(Intent(context, GroupMembersActivity::class.java).apply { putExtra("group_id", group.id) })
+                    }
+                }) { Text("查看全部成员") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MediaTab(
+    mediaType: String,
+    mediaList: List<MediaItem>,
+    isLoadingMedia: Boolean,
+    mediaPage: Int,
+    mediaTotalPages: Int,
+    viewModel: GroupInfoViewModel,
+    uiState: GroupInfoUiState,
+    innerPadding: PaddingValues
+) {
+    val context = LocalContext.current
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+
+    // 自动加载更多
+    val shouldLoadMore = remember {
+        derivedStateOf {
+            val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            lastVisibleItem >= mediaList.size - 2 && !isLoadingMedia && mediaPage < mediaTotalPages
+        }
+    }
+    LaunchedEffect(shouldLoadMore.value) {
+        if (shouldLoadMore.value) viewModel.loadMoreMedia()
+    }
+
+    Column(Modifier.fillMaxSize().padding(innerPadding)) {
+        // 类型筛选
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("all" to "全部", "image" to "图片", "file" to "链接").forEach { (type, label) ->
+                FilterChip(selected = mediaType == type, onClick = { viewModel.changeMediaType(type) }, label = { Text(label) })
+            }
+        }
+        if (isLoadingMedia && mediaList.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        } else if (mediaList.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("暂无媒体", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        } else {
+            LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 16.dp)) {
+                items(mediaList) { item ->
+                    MediaListItem(item = item)
+                    Spacer(Modifier.height(12.dp))
+                }
+                if (isLoadingMedia) {
+                    item { Box(Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(Modifier.size(24.dp)) } }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MediaListItem(item: MediaItem) {
+    val context = LocalContext.current
+    Row(
+        Modifier.fillMaxWidth().clickable {
+            if (item.type == "image" || item.type == "sticker") {
+                // 可打开大图查看，此处略
+            } else if (item.type == "file") {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(item.url))
+                context.startActivity(intent)
+            }
+        },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (item.type == "image" || item.type == "sticker") {
+            AsyncImage(
+                model = item.url,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp))
+            )
+        } else {
+            Box(Modifier.size(80.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceContainer), contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.Link, contentDescription = "链接", tint = MaterialTheme.colorScheme.primary)
+            }
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(item.senderUsername, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)   // 改这里
+            Spacer(Modifier.height(2.dp))
+            Text(item.sendTimeDisplay, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) // 改这里
+        }
+        // 发送者头像
+        AsyncImage(
+            model = if (item.senderAvatar.startsWith("http")) item.senderAvatar else "${ApiAddress}uploads/${item.senderAvatar}",   // 改这里
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.size(36.dp).clip(CircleShape)
+        )
     }
 }
 

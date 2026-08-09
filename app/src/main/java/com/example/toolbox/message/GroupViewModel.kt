@@ -49,7 +49,36 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
+@Serializable
+data class MediaItem(
+    @SerialName("message_id") val messageId: Int,
+    @SerialName("type") val type: String,
+    @SerialName("url") val url: String,
+    @SerialName("sender_id") val senderId: Int,
+    @SerialName("sender_username") val senderUsername: String,
+    @SerialName("sender_avatar") val senderAvatar: String,
+    @SerialName("send_time") val sendTime: Long,
+    @SerialName("send_time_formatted") val sendTimeFormatted: String,
+    @SerialName("send_time_display") val sendTimeDisplay: String
+)
+
+@Serializable
+data class ChatMediaResponse(
+    val success: Boolean,
+    val media: List<MediaItem>,
+    val pagination: Pagination
+)
+
+@Serializable
+data class Pagination(
+    val page: Int,
+    @SerialName("per_page") val perPage: Int,
+    val total: Int,
+    val pages: Int
+)
 class GroupViewModel(
     private val token: String
 ) : ViewModel() {
@@ -114,7 +143,7 @@ class GroupViewModel(
     fun createGroup(avatarFilePath: String?) {
         val state = _uiState.value
         val name = state.createGroupName.trim()
-        
+
         if (name.isBlank()) {
             viewModelScope.launch { _toastMessage.emit("请输入群名称") }
             return
@@ -159,7 +188,7 @@ class GroupViewModel(
 
                 if (result?.success == true && result.group != null) {
                     _toastMessage.emit("群聊创建成功")
-                    _uiState.update { 
+                    _uiState.update {
                         it.copy(
                             isCreating = false,
                             showCreateDialog = false,
@@ -246,15 +275,15 @@ data class GroupInfoUiState(
     val isJoined: Boolean = true,
     val isJoining: Boolean = false,
     val myRole: Int = 0,  // 0: 普通成员, 1: 管理员, 2: 群主
-    
+
     // 标签相关
     val tags: List<GroupTag> = emptyList(),
     val isLoadingTags: Boolean = false,
-    
+
     // 入群申请相关
     val joinRequests: List<GroupJoinRequest> = emptyList(),
     val isLoadingRequests: Boolean = false,
-    
+
     // 操作状态
     val isLeaving: Boolean = false,
     val isDissolving: Boolean = false,
@@ -264,7 +293,7 @@ data class GroupInfoUiState(
     val editingTag: GroupTag? = null,
     val newTagName: String = "",
     val newTagColor: String = "#FF6B6B",
-    
+
     // 编辑群聊信息相关
     val showEditDialog: Boolean = false,
     val editingName: String = "",
@@ -274,7 +303,7 @@ data class GroupInfoUiState(
     val editingShareEnabled: Boolean = false,
     val editingIsPrivate: Boolean = false,
     val isEditing: Boolean = false,
-    
+
     // 分享链接相关
     val shareUrl: String = "",
     val shareKey: String = "",
@@ -329,7 +358,7 @@ class GroupInfoViewModel(
     private fun resolveShareKey(key: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            
+
             try {
                 val url = "${ApiAddress}group/share_info?key=$key"
                 val request = Request.Builder()
@@ -385,14 +414,78 @@ class GroupInfoViewModel(
             }
         }
     }
+    // 媒体相关状态（保持不变）
+    private val _mediaList = MutableStateFlow<List<MediaItem>>(emptyList())
+    val mediaList: StateFlow<List<MediaItem>> = _mediaList
 
+    private val _isLoadingMedia = MutableStateFlow(false)
+    val isLoadingMedia: StateFlow<Boolean> = _isLoadingMedia
+
+    private val _mediaPage = MutableStateFlow(1)
+    val mediaPage: StateFlow<Int> = _mediaPage
+
+    private val _mediaTotalPages = MutableStateFlow(1)
+    val mediaTotalPages: StateFlow<Int> = _mediaTotalPages
+
+    private val _mediaType = MutableStateFlow("all")
+    val mediaType: StateFlow<String> = _mediaType
+
+    fun loadMedia(chatType: Int = 2, chatId: Int? = null) {
+        val id = chatId ?: _uiState.value.group?.id ?: return
+        viewModelScope.launch {
+            _isLoadingMedia.value = true
+            try {
+                val url = "${ApiAddress}chat/media"
+                val requestBody = buildJsonObject {
+                    put("chat_type", chatType)
+                    put("chat_id", id)
+                    put("media_type", _mediaType.value)
+                    put("page", _mediaPage.value)
+                    put("per_page", 20)
+                }
+                val request = Request.Builder()
+                    .url(url)
+                    .header("x-access-token", token)
+                    .post(json.encodeToString(requestBody).toRequestBody("application/json".toMediaType()))
+                    .build()
+
+                val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
+                val body = response.body?.string() ?: ""
+                if (response.isSuccessful) {
+                    val parsed = json.decodeFromString<ChatMediaResponse>(body)
+                    if (parsed.success) {
+                        _mediaList.value = if (_mediaPage.value == 1) parsed.media
+                        else _mediaList.value + parsed.media
+                        _mediaPage.value = parsed.pagination.page
+                        _mediaTotalPages.value = parsed.pagination.pages
+                    }
+                }
+            } catch (e: Exception) {
+                // 可打印日志或忽略
+            } finally {
+                _isLoadingMedia.value = false
+            }
+        }
+    }
+
+    fun loadMoreMedia() {
+        if (_isLoadingMedia.value || _mediaPage.value >= _mediaTotalPages.value) return
+        _mediaPage.value += 1
+        loadMedia()
+    }
+
+    fun changeMediaType(type: String) {
+        _mediaType.value = type
+        _mediaPage.value = 1
+        loadMedia()
+    }
     // 使用指定的群ID加载群详情（用于分享链接）
     private fun loadGroupDetailWithId(targetGroupId: Int, key: String? = null, isRefresh: Boolean = false) {
         viewModelScope.launch {
             if (isRefresh) {
                 _uiState.update { it.copy(isRefreshing = true) }
             }
-            
+
             try {
                 val url = "${ApiAddress}group/detail"
                 val requestBody = buildJsonObject {
@@ -459,7 +552,7 @@ class GroupInfoViewModel(
     private fun loadMembers(targetGroupId: Int? = null) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMembers = true) }
-            
+
             try {
                 val gid = targetGroupId ?: groupId
                 val url = "${ApiAddress}group/members/$gid"
@@ -507,7 +600,7 @@ class GroupInfoViewModel(
             if (isRefresh) {
                 _uiState.update { it.copy(isRefreshing = true) }
             }
-            
+
             try {
                 val url = "${ApiAddress}group/detail"
                 val requestBody = buildJsonObject {
@@ -575,7 +668,7 @@ class GroupInfoViewModel(
         // 如果有shareKey，使用分享方式加入；否则普通加入
         joinGroupWithKey(group.id, shareKey)
     }
-    
+
     // 使用分享Key加入群聊
     private fun joinGroupWithKey(groupId: Int, shareKey: String?) {
         viewModelScope.launch {
@@ -638,12 +731,12 @@ class GroupInfoViewModel(
             }
         }
     }
-    
+
     // 加载标签
     fun loadTags(targetGroupId: Int? = null) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingTags = true) }
-            
+
             try {
                 val gid = targetGroupId ?: groupId
                 val url = "${ApiAddress}group/tags/list/$gid"
@@ -681,7 +774,7 @@ class GroupInfoViewModel(
             }
         }
     }
-    
+
     // 创建标签
     fun createTag(name: String, color: String) {
         viewModelScope.launch {
@@ -723,7 +816,7 @@ class GroupInfoViewModel(
             }
         }
     }
-    
+
     // 编辑标签
     fun editTag(tagId: Int, name: String, color: String) {
         viewModelScope.launch {
@@ -771,12 +864,12 @@ class GroupInfoViewModel(
             }
         }
     }
-    
+
     // 加载入群申请
     fun loadJoinRequests(targetGroupId: Int? = null) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingRequests = true) }
-            
+
             try {
                 val gid = targetGroupId ?: groupId
                 val url = "${ApiAddress}group/pending_list/$gid"
@@ -814,7 +907,7 @@ class GroupInfoViewModel(
             }
         }
     }
-    
+
     // 审核入群申请
     fun auditJoinRequest(userId: Int, approve: Boolean) {
         viewModelScope.launch {
@@ -855,12 +948,12 @@ class GroupInfoViewModel(
             }
         }
     }
-    
+
     // 退出群聊
     fun leaveGroup(onSuccess: () -> Unit) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLeaving = true) }
-            
+
             try {
                 val url = "${ApiAddress}group/leave"
                 val requestBody = buildJsonObject { put("group_id", currentGroupId) }
@@ -901,12 +994,12 @@ class GroupInfoViewModel(
             }
         }
     }
-    
+
     // 解散群聊
     fun dissolveGroup(onSuccess: () -> Unit) {
         viewModelScope.launch {
             _uiState.update { it.copy(isDissolving = true) }
-            
+
             try {
                 val url = "${ApiAddress}group/dissolve"
                 val requestBody = buildJsonObject { put("group_id", currentGroupId) }
@@ -947,7 +1040,7 @@ class GroupInfoViewModel(
             }
         }
     }
-    
+
     // UI状态更新方法
     fun showLeaveDialog() { _uiState.update { it.copy(showLeaveDialog = true) } }
     fun hideLeaveDialog() { _uiState.update { it.copy(showLeaveDialog = false) } }
@@ -964,7 +1057,7 @@ class GroupInfoViewModel(
     fun hideTagDialog() { _uiState.update { it.copy(showTagDialog = false, editingTag = null) } }
     fun updateNewTagName(name: String) { _uiState.update { it.copy(newTagName = name) } }
     fun updateNewTagColor(color: String) { _uiState.update { it.copy(newTagColor = color) } }
-    
+
     // 编辑群聊信息相关方法
     fun showEditDialog() {
         val group = _uiState.value.group ?: return
@@ -984,14 +1077,14 @@ class GroupInfoViewModel(
     fun updateEditingAvatarUrl(avatarUrl: String) { _uiState.update { it.copy(editingAvatarUrl = avatarUrl) } }
     fun updateEditingJoinVerification(verification: Boolean) { _uiState.update { it.copy(editingJoinVerification = verification) } }
     fun updateEditingShareEnabled(enabled: Boolean) { _uiState.update { it.copy(editingShareEnabled = enabled) } }
-    fun updateEditingIsPrivate(value: Boolean) { _uiState.update { it.copy(editingIsPrivate = value) } } 
+    fun updateEditingIsPrivate(value: Boolean) { _uiState.update { it.copy(editingIsPrivate = value) } }
     // 创建分享链接
     fun createShareLink(expireHours: Int = 0, onSuccess: ((String) -> Unit)? = null) {
         val group = _uiState.value.group ?: return
-        
+
         viewModelScope.launch {
             _uiState.update { it.copy(isGeneratingShare = true) }
-            
+
             try {
                 val url = "${ApiAddress}group/create_share"
                 val requestBody = buildJsonObject {
@@ -1003,7 +1096,7 @@ class GroupInfoViewModel(
                     .header("x-access-token", token)
                     .post(json.encodeToString(requestBody).toRequestBody("application/json".toMediaType()))
                     .build()
-    
+
                 val result = withContext(Dispatchers.IO) {
                     val response = client.newCall(request).execute()
                     val responseBody = response.body.string()
@@ -1026,7 +1119,7 @@ class GroupInfoViewModel(
                         Result.failure(Exception("请求失败: ${response.code}"))
                     }
                 }
-    
+
                 result.fold(
                     onSuccess = { (shareUrl, shareKey) ->
                         _uiState.update { it.copy(
@@ -1047,12 +1140,12 @@ class GroupInfoViewModel(
             }
         }
     }
-    
+
     // 清除分享链接
     fun clearShareLinks() {
         _uiState.update { it.copy(shareUrl = "", shareKey = "") }
     }
-    
+
     // 删除标签
     fun deleteTag(tagId: Int) {
         viewModelScope.launch {
@@ -1092,7 +1185,7 @@ class GroupInfoViewModel(
             }
         }
     }
-    
+
     // 编辑群聊信息
     fun editGroupInfo(
         name: String? = null,
@@ -1115,7 +1208,7 @@ class GroupInfoViewModel(
                     shareEnabled?.let { put("share_enabled", it) }
                     isPrivate?.let { put("is_private", it) }
                 }
-                
+
                 val request = Request.Builder()
                     .url(url)
                     .header("x-access-token", token)
@@ -1151,7 +1244,7 @@ class GroupInfoViewModel(
             }
         }
     }
-    
+
     // 给成员设置标签
     fun setMemberTag(userId: Int, tagId: Int) {
         viewModelScope.launch {
@@ -1191,7 +1284,7 @@ class GroupInfoViewModel(
             }
         }
     }
-    
+
     // 移除成员标签
     fun unsetMemberTag(userId: Int, tagId: Int) {
         viewModelScope.launch {
@@ -1288,7 +1381,7 @@ class GroupMembersViewModel(
     private fun loadData() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            
+
             // 先获取群详情以获取 myRole
             try {
                 val detailUrl = "${ApiAddress}group/detail"
