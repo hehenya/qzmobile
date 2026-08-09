@@ -1202,7 +1202,7 @@ fun MessageDetailScreen(
                         reverseLayout = true,
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                         contentPadding = PaddingValues(
-                            top = 12.dp,               // 视觉底部留白（距离输入框）
+                            top = 6.dp,               // 视觉底部留白（距离输入框）
                             bottom = innerPadding.calculateTopPadding() + 64.dp  // 视觉顶部留白（为顶栏腾出空间）
                         )
                     ) {
