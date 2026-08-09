@@ -114,6 +114,116 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.zIndex
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.material.icons.filled.MoreVert
+@OptIn(ExperimentalHazeMaterialsApi::class)
+@Composable
+private fun FloatingChatTopBar(
+    hazeState: HazeState,
+    showBackButton: Boolean,
+    onBackClick: () -> Unit,
+    title: @Composable () -> Unit,
+    onMoreClick: () -> Unit,
+    moreMenu: @Composable BoxScope.() -> Unit
+) {
+    val controlSize = 48.dp
+    val buttonShape = CircleShape
+    val topBarColor = MaterialTheme.colorScheme.surface
+    val buttonHazeStyle = HazeMaterials.thin(
+        containerColor = topBarColor
+    ).copy(
+        blurRadius = 32.dp,
+        noiseFactor = 0f
+    )
+    val cardShape = RoundedCornerShape(24.dp)
+
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            topBarColor.copy(alpha = 0.8f),
+                            topBarColor.copy(alpha = 0.7f),
+                            topBarColor.copy(alpha = 0.6f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 8.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            if (showBackButton) {
+                Box(
+                    modifier = Modifier
+                        .size(controlSize)
+                        .shadow(2.dp, buttonShape)
+                        .clip(buttonShape)
+                        .hazeEffect(
+                            state = hazeState,
+                            style = buttonHazeStyle,
+                            block = null
+                        )
+                        .clickable(onClick = onBackClick),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "返回",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(controlSize)
+                    .shadow(2.dp, cardShape)
+                    .clip(cardShape)
+                    .hazeEffect(
+                        state = hazeState,
+                        style = buttonHazeStyle,
+                        block = null
+                    ),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                title()
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(controlSize)
+                    .shadow(2.dp, buttonShape)
+                    .clip(buttonShape)
+                    .hazeEffect(
+                        state = hazeState,
+                        style = buttonHazeStyle,
+                        block = null
+                    )
+                    .clickable(onClick = onMoreClick),
+                contentAlignment = Alignment.Center
+            ) {
+                moreMenu()
+                Icon(
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = "更多",
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+    }
+}
 
 @Composable
 fun ScheduledMessageItem(
@@ -553,7 +663,6 @@ class MessageDetailActivity : ComponentActivity() {
                 var showShareSheet by remember { mutableStateOf(false) }
                 var shareSheetMessages by remember { mutableStateOf<List<Message>>(emptyList()) }
 
-                // 公告状态
                 val uiState by viewModel.uiState.collectAsState()
                 val announcementMessage = uiState.latestAnnouncement
 
@@ -640,15 +749,19 @@ class MessageDetailActivity : ComponentActivity() {
                                     )
                                 } else {
                                     Column {
-                                        TopAppBar(
-                                            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+                                        var showMoreMenu by remember { mutableStateOf(false) }
+
+                                        FloatingChatTopBar(
+                                            hazeState = hazeState,
+                                            showBackButton = true,
+                                            onBackClick = { finish() },
                                             title = {
                                                 if (chatType == 2 && uiState.groupInfo != null) {
                                                     val group = uiState.groupInfo!!
                                                     Row(
                                                         verticalAlignment = Alignment.CenterVertically,
                                                         modifier = Modifier
-                                                            .fillMaxWidth()
+                                                            .fillMaxSize()
                                                             .clickable {
                                                                 val intent = Intent(
                                                                     this@MessageDetailActivity,
@@ -656,30 +769,12 @@ class MessageDetailActivity : ComponentActivity() {
                                                                 ).apply {
                                                                     putExtra("group_id", chatId)
                                                                     putExtra("is_joined", true)
-                                                                    putExtra(
-                                                                        "group_name",
-                                                                        group.name
-                                                                    )
-                                                                    putExtra(
-                                                                        "group_avatar",
-                                                                        group.avatarUrl
-                                                                    )
-                                                                    putExtra(
-                                                                        "group_description",
-                                                                        group.description
-                                                                    )
-                                                                    putExtra(
-                                                                        "group_members_count",
-                                                                        group.membersCount
-                                                                    )
-                                                                    putExtra(
-                                                                        "group_created_at",
-                                                                        group.createdAt
-                                                                    )
-                                                                    putExtra(
-                                                                        "group_is_private",
-                                                                        group.isPrivate
-                                                                    )
+                                                                    putExtra("group_name", group.name)
+                                                                    putExtra("group_avatar", group.avatarUrl)
+                                                                    putExtra("group_description", group.description)
+                                                                    putExtra("group_members_count", group.membersCount)
+                                                                    putExtra("group_created_at", group.createdAt)
+                                                                    putExtra("group_is_private", group.isPrivate)
                                                                 }
                                                                 startActivity(intent)
                                                             }
@@ -708,18 +803,16 @@ class MessageDetailActivity : ComponentActivity() {
                                                     Row(
                                                         verticalAlignment = Alignment.CenterVertically,
                                                         modifier = Modifier
-                                                            .fillMaxWidth()
+                                                            .fillMaxSize()
                                                             .clickable {
                                                                 startActivity(
                                                                     Intent(
                                                                         this@MessageDetailActivity,
                                                                         UserInfoActivity::class.java
                                                                     ).apply {
-                                                                        putExtra(
-                                                                            "userId",
-                                                                            otherUser.id
-                                                                        )
-                                                                    })
+                                                                        putExtra("userId", otherUser.id)
+                                                                    }
+                                                                )
                                                             }
                                                     ) {
                                                         AsyncImage(model = otherUser.avatar, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier
@@ -735,10 +828,29 @@ class MessageDetailActivity : ComponentActivity() {
                                                             )
                                                         }
                                                     }
-                                                } else Text("聊天详情")
+                                                } else {
+                                                    Text("聊天详情")
+                                                }
                                             },
-                                            navigationIcon = { FilledTonalIconButton(onClick = { finish() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回") } }
+                                            onMoreClick = { showMoreMenu = true },
+                                            moreMenu = {
+                                                DropdownMenu(
+                                                    expanded = showMoreMenu,
+                                                    onDismissRequest = { showMoreMenu = false }
+                                                ) {
+                                                    DropdownMenuItem(
+                                                        text = { Text("刷新") },
+                                                        onClick = {
+                                                            showMoreMenu = false
+                                                            viewModel.refresh()
+                                                        },
+                                                        leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) }
+                                                    )
+                                                    // 可在此添加更多菜单项
+                                                }
+                                            }
                                         )
+
                                         if (announcementMessage != null && uiState.chatType == 2) {
                                             AnnouncementBanner(
                                                 message = announcementMessage!!,
@@ -751,7 +863,6 @@ class MessageDetailActivity : ComponentActivity() {
                                                 }
                                             )
                                         }
-
                                     }
                                 }
                             }
