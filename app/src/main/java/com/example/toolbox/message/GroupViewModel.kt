@@ -353,7 +353,87 @@ class GroupInfoViewModel(
         loadMembers(groupId)
         loadTags(groupId)
     }
+    // 添加到 GroupInfoViewModel 类中（例如在 unsetMemberTag 之后）
 
+    fun kickMember(userId: Int) {
+        viewModelScope.launch {
+            try {
+                val url = "${ApiAddress}group/kick"
+                val requestBody = KickMemberRequest(currentGroupId, userId)
+                val request = Request.Builder()
+                    .url(url)
+                    .header("x-access-token", token)
+                    .post(json.encodeToString(requestBody).toRequestBody("application/json".toMediaType()))
+                    .build()
+                val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
+                val body = response.body.string()
+                val parsed = json.decodeFromString<GenericResponse>(body)
+                if (parsed.success) {
+                    _uiState.update { it.copy(members = it.members.filter { m -> m.userId != userId }) }
+                    _toastMessage.emit("已踢出该成员")
+                } else {
+                    _toastMessage.emit(parsed.message ?: "踢出失败")
+                }
+            } catch (e: Exception) {
+                _toastMessage.emit(e.message ?: "踢出失败")
+            }
+        }
+    }
+
+    fun setAdmin(userId: Int, set: Boolean) {
+        viewModelScope.launch {
+            try {
+                val url = "${ApiAddress}group/set_admin"
+                val requestBody = SetAdminRequest(currentGroupId, userId, if (set) "set" else "remove")
+                val request = Request.Builder()
+                    .url(url)
+                    .header("x-access-token", token)
+                    .post(json.encodeToString(requestBody).toRequestBody("application/json".toMediaType()))
+                    .build()
+                withContext(Dispatchers.IO) { client.newCall(request).execute() }
+                _toastMessage.emit(if (set) "已设为管理员" else "已取消管理员")
+                loadMembers(groupId)
+            } catch (e: Exception) {
+                _toastMessage.emit(e.message ?: "操作失败")
+            }
+        }
+    }
+
+    fun muteMember(userId: Int, duration: Int) {
+        viewModelScope.launch {
+            try {
+                val url = "${ApiAddress}group/mute"
+                val requestBody = MuteRequest(currentGroupId, userId, duration)
+                val request = Request.Builder()
+                    .url(url)
+                    .header("x-access-token", token)
+                    .post(json.encodeToString(requestBody).toRequestBody("application/json".toMediaType()))
+                    .build()
+                withContext(Dispatchers.IO) { client.newCall(request).execute() }
+                _toastMessage.emit("已禁言 $duration 分钟")
+            } catch (e: Exception) {
+                _toastMessage.emit(e.message ?: "禁言失败")
+            }
+        }
+    }
+
+    fun unmuteMember(userId: Int) {
+        viewModelScope.launch {
+            try {
+                val url = "${ApiAddress}group/unmute"
+                val requestBody = UnmuteRequest(currentGroupId, userId)
+                val request = Request.Builder()
+                    .url(url)
+                    .header("x-access-token", token)
+                    .post(json.encodeToString(requestBody).toRequestBody("application/json".toMediaType()))
+                    .build()
+                withContext(Dispatchers.IO) { client.newCall(request).execute() }
+                _toastMessage.emit("已解除禁言")
+            } catch (e: Exception) {
+                _toastMessage.emit(e.message ?: "解除禁言失败")
+            }
+        }
+    }
     // 解析分享Key获取群ID
     private fun resolveShareKey(key: String) {
         viewModelScope.launch {
