@@ -345,6 +345,7 @@ class GroupInfoViewModel(
             loadGroupDetail()
             loadMembers(groupId)
             loadTags(groupId)
+            loadMedia()
         }
     }
 
@@ -616,6 +617,7 @@ class GroupInfoViewModel(
                             ) }
                             loadMembers(targetGroupId)
                             loadTags(targetGroupId)
+                            loadMedia(chatId = targetGroupId)
                         } else {
                             _uiState.update { it.copy(isLoading = false, isRefreshing = false, error = "群聊不存在") }
                         }
@@ -630,7 +632,7 @@ class GroupInfoViewModel(
         }
     }
 
-    private fun loadMembers(targetGroupId: Int? = null) {
+    fun loadMembers(targetGroupId: Int? = null) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMembers = true) }
 

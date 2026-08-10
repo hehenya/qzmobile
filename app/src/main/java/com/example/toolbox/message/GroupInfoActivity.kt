@@ -331,6 +331,19 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
     LaunchedEffect(viewModel) { viewModel.toastMessage.collect { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() } }
     LaunchedEffect(viewModel) { viewModel.joinSuccess.collect { onBack() } }
 
+    LaunchedEffect(selectedTab, uiState.group?.id) {
+        uiState.group?.let { group ->
+            when (selectedTab) {
+                1 -> if (uiState.members.isEmpty() && !uiState.isLoadingMembers) {
+                    viewModel.loadMembers(group.id)
+                }
+                2 -> if (mediaList.isEmpty() && !isLoadingMedia) {
+                    viewModel.loadMedia(chatId = group.id)
+                }
+            }
+        }
+    }
+
     // --- 原有弹窗（完整保留） ---
     if (uiState.showLeaveDialog) {
         AlertDialog(
@@ -1237,7 +1250,7 @@ private fun MediaTab(
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(3),
                     state = gridState,
-                    contentPadding = PaddingValues(4.dp),
+                    contentPadding = PaddingValues(start = 4.dp, top = 0.dp, end = 4.dp, bottom = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {

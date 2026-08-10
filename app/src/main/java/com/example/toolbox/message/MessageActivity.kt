@@ -685,8 +685,12 @@ class MessageDetailActivity : ComponentActivity() {
                             if (isSelecting) {
                                 val selectedIds = uiState.selectedMessages.toSet()
                                 val selectedMsgs = uiState.messages.filter { it.effectiveMsgId in selectedIds }
+                                var showSelectionMenu by remember { mutableStateOf(false) }
 
-                                TopAppBar(
+                                FloatingChatTopBar(
+                                    hazeState = hazeState,
+                                    showBackButton = true,
+                                    onBackClick = { viewModel.exitSelectionMode() },
                                     title = {
                                         Row(
                                             modifier = Modifier.padding(start = 12.dp).height(46.dp),
@@ -698,48 +702,69 @@ class MessageDetailActivity : ComponentActivity() {
                                             Text("条", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                         }
                                     },
-                                    navigationIcon = {
-                                        IconButton(onClick = { viewModel.exitSelectionMode() }, modifier = Modifier.size(46.dp)) {
-                                            Icon(Icons.Default.Close, contentDescription = "退出多选", modifier = Modifier.size(24.dp))
-                                        }
-                                    },
-                                    actions = {
-                                        if (selectedMsgs.isNotEmpty()) {
-                                            // 撤回（仅当所有选中消息都是自己发送的）
-                                            if (selectedMsgs.all { it.isMine }) {
-                                                IconButton(onClick = { viewModel.recallSelectedMessages() }, modifier = Modifier.size(46.dp)) {
-                                                    Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "撤回", modifier = Modifier.size(24.dp))
-                                                }
+                                    onMoreClick = { showSelectionMenu = true },
+                                    moreMenu = {
+                                        DropdownMenu(
+                                            expanded = showSelectionMenu,
+                                            onDismissRequest = { showSelectionMenu = false },
+                                            modifier = Modifier.background(
+                                                MaterialTheme.colorScheme.surfaceContainerHigh,
+                                                RoundedCornerShape(24.dp)
+                                            )
+                                        ) {
+                                            if (selectedMsgs.isNotEmpty() && selectedMsgs.all { it.isMine }) {
+                                                DropdownMenuItem(
+                                                    text = { Text("撤回") },
+                                                    onClick = {
+                                                        showSelectionMenu = false
+                                                        viewModel.recallSelectedMessages()
+                                                    },
+                                                    leadingIcon = {
+                                                        Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                    }
+                                                )
                                             }
-                                            // 复制（仅一条且有文字内容）
                                             if (selectedMsgs.size == 1 && selectedMsgs.first().content.isNotBlank()) {
-                                                IconButton(onClick = {
-                                                    val clipboard = context.getSystemService(ClipboardManager::class.java)
-                                                    clipboard?.setPrimaryClip(ClipData.newPlainText("text", selectedMsgs.first().content))
-                                                    Toast.makeText(context, "已复制", Toast.LENGTH_SHORT).show()
-                                                    viewModel.exitSelectionMode()
-                                                }, modifier = Modifier.size(46.dp)) {
-                                                    Icon(Icons.Default.ContentCopy, contentDescription = "复制", modifier = Modifier.size(24.dp))
-                                                }
+                                                DropdownMenuItem(
+                                                    text = { Text("复制") },
+                                                    onClick = {
+                                                        showSelectionMenu = false
+                                                        val clipboard = context.getSystemService(ClipboardManager::class.java)
+                                                        clipboard?.setPrimaryClip(ClipData.newPlainText("text", selectedMsgs.first().content))
+                                                        Toast.makeText(context, "已复制", Toast.LENGTH_SHORT).show()
+                                                        viewModel.exitSelectionMode()
+                                                    },
+                                                    leadingIcon = {
+                                                        Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                    }
+                                                )
                                             }
-                                            // 编辑（仅一条、自己的、且有文字内容）
                                             if (selectedMsgs.size == 1 && selectedMsgs.first().isMine && selectedMsgs.first().content.isNotBlank()) {
-                                                IconButton(onClick = {
-                                                    viewModel.startEditMessage(selectedMsgs.first())
-                                                    viewModel.exitSelectionMode()
-                                                }, modifier = Modifier.size(46.dp)) {
-                                                    Icon(Icons.Default.Edit, contentDescription = "编辑", modifier = Modifier.size(24.dp))
+                                                DropdownMenuItem(
+                                                    text = { Text("编辑") },
+                                                    onClick = {
+                                                        showSelectionMenu = false
+                                                        viewModel.startEditMessage(selectedMsgs.first())
+                                                        viewModel.exitSelectionMode()
+                                                    },
+                                                    leadingIcon = {
+                                                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                    }
+                                                )
+                                            }
+                                            DropdownMenuItem(
+                                                text = { Text("截图") },
+                                                onClick = {
+                                                    showSelectionMenu = false
+                                                    showScreenshotSheet = true
+                                                },
+                                                leadingIcon = {
+                                                    Icon(Icons.Default.Crop, contentDescription = null, modifier = Modifier.size(18.dp))
                                                 }
-                                            }
-                                            // 截图
-                                            IconButton(onClick = { showScreenshotSheet = true }, modifier = Modifier.size(46.dp)) {
-                                                Icon(Icons.Default.Crop, contentDescription = "截图", modifier = Modifier.size(24.dp))
-                                            }
+                                            )
                                         }
-                                    },
-                                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                                    }
                                 )
-
 
                             } else {
                                 Column {
