@@ -336,7 +336,21 @@ class GroupInfoViewModel(
     // 获取当前有效的群ID（优先使用已加载的群信息中的ID）
     private val currentGroupId: Int
         get() = _uiState.value.group?.id ?: groupId
+    // 媒体相关状态（保持不变）
+    private val _mediaList = MutableStateFlow<List<MediaItem>>(emptyList())
+    val mediaList: StateFlow<List<MediaItem>> = _mediaList
 
+    private val _isLoadingMedia = MutableStateFlow(false)
+    val isLoadingMedia: StateFlow<Boolean> = _isLoadingMedia
+
+    private val _mediaPage = MutableStateFlow(1)
+    val mediaPage: StateFlow<Int> = _mediaPage
+
+    private val _mediaTotalPages = MutableStateFlow(1)
+    val mediaTotalPages: StateFlow<Int> = _mediaTotalPages
+
+    private val _mediaType = MutableStateFlow("all")
+    val mediaType: StateFlow<String> = _mediaType
     init {
         if (shareKey != null) {
             // 如果是分享链接，先解析 shareKey
@@ -496,21 +510,7 @@ class GroupInfoViewModel(
             }
         }
     }
-    // 媒体相关状态（保持不变）
-    private val _mediaList = MutableStateFlow<List<MediaItem>>(emptyList())
-    val mediaList: StateFlow<List<MediaItem>> = _mediaList
 
-    private val _isLoadingMedia = MutableStateFlow(false)
-    val isLoadingMedia: StateFlow<Boolean> = _isLoadingMedia
-
-    private val _mediaPage = MutableStateFlow(1)
-    val mediaPage: StateFlow<Int> = _mediaPage
-
-    private val _mediaTotalPages = MutableStateFlow(1)
-    val mediaTotalPages: StateFlow<Int> = _mediaTotalPages
-
-    private val _mediaType = MutableStateFlow("all")
-    val mediaType: StateFlow<String> = _mediaType
 
     fun loadMedia(chatType: Int = 2, chatId: Int? = null) {
         val id = chatId ?: _uiState.value.group?.id ?: return
