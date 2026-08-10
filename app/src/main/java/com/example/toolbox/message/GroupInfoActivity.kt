@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -31,6 +32,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -49,9 +53,12 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Share
@@ -65,6 +72,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -104,6 +112,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
+import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.example.toolbox.ApiAddress
@@ -125,9 +134,8 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import androidx.core.net.toUri
 
-// ---------- CapsuleTabBar（完全与参考项目一致） ----------
+// ---------- CapsuleTabBar ----------
 @Composable
 fun CapsuleTabBar(
     tabs: List<String>,
@@ -194,7 +202,7 @@ fun CapsuleTabBar(
                 ) {
                     Text(
                         text = label,
-                        style = MaterialTheme.typography.bodyMedium,   // 与参考一致
+                        style = MaterialTheme.typography.bodyMedium,
                         color = textColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -205,7 +213,7 @@ fun CapsuleTabBar(
     }
 }
 
-// ---------- 群信息页面 ----------
+// ---------- Activity ----------
 class GroupInfoActivity : ComponentActivity() {
     @SuppressLint("NewApi")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -258,6 +266,10 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val tabs = listOf("信息", "成员", "媒体")
     var showTagManageDialog by remember { mutableStateOf(false) }
+    var showGroupInfoDialog by remember { mutableStateOf(false) }
+
+    // 本地静音状态（后续可接入后端）
+    var isMuted by remember { mutableStateOf(false) }
 
     val mediaType by viewModel.mediaType.collectAsState()
     val mediaList by viewModel.mediaList.collectAsState()
@@ -319,7 +331,7 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
     LaunchedEffect(viewModel) { viewModel.toastMessage.collect { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() } }
     LaunchedEffect(viewModel) { viewModel.joinSuccess.collect { onBack() } }
 
-    // --- 原有弹窗 ---
+    // --- 原有弹窗（完整保留） ---
     if (uiState.showLeaveDialog) {
         AlertDialog(
             onDismissRequest = { viewModel.hideLeaveDialog() },
@@ -711,16 +723,30 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else if (uiState.group != null) {
                 Column(Modifier.fillMaxSize()) {
+                    // 群头部（头像+操作按钮）
+                    GroupHeaderSection(
+                        group = uiState.group!!,
+                        isMuted = isMuted,
+                        onToggleMute = { isMuted = !isMuted },
+                        onEnterChat = {
+                            // TODO: 跳转聊天会话
+                            Toast.makeText(context, "进入聊天", Toast.LENGTH_SHORT).show()
+                        },
+                        onLeave = { viewModel.showLeaveDialog() },
+                        onInfoClick = { showGroupInfoDialog = true }
+                    )
+
                     CapsuleTabBar(
                         tabs = tabs,
                         selectedTabIndex = selectedTab,
                         onTabSelected = { selectedTab = it },
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
+
                     when (selectedTab) {
                         0 -> InfoTab(uiState, viewModel, context, innerPadding)
-                        1 -> MembersTab(uiState, viewModel, innerPadding)   // 移除了 context 参数
-                        2 -> MediaTab(mediaType, mediaList, isLoadingMedia, mediaPage, mediaTotalPages, viewModel, innerPadding)   // 移除了 uiState
+                        1 -> MembersTab(uiState, viewModel, innerPadding)
+                        2 -> MediaTab(mediaType, mediaList, isLoadingMedia, mediaPage, mediaTotalPages, viewModel, innerPadding)
                     }
                 }
             } else if (uiState.error != null) {
@@ -728,6 +754,185 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
             }
         }
     }
+
+    // 群信息对话框
+    if (showGroupInfoDialog && uiState.group != null) {
+        GroupInfoDialog(group = uiState.group!!, onDismiss = { showGroupInfoDialog = false })
+    }
+}
+
+@Composable
+private fun GroupHeaderSection(
+    group: GroupInfo,
+    isMuted: Boolean,
+    onToggleMute: () -> Unit,
+    onEnterChat: () -> Unit,
+    onLeave: () -> Unit,
+    onInfoClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(Modifier.height(4.dp))
+        AsyncImage(
+            model = if (group.avatarUrl.startsWith("http")) group.avatarUrl else "${ApiAddress}uploads/${group.avatarUrl}",
+            contentDescription = "群头像",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.size(88.dp).clip(CircleShape)
+        )
+        Spacer(Modifier.height(10.dp))
+        Text(
+            text = group.name,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = "群号: ${group.id}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(12.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // 进入聊天
+            Surface(
+                onClick = onEnterChat,
+                modifier = Modifier.weight(1f).height(72.dp),
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                tonalElevation = 1.dp
+            ) {
+                Column(
+                    Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Surface(
+                        modifier = Modifier.size(32.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                        contentColor = MaterialTheme.colorScheme.primary
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.Edit, null, modifier = Modifier.size(18.dp)) // 临时图标，可替换为 ChatBubble
+                        }
+                    }
+                    Spacer(Modifier.height(5.dp))
+                    Text("消息", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
+                }
+            }
+            // 静音
+            Surface(
+                onClick = onToggleMute,
+                modifier = Modifier.weight(1f).height(72.dp),
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                tonalElevation = 1.dp
+            ) {
+                Column(
+                    Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    val icon = if (isMuted) Icons.Default.NotificationsOff else Icons.Default.Notifications
+                    Surface(
+                        modifier = Modifier.size(32.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                        contentColor = MaterialTheme.colorScheme.primary
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(icon, null, modifier = Modifier.size(18.dp))
+                        }
+                    }
+                    Spacer(Modifier.height(5.dp))
+                    Text(if (isMuted) "取消静音" else "静音", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
+                }
+            }
+            // 退出群聊
+            Surface(
+                onClick = onLeave,
+                modifier = Modifier.weight(1f).height(72.dp),
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                tonalElevation = 1.dp
+            ) {
+                Column(
+                    Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Surface(
+                        modifier = Modifier.size(32.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.error.copy(alpha = 0.16f),
+                        contentColor = MaterialTheme.colorScheme.error
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.AutoMirrored.Filled.ExitToApp, null, modifier = Modifier.size(18.dp))
+                        }
+                    }
+                    Spacer(Modifier.height(5.dp))
+                    Text("退出", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        // 群信息行
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp)
+                .clickable(onClick = onInfoClick),
+            shape = RoundedCornerShape(18.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("群信息", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.weight(1f))
+                Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+    }
+}
+
+@Composable
+private fun GroupInfoDialog(group: GroupInfo, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("群信息") },
+        text = {
+            Column {
+                Row(Modifier.padding(vertical = 4.dp)) {
+                    Text("群主", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.weight(1f))
+                    Text(group.creator?.username ?: "未知", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Row(Modifier.padding(vertical = 4.dp)) {
+                    Text("创建时间", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.weight(1f))
+                    Text(formatGroupTime(group.createdAt), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Row(Modifier.padding(vertical = 4.dp)) {
+                    Text("类型", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.weight(1f))
+                    Text(if (group.isPrivate) "私有群" else "公开群", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("关闭") } }
+    )
 }
 
 @Composable
@@ -735,12 +940,6 @@ private fun InfoTab(uiState: GroupInfoUiState, viewModel: GroupInfoViewModel, co
     PullToRefreshBox(isRefreshing = uiState.isRefreshing, onRefresh = { viewModel.refresh() }, modifier = Modifier.fillMaxSize()) {
         val group = uiState.group!!
         LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 16.dp)) {
-            item {
-                Column(Modifier.fillMaxWidth().padding(vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    AsyncImage(model = if (group.avatarUrl.startsWith("http")) group.avatarUrl else "${ApiAddress}uploads/${group.avatarUrl}", contentDescription = "群头像", contentScale = ContentScale.Crop, modifier = Modifier.size(100.dp).clip(CircleShape))
-                    Spacer(Modifier.height(16.dp)); Text(group.name, fontSize = 24.sp, fontWeight = FontWeight.Bold); Text("群号: ${group.id}", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
-                }
-            }
             item {
                 SettingsGroup(title = "群聊信息", items = listOf(
                     { SettingsItemCell(icon = Icons.Default.Person, title = "成员数", subtitle = "${group.membersCount} 名成员", onClick = { if (uiState.isJoined) context.startActivity(Intent(context, GroupMembersActivity::class.java).apply { putExtra("group_id", group.id) }) }) },
@@ -852,26 +1051,39 @@ private fun MembersTab(
         )
     }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(innerPadding),
-        contentPadding = PaddingValues(vertical = 8.dp)
+    // 使用卡片包裹成员列表
+    Surface(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(innerPadding)
+            .padding(horizontal = 12.dp),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
-        items(uiState.members, key = { it.userId }) { member ->
-            MemberRow(   // 自定义的成员行，代替原来的 MemberItem
-                member = member,
-                myRole = uiState.myRole,
-                onKick = {
-                    kickUserId = member.userId
-                    showKickDialog = true
-                },
-                onSetAdmin = { viewModel.setAdmin(member.userId, true) },
-                onRemoveAdmin = { viewModel.setAdmin(member.userId, false) },
-                onMute = {
-                    muteUserId = member.userId
-                    showMuteDialog = true
-                },
-                onUnmute = { viewModel.unmuteMember(member.userId) }
-            )
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(vertical = 8.dp)
+        ) {
+            items(uiState.members, key = { it.userId }) { member ->
+                MemberRow(
+                    member = member,
+                    myRole = uiState.myRole,
+                    onKick = {
+                        kickUserId = member.userId
+                        showKickDialog = true
+                    },
+                    onSetAdmin = { viewModel.setAdmin(member.userId, true) },
+                    onRemoveAdmin = { viewModel.setAdmin(member.userId, false) },
+                    onMute = {
+                        muteUserId = member.userId
+                        showMuteDialog = true
+                    },
+                    onUnmute = { viewModel.unmuteMember(member.userId) }
+                )
+                if (member != uiState.members.last()) {
+                    HorizontalDivider(Modifier.padding(start = 70.dp))
+                }
+            }
         }
     }
 }
@@ -974,12 +1186,11 @@ private fun MediaTab(
     viewModel: GroupInfoViewModel,
     innerPadding: PaddingValues
 ) {
-    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
-
+    val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
     val shouldLoadMore = remember {
         derivedStateOf {
-            val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            lastVisibleItem >= mediaList.size - 2 && !isLoadingMedia && mediaPage < mediaTotalPages
+            val lastVisible = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            lastVisible >= mediaList.size - 6 && !isLoadingMedia && mediaPage < mediaTotalPages
         }
     }
     LaunchedEffect(shouldLoadMore.value) {
@@ -987,23 +1198,49 @@ private fun MediaTab(
     }
 
     Column(Modifier.fillMaxSize().padding(innerPadding)) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("all" to "全部", "image" to "图片", "file" to "链接").forEach { (type, label) ->
-                FilterChip(selected = mediaType == type, onClick = { viewModel.changeMediaType(type) }, label = { Text(label) })
-            }
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            FilterChip(
+                selected = mediaType == "image",
+                onClick = { viewModel.changeMediaType("image") },
+                label = { Text("图片") }
+            )
+            FilterChip(
+                selected = mediaType == "file",
+                onClick = { viewModel.changeMediaType("file") },
+                label = { Text("链接") }
+            )
         }
+
         if (isLoadingMedia && mediaList.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         } else if (mediaList.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("暂无媒体", color = MaterialTheme.colorScheme.onSurfaceVariant) }
         } else {
-            LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 16.dp)) {
-                items(mediaList) { item ->
-                    MediaListItem(item = item)
-                    Spacer(Modifier.height(12.dp))
-                }
-                if (isLoadingMedia) {
-                    item { Box(Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(Modifier.size(24.dp)) } }
+            Surface(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 12.dp),
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh
+            ) {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(3),
+                    state = gridState,
+                    contentPadding = PaddingValues(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    items(mediaList, key = { it.messageId }) { item ->
+                        MediaGridItem(item = item)
+                    }
+                    if (isLoadingMedia) {
+                        item { Box(Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(Modifier.size(24.dp))
+                        } }
+                    }
                 }
             }
         }
@@ -1011,43 +1248,39 @@ private fun MediaTab(
 }
 
 @Composable
-private fun MediaListItem(item: MediaItem) {
+private fun MediaGridItem(item: MediaItem) {
     val context = LocalContext.current
-    Row(
-        Modifier.fillMaxWidth().clickable {
-            if (item.type == "image" || item.type == "sticker") {
-                // 可打开大图查看，此处略
-            } else if (item.type == "file") {
-                val intent = Intent(Intent.ACTION_VIEW, item.url.toUri())
-                context.startActivity(intent)
-            }
-        },
-        verticalAlignment = Alignment.CenterVertically
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(4.dp))
+            .clickable {
+                if (item.type == "image" || item.type == "sticker") {
+                    // TODO: 查看大图
+                } else if (item.type == "file") {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, item.url.toUri()))
+                }
+            },
+        contentAlignment = Alignment.Center
     ) {
         if (item.type == "image" || item.type == "sticker") {
             AsyncImage(
                 model = item.url,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp))
+                modifier = Modifier.fillMaxSize()
             )
         } else {
-            Box(Modifier.size(80.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceContainer), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surfaceContainer),
+                contentAlignment = Alignment.Center
+            ) {
                 Icon(Icons.Default.Link, contentDescription = "链接", tint = MaterialTheme.colorScheme.primary)
             }
         }
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(item.senderUsername, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-            Spacer(Modifier.height(2.dp))
-            Text(item.sendTimeDisplay, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        AsyncImage(
-            model = if (item.senderAvatar.startsWith("http")) item.senderAvatar else "${ApiAddress}uploads/${item.senderAvatar}",
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.size(36.dp).clip(CircleShape)
-        )
     }
 }
 
@@ -1072,7 +1305,7 @@ private suspend fun setChatBackground(token: String, chatType: Int, targetId: In
             .build()
         withContext(Dispatchers.IO) {
             client.newCall(request).execute().use { r ->
-                val b = r.body.string()   // 移除不必要的安全调用
+                val b = r.body.string()
                 val res = org.json.JSONObject(b)
                 withContext(Dispatchers.Main) { onResult(res.optBoolean("success")) }
             }
