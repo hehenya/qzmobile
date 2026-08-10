@@ -266,7 +266,7 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val tabs = listOf("信息", "成员", "媒体")
     var showTagManageDialog by remember { mutableStateOf(false) }
-    var showGroupInfoDialog by remember { mutableStateOf(false) }
+
 
     // 本地静音状态（后续可接入后端）
     var isMuted by remember { mutableStateOf(false) }
@@ -732,15 +732,14 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
                             // TODO: 跳转聊天会话
                             Toast.makeText(context, "进入聊天", Toast.LENGTH_SHORT).show()
                         },
-                        onLeave = { viewModel.showLeaveDialog() },
-                        onInfoClick = { showGroupInfoDialog = true }
+                        onLeave = { viewModel.showLeaveDialog() }
                     )
 
                     CapsuleTabBar(
                         tabs = tabs,
                         selectedTabIndex = selectedTab,
                         onTabSelected = { selectedTab = it },
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                     )
 
                     when (selectedTab) {
@@ -755,10 +754,7 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
         }
     }
 
-    // 群信息对话框
-    if (showGroupInfoDialog && uiState.group != null) {
-        GroupInfoDialog(group = uiState.group!!, onDismiss = { showGroupInfoDialog = false })
-    }
+
 }
 
 @Composable
@@ -767,8 +763,7 @@ private fun GroupHeaderSection(
     isMuted: Boolean,
     onToggleMute: () -> Unit,
     onEnterChat: () -> Unit,
-    onLeave: () -> Unit,
-    onInfoClick: () -> Unit
+    onLeave: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -883,24 +878,37 @@ private fun GroupHeaderSection(
             }
         }
         Spacer(Modifier.height(8.dp))
-        // 群信息行
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp)
-                .clickable(onClick = onInfoClick),
-            shape = RoundedCornerShape(18.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh
-        ) {
-            Row(
+        if (group.description.isNotBlank()) {
+            var expanded by remember { mutableStateOf(false) }
+            Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(horizontal = 12.dp),
+                shape = RoundedCornerShape(18.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                onClick = { expanded = !expanded }
             ) {
-                Text("群信息", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.weight(1f))
-                Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text(
+                        text = group.description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = if (expanded) Int.MAX_VALUE else 4,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("简介", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            text = if (expanded) "收起" else "展开",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
             }
         }
         Spacer(Modifier.height(6.dp))

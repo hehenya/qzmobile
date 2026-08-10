@@ -478,6 +478,7 @@ class GroupInfoViewModel(
                             _uiState.update { it.copy(isLoading = false) }
                             // 更新groupId并加载群详情
                             loadGroupDetailWithId(resolvedGroupId, key)
+                            loadMedia()
                         } else {
                             _uiState.update { it.copy(isLoading = false, error = "无效的分享链接") }
                             _toastMessage.emit("无效的分享链接")
