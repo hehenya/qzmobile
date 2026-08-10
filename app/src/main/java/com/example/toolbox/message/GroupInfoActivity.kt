@@ -53,7 +53,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
@@ -121,9 +120,9 @@ import com.example.toolbox.community.UserInfoActivity
 import com.example.toolbox.community.uploadImage
 import com.example.toolbox.data.GroupInfo
 import com.example.toolbox.data.GroupMember
+import com.example.toolbox.settings.SettingsCustomItem
 import com.example.toolbox.settings.SettingsGroup
 import com.example.toolbox.settings.SettingsItemCell
-import com.example.toolbox.settings.SettingsCustomItem
 import com.example.toolbox.ui.theme.ToolBoxTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

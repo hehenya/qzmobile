@@ -532,8 +532,9 @@ class GroupInfoViewModel(
                     .build()
 
                 val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
+                // ★ 安全获取 body 字符串，避免 NPE
                 val body = response.body?.string() ?: ""
-                if (response.isSuccessful) {
+                if (response.isSuccessful && body.isNotBlank()) {
                     val parsed = json.decodeFromString<ChatMediaResponse>(body)
                     if (parsed.success) {
                         _mediaList.value = if (_mediaPage.value == 1) parsed.media
@@ -541,9 +542,12 @@ class GroupInfoViewModel(
                         _mediaPage.value = parsed.pagination.page
                         _mediaTotalPages.value = parsed.pagination.pages
                     }
+                } else {
+                    // 可以记录日志
                 }
             } catch (e: Exception) {
-                // 可打印日志或忽略
+                // 避免崩溃
+                e.printStackTrace()
             } finally {
                 _isLoadingMedia.value = false
             }

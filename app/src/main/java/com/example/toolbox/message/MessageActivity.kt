@@ -124,6 +124,8 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material3.SnackbarDefaults.actionColor
+
 @OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
 private fun FloatingChatTopBar(
@@ -856,11 +858,9 @@ class MessageDetailActivity : ComponentActivity() {
                                             DropdownMenu(
                                                 expanded = showMoreMenu,
                                                 onDismissRequest = { showMoreMenu = false },
-                                                modifier = Modifier
-                                                    .background(
-                                                        MaterialTheme.colorScheme.surfaceContainerHigh,
-                                                        RoundedCornerShape(24.dp)
-                                                    )
+                                                containerColor = MaterialTheme.colorScheme.surface,
+
+                                                shape = RoundedCornerShape(24.dp)
                                             ) {
                                                 DropdownMenuItem(
                                                     text = { Text("刷新") },
@@ -872,7 +872,8 @@ class MessageDetailActivity : ComponentActivity() {
                                                         Icon(
                                                             Icons.Default.Refresh,
                                                             contentDescription = null,
-                                                            modifier = Modifier.size(22.dp)
+                                                            modifier = Modifier.size(22.dp),
+                                                            tint = actionColor
                                                         )
                                                     }
                                                 )
