@@ -9,10 +9,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -32,10 +37,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
@@ -85,7 +88,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -104,6 +106,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -249,6 +252,7 @@ class GroupInfoActivity : ComponentActivity() {
     }
 }
 
+// ---------- GroupInfoScreen ----------
 @SuppressLint("NewApi")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -266,8 +270,7 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
     val tabs = listOf("信息", "成员", "媒体")
     var showTagManageDialog by remember { mutableStateOf(false) }
 
-
-    // 本地静音状态（后续可接入后端）
+    // 本地静音状态
     var isMuted by remember { mutableStateOf(false) }
 
     val mediaType by viewModel.mediaType.collectAsState()
@@ -275,6 +278,17 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
     val isLoadingMedia by viewModel.isLoadingMedia.collectAsState()
     val mediaPage by viewModel.mediaPage.collectAsState()
     val mediaTotalPages by viewModel.mediaTotalPages.collectAsState()
+
+    // 整体滚动状态
+    val listState = rememberLazyListState()
+    val groupNameHeight = 130.dp
+    val groupNameBottomOffset = with(LocalDensity.current) { groupNameHeight.roundToPx() }
+    val showGroupTitleInAppBar by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex > 0 ||
+                    listState.firstVisibleItemScrollOffset >= groupNameBottomOffset
+        }
+    }
 
     val imagePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -333,12 +347,8 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
     LaunchedEffect(selectedTab, uiState.group?.id) {
         uiState.group?.let { group ->
             when (selectedTab) {
-                1 -> if (uiState.members.isEmpty() && !uiState.isLoadingMembers) {
-                    viewModel.loadMembers(group.id)
-                }
-                2 -> if (mediaList.isEmpty() && !isLoadingMedia) {
-                    viewModel.loadMedia(chatId = group.id)
-                }
+                1 -> if (uiState.members.isEmpty() && !uiState.isLoadingMembers) viewModel.loadMembers(group.id)
+                2 -> if (mediaList.isEmpty() && !isLoadingMedia) viewModel.loadMedia(chatId = group.id)
             }
         }
     }
@@ -417,7 +427,9 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
                     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                 } else {
                     LazyColumn {
-                        items(uiState.tags) { tag ->
+                        // 修正: 使用 count 和 index 避免类型不匹配
+                        items(uiState.tags.size) { index ->
+                            val tag = uiState.tags[index]
                             Row(
                                 Modifier.fillMaxWidth().padding(vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
@@ -627,7 +639,27 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
         modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text("群聊信息") },
+                title = {
+                    AnimatedVisibility(
+                        visible = showGroupTitleInAppBar,
+                        enter = fadeIn(animationSpec = tween(180)) + slideInVertically(
+                            initialOffsetY = { height -> -height / 2 },
+                            animationSpec = tween(180)
+                        ),
+                        exit = fadeOut(animationSpec = tween(140)) + slideOutVertically(
+                            targetOffsetY = { height -> -height / 2 },
+                            animationSpec = tween(140)
+                        )
+                    ) {
+                        Text(
+                            text = uiState.group?.name ?: "未知群聊",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                },
                 navigationIcon = { FilledTonalIconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回") } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)),
                 actions = {
@@ -734,30 +766,47 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
             if (uiState.isLoading && uiState.group == null) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else if (uiState.group != null) {
-                Column(Modifier.fillMaxSize()) {
-                    // 群头部（头像+操作按钮）
-                    GroupHeaderSection(
-                        group = uiState.group!!,
-                        isMuted = isMuted,
-                        onToggleMute = { isMuted = !isMuted },
-                        onEnterChat = {
-                            // TODO: 跳转聊天会话
-                            Toast.makeText(context, "进入聊天", Toast.LENGTH_SHORT).show()
-                        },
-                        onLeave = { viewModel.showLeaveDialog() }
-                    )
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 16.dp)
+                ) {
+                    // 1. 群头部（头像+操作按钮+简介）
+                    item(key = "group_header") {
+                        GroupHeaderSection(
+                            group = uiState.group!!,
+                            isMuted = isMuted,
+                            onToggleMute = { isMuted = !isMuted },
+                            onEnterChat = {
+                                Toast.makeText(context, "进入聊天", Toast.LENGTH_SHORT).show()
+                            },
+                            onLeave = { viewModel.showLeaveDialog() }
+                        )
+                    }
 
-                    CapsuleTabBar(
-                        tabs = tabs,
-                        selectedTabIndex = selectedTab,
-                        onTabSelected = { selectedTab = it },
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                    )
-
-                    when (selectedTab) {
-                        0 -> InfoTab(uiState, viewModel, context, innerPadding)
-                        1 -> MembersTab(uiState, viewModel, innerPadding)
-                        2 -> MediaTab(mediaType, mediaList, isLoadingMedia, mediaPage, mediaTotalPages, viewModel, innerPadding)
+                    // 2. 选项卡 + 内容（合并为一张卡片）
+                    item(key = "tabs_and_content") {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp),
+                            shape = RoundedCornerShape(24.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh
+                        ) {
+                            Column {
+                                CapsuleTabBar(
+                                    tabs = tabs,
+                                    selectedTabIndex = selectedTab,
+                                    onTabSelected = { selectedTab = it },
+                                    modifier = Modifier.padding(12.dp)
+                                )
+                                when (selectedTab) {
+                                    0 -> InfoTabContent(uiState, viewModel, context)
+                                    1 -> MembersTabContent(uiState, viewModel)
+                                    2 -> MediaTabContent(mediaType, mediaList, isLoadingMedia, viewModel)
+                                }
+                            }
+                        }
                     }
                 }
             } else if (uiState.error != null) {
@@ -765,10 +814,9 @@ fun GroupInfoScreen(viewModel: GroupInfoViewModel, onBack: () -> Unit) {
             }
         }
     }
-
-
 }
 
+// ---------- GroupHeaderSection ----------
 @Composable
 private fun GroupHeaderSection(
     group: GroupInfo,
@@ -806,7 +854,6 @@ private fun GroupHeaderSection(
                 .padding(horizontal = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // 进入聊天
             Surface(
                 onClick = onEnterChat,
                 modifier = Modifier.weight(1f).height(72.dp),
@@ -826,14 +873,13 @@ private fun GroupHeaderSection(
                         contentColor = MaterialTheme.colorScheme.primary
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Edit, null, modifier = Modifier.size(18.dp)) // 临时图标，可替换为 ChatBubble
+                            Icon(Icons.Default.Edit, null, modifier = Modifier.size(18.dp))
                         }
                     }
                     Spacer(Modifier.height(5.dp))
                     Text("消息", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
                 }
             }
-            // 静音
             Surface(
                 onClick = onToggleMute,
                 modifier = Modifier.weight(1f).height(72.dp),
@@ -861,7 +907,6 @@ private fun GroupHeaderSection(
                     Text(if (isMuted) "取消静音" else "静音", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
                 }
             }
-            // 退出群聊
             Surface(
                 onClick = onLeave,
                 modifier = Modifier.weight(1f).height(72.dp),
@@ -927,97 +972,61 @@ private fun GroupHeaderSection(
     }
 }
 
+// ---------- InfoTabContent（已去除重复简介） ----------
 @Composable
-private fun GroupInfoDialog(group: GroupInfo, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("群信息") },
-        text = {
-            Column {
-                Row(Modifier.padding(vertical = 4.dp)) {
-                    Text("群主", style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.weight(1f))
-                    Text(group.creator?.username ?: "未知", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Row(Modifier.padding(vertical = 4.dp)) {
-                    Text("创建时间", style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.weight(1f))
-                    Text(formatGroupTime(group.createdAt), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Row(Modifier.padding(vertical = 4.dp)) {
-                    Text("类型", style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.weight(1f))
-                    Text(if (group.isPrivate) "私有群" else "公开群", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("关闭") } }
-    )
-}
+private fun InfoTabContent(
+    uiState: GroupInfoUiState,
+    viewModel: GroupInfoViewModel,
+    context: android.content.Context
+) {
+    val group = uiState.group ?: return
 
-@Composable
-private fun InfoTab(uiState: GroupInfoUiState, viewModel: GroupInfoViewModel, context: android.content.Context, innerPadding: PaddingValues) {
-    PullToRefreshBox(isRefreshing = uiState.isRefreshing, onRefresh = { viewModel.refresh() }, modifier = Modifier.fillMaxSize()) {
-        val group = uiState.group!!
-        LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 16.dp)) {
-            item {
-                SettingsGroup(title = "群聊信息", items = listOf(
-                    { SettingsItemCell(icon = Icons.Default.Person, title = "成员数", subtitle = "${group.membersCount} 名成员", onClick = { if (uiState.isJoined) context.startActivity(Intent(context, GroupMembersActivity::class.java).apply { putExtra("group_id", group.id) }) }) },
-                    { SettingsItemCell(icon = Icons.Default.DateRange, title = "创建时间", subtitle = formatGroupTime(group.createdAt), onClick = {}) },
-                    { if (group.isPrivate) SettingsItemCell(icon = Icons.Default.Lock, title = "群类型", subtitle = "私有群", onClick = {}, isDestructive = true) else SettingsItemCell(icon = Icons.Default.Public, title = "群类型", subtitle = "公开群", onClick = {}) }
-                ))
-            }
-            if (group.description.isNotBlank()) {
-                item {
-                    SettingsGroup(title = "群聊简介", items = listOf({
-                        SettingsCustomItem {
-                            Text(group.description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(16.dp))
-                        }
-                    }))
+    Column {
+        SettingsGroup(title = "群聊信息", items = listOf(
+            { SettingsItemCell(icon = Icons.Default.Person, title = "成员数", subtitle = "${group.membersCount} 名成员", onClick = { if (uiState.isJoined) context.startActivity(Intent(context, GroupMembersActivity::class.java).apply { putExtra("group_id", group.id) }) }) },
+            { SettingsItemCell(icon = Icons.Default.DateRange, title = "创建时间", subtitle = formatGroupTime(group.createdAt), onClick = {}) },
+            { if (group.isPrivate) SettingsItemCell(icon = Icons.Default.Lock, title = "群类型", subtitle = "私有群", onClick = {}, isDestructive = true) else SettingsItemCell(icon = Icons.Default.Public, title = "群类型", subtitle = "公开群", onClick = {}) }
+        ))
+
+        group.creator?.let { creator ->
+            SettingsGroup(title = "群主", items = listOf({
+                SettingsCustomItem {
+                    Row(
+                        Modifier.fillMaxWidth().clickable {
+                            val intent = Intent(context, UserInfoActivity::class.java)
+                            intent.putExtra("userId", creator.id)
+                            context.startActivity(intent)
+                        }.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        AsyncImage(model = if (creator.avatarUrl.startsWith("http")) creator.avatarUrl else "${ApiAddress}uploads/${creator.avatarUrl}", contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(40.dp).clip(CircleShape))
+                        Spacer(Modifier.width(12.dp))
+                        Text(creator.username, fontWeight = FontWeight.Bold)
+                    }
                 }
-            }
-            group.creator?.let { creator ->
-                item {
-                    SettingsGroup(title = "群主", items = listOf({
-                        SettingsCustomItem {
-                            Row(
-                                Modifier.fillMaxWidth().clickable {
-                                    val intent = Intent(context, UserInfoActivity::class.java)
-                                    intent.putExtra("userId", creator.id)
-                                    context.startActivity(intent)
-                                }.padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                AsyncImage(model = if (creator.avatarUrl.startsWith("http")) creator.avatarUrl else "${ApiAddress}uploads/${creator.avatarUrl}", contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(40.dp).clip(CircleShape))
-                                Spacer(Modifier.width(12.dp))
-                                Text(creator.username, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }))
-                }
-            }
-            item {
-                Spacer(Modifier.height(16.dp))
-                if (!uiState.isJoined) Button(
-                    onClick = { viewModel.joinGroup() },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                    enabled = !uiState.isJoining
-                ) { if (uiState.isJoining) CircularProgressIndicator(Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp) else Text("加入群聊") }
-            }
-            item { Spacer(Modifier.height(innerPadding.calculateBottomPadding())) }
+            }))
+        }
+
+        if (!uiState.isJoined) {
+            Spacer(Modifier.height(16.dp))
+            Button(
+                onClick = { viewModel.joinGroup() },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                enabled = !uiState.isJoining
+            ) { if (uiState.isJoining) CircularProgressIndicator(Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp) else Text("加入群聊") }
         }
     }
 }
 
+// ---------- MembersTabContent & MemberRow ----------
 @SuppressLint("NewApi")
 @Composable
-private fun MembersTab(
+private fun MembersTabContent(
     uiState: GroupInfoUiState,
-    viewModel: GroupInfoViewModel,
-    innerPadding: PaddingValues
+    viewModel: GroupInfoViewModel
 ) {
     if (!uiState.isJoined) {
-        Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.padding(16.dp), contentAlignment = Alignment.Center) {
             Text("请先加入群聊", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         return
@@ -1071,38 +1080,25 @@ private fun MembersTab(
         )
     }
 
-    // 使用卡片包裹成员列表
-    Surface(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(innerPadding)
-            .padding(horizontal = 12.dp),
-        shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh
-    ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(vertical = 8.dp)
-        ) {
-            items(uiState.members, key = { it.userId }) { member ->
-                MemberRow(
-                    member = member,
-                    myRole = uiState.myRole,
-                    onKick = {
-                        kickUserId = member.userId
-                        showKickDialog = true
-                    },
-                    onSetAdmin = { viewModel.setAdmin(member.userId, true) },
-                    onRemoveAdmin = { viewModel.setAdmin(member.userId, false) },
-                    onMute = {
-                        muteUserId = member.userId
-                        showMuteDialog = true
-                    },
-                    onUnmute = { viewModel.unmuteMember(member.userId) }
-                )
-                if (member != uiState.members.last()) {
-                    HorizontalDivider(Modifier.padding(start = 70.dp))
-                }
+    Column {
+        uiState.members.forEachIndexed { index, member ->
+            MemberRow(
+                member = member,
+                myRole = uiState.myRole,
+                onKick = {
+                    kickUserId = member.userId
+                    showKickDialog = true
+                },
+                onSetAdmin = { viewModel.setAdmin(member.userId, true) },
+                onRemoveAdmin = { viewModel.setAdmin(member.userId, false) },
+                onMute = {
+                    muteUserId = member.userId
+                    showMuteDialog = true
+                },
+                onUnmute = { viewModel.unmuteMember(member.userId) }
+            )
+            if (index < uiState.members.lastIndex) {
+                HorizontalDivider(Modifier.padding(start = 70.dp))
             }
         }
     }
@@ -1196,28 +1192,15 @@ private fun MemberRow(
     }
 }
 
+// ---------- MediaTabContent & MediaGridItem ----------
 @Composable
-private fun MediaTab(
+private fun MediaTabContent(
     mediaType: String,
     mediaList: List<MediaItem>,
     isLoadingMedia: Boolean,
-    mediaPage: Int,
-    mediaTotalPages: Int,
-    viewModel: GroupInfoViewModel,
-    innerPadding: PaddingValues
+    viewModel: GroupInfoViewModel
 ) {
-    val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
-    val shouldLoadMore = remember {
-        derivedStateOf {
-            val lastVisible = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            lastVisible >= mediaList.size - 6 && !isLoadingMedia && mediaPage < mediaTotalPages
-        }
-    }
-    LaunchedEffect(shouldLoadMore.value) {
-        if (shouldLoadMore.value) viewModel.loadMoreMedia()
-    }
-
-    Column(Modifier.fillMaxSize().padding(innerPadding)) {
+    Column {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -1235,31 +1218,33 @@ private fun MediaTab(
         }
 
         if (isLoadingMedia && mediaList.isEmpty()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         } else if (mediaList.isEmpty()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("暂无媒体", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) { Text("暂无媒体", color = MaterialTheme.colorScheme.onSurfaceVariant) }
         } else {
-            Surface(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 12.dp),
-                shape = RoundedCornerShape(24.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh
-            ) {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
-                    state = gridState,
-                    contentPadding = PaddingValues(start = 4.dp, top = 0.dp, end = 4.dp, bottom = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    items(mediaList, key = { it.messageId }) { item ->
-                        MediaGridItem(item = item)
+            val columns = 3
+            val rows = mediaList.chunked(columns)
+            Column {
+                rows.forEach { row ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp, vertical = 2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        row.forEach { item ->
+                            Box(modifier = Modifier.weight(1f).aspectRatio(1f)) {
+                                MediaGridItem(item = item)
+                            }
+                        }
+                        repeat(columns - row.size) {
+                            Spacer(modifier = Modifier.weight(1f).aspectRatio(1f))
+                        }
                     }
-                    if (isLoadingMedia) {
-                        item { Box(Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(Modifier.size(24.dp))
-                        } }
+                }
+                if (isLoadingMedia) {
+                    Box(Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(Modifier.size(24.dp))
                     }
                 }
             }
@@ -1270,21 +1255,24 @@ private fun MediaTab(
 @Composable
 private fun MediaGridItem(item: MediaItem) {
     val context = LocalContext.current
+    val isImage = item.type == "image" || item.type == "sticker" ||
+            (item.url?.let { it.endsWith(".jpg", true) || it.endsWith(".png", true) || it.endsWith(".gif", true) } == true)
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(1f)
             .clip(RoundedCornerShape(4.dp))
             .clickable {
-                if (item.type == "image" || item.type == "sticker") {
-                    // TODO: 查看大图
-                } else if (item.type == "file") {
+                if (isImage) {
+                    // TODO: 打开图片查看器
+                } else {
                     context.startActivity(Intent(Intent.ACTION_VIEW, item.url.toUri()))
                 }
             },
         contentAlignment = Alignment.Center
     ) {
-        if (item.type == "image" || item.type == "sticker") {
+        if (isImage) {
             AsyncImage(
                 model = item.url,
                 contentDescription = null,
@@ -1298,12 +1286,17 @@ private fun MediaGridItem(item: MediaItem) {
                     .background(MaterialTheme.colorScheme.surfaceContainer),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Link, contentDescription = "链接", tint = MaterialTheme.colorScheme.primary)
+                Icon(
+                    imageVector = if (item.type == "file") Icons.Default.Link else Icons.Default.Image,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
             }
         }
     }
 }
 
+// ---------- 工具函数 ----------
 fun formatGroupTime(timeStr: String): String = try {
     val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
     val date = sdf.parse(timeStr) ?: return timeStr
