@@ -348,6 +348,9 @@ fun SettingsScreen(
         }
 
             item {
+                val glassPrefs = remember { LiquidGlassSettings(context) }
+                var glassEnabled by remember { mutableStateOf(glassPrefs.enabled) }
+                var glassBlur by remember { mutableFloatStateOf(glassPrefs.blurRadius) }
                 SettingsGroup(
                     title = "外观",
                     items = listOf(
@@ -372,7 +375,8 @@ fun SettingsScreen(
                                     context.startActivity(intent)
                                 }
                             )
-                        }
+                        },
+
                     )
                 )
             }
@@ -412,6 +416,50 @@ fun SettingsScreen(
                                 }
                             )
                         },
+                        {
+                            SettingsSwitchItem(
+                                icon = Icons.Default.FilterDrama, // 可选图标
+                                title = "液态玻璃效果",
+                                subtitle = if (glassEnabled) "已开启" else "已关闭",
+                                checked = glassEnabled,
+                                onCheckedChange = { checked ->
+                                    glassEnabled = checked
+                                    glassPrefs.enabled = checked
+                                }
+                            )
+                        },
+                        {
+                            // 透明度滑块（这里用模糊强度代替透明度，也可以专门做透明度）
+                            SettingsCustomItem {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Default.BlurOn,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(Modifier.width(16.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("模糊强度", style = MaterialTheme.typography.titleMedium)
+                                        Text("${glassBlur.toInt()}dp", style = MaterialTheme.typography.bodySmall)
+                                    }
+                                    Slider(
+                                        value = glassBlur,
+                                        onValueChange = {
+                                            glassBlur = it
+                                            glassPrefs.blurRadius = it
+                                        },
+                                        valueRange = 0f..50f,
+                                        steps = 9,
+                                        modifier = Modifier.width(120.dp)
+                                    )
+                                }
+                            }
+                        }
                     )
                 )
             }

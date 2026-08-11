@@ -87,6 +87,7 @@ kotlin {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.foundation.layout)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
@@ -133,6 +134,8 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     
     implementation("androidx.datastore:datastore-preferences:1.1.1")
+    implementation("dev.chrisbanes.haze:haze:1.2.2")
+    implementation("com.github.Kyant:backdrop:1.1.0")
 }
 
 configurations.all {
