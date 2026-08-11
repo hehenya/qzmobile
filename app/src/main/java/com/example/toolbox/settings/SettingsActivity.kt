@@ -37,7 +37,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.toolbox.utils.getAppVersionInfo
 import androidx.compose.material.icons.filled.RoundedCorner
-import com.example.toolbox.ui.theme.LiquidGlassSettings
 import androidx.compose.material.icons.filled.BlurOn
 import androidx.compose.material.icons.filled.FilterDrama
 
@@ -132,12 +131,13 @@ fun SettingsScreen(
         }
     }
 
-    val glassSettings = remember { LiquidGlassSettings(context) }
-    var glassEnabled by remember { mutableStateOf(glassSettings.enabled) }
-    var glassBlur by remember { mutableFloatStateOf(glassSettings.blurRadius) }
+
+
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     val prefs = context.getSharedPreferences("app_preferences", MODE_PRIVATE)
+    var glassEnabled by remember { mutableStateOf(prefs.getBoolean("liquid_glass_enabled", true)) }
+    var glassBlur by remember { mutableFloatStateOf(prefs.getFloat("liquid_glass_blur", 1f)) }
     var isDisableInAppBrowser by remember {
         mutableStateOf(prefs.getBoolean("disable_in_app_browser", false))
     }
@@ -388,7 +388,7 @@ fun SettingsScreen(
                                 checked = glassEnabled,
                                 onCheckedChange = { checked ->
                                     glassEnabled = checked
-                                    glassSettings.enabled = checked
+                                    prefs.edit().putBoolean("liquid_glass_enabled", checked).apply()
                                 }
                             )
                         },
@@ -415,7 +415,7 @@ fun SettingsScreen(
                                         value = glassBlur,
                                         onValueChange = {
                                             glassBlur = it
-                                            glassSettings.blurRadius = it
+                                            prefs.edit().putFloat("liquid_glass_blur", it).apply()
                                         },
                                         valueRange = 0f..50f,
                                         steps = 9,
@@ -462,7 +462,7 @@ fun SettingsScreen(
                                     }
                                 }
                             )
-                        
+
             }
                     )
                 )

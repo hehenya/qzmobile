@@ -74,10 +74,7 @@ import com.example.toolbox.music.MusicPlayerScreen
 import com.example.toolbox.music.MusicPlayerViewModel
 import com.example.toolbox.resourceLib.ResourceLibScreen
 import com.example.toolbox.settings.UpdateDialog
-import com.example.toolbox.ui.components.LiquidGlassNavigationBar
-import com.example.toolbox.ui.theme.LiquidGlassConfig
-import com.example.toolbox.ui.theme.LiquidGlassSettings
-import com.example.toolbox.ui.theme.LocalLiquidGlassConfig
+
 import com.example.toolbox.ui.theme.ToolBoxTheme
 import com.example.toolbox.utils.UpdateInfo
 import com.example.toolbox.utils.getAppVersionInfo
@@ -86,7 +83,11 @@ import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import com.example.toolbox.ui.components.GlassBottomNavigationBar
+import com.example.toolbox.ui.theme.liquidglass.LiquidBottomTabs
+import com.example.toolbox.ui.theme.LocalLiquidGlassEnabled
+import com.example.toolbox.ui.theme.LocalLiquidGlassBlur
+import com.example.toolbox.ui.theme.LocalLiquidGlassBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         val prefs = this.getSharedPreferences("app_preferences", MODE_PRIVATE)
@@ -109,15 +110,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MyApplicationApp() {
     val context = LocalContext.current
-    val glassSettings = remember { LiquidGlassSettings(context) }
-    var glassEnabled by remember { mutableStateOf(glassSettings.enabled) }
-    var glassBlur by remember { mutableFloatStateOf(glassSettings.blurRadius) }
-
-    // 同步状态到 SharedPreferences
-    LaunchedEffect(glassEnabled, glassBlur) {
-        glassSettings.enabled = glassEnabled
-        glassSettings.blurRadius = glassBlur
-    }
 
     val hazeState = remember { HazeState() }
 
@@ -132,7 +124,10 @@ fun MyApplicationApp() {
     )
 
     val prefs = context.getSharedPreferences("app_preferences", Context.MODE_PRIVATE)
+    var glassEnabled by remember { mutableStateOf(prefs.getBoolean("liquid_glass_enabled", true)) }
+    var glassBlur by remember { mutableFloatStateOf(prefs.getFloat("liquid_glass_blur", 1f)) }
     var lastBackPressedTime by remember { mutableLongStateOf(0L) }
+
 
     var showAutoUpdateDialog by remember { mutableStateOf(false) }
     var autoUpdateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
@@ -232,7 +227,8 @@ fun MyApplicationApp() {
     }
 
     CompositionLocalProvider(
-        LocalLiquidGlassConfig provides LiquidGlassConfig(glassEnabled, glassBlur)
+        LocalLiquidGlassEnabled provides glassEnabled,
+        LocalLiquidGlassBlur provides glassBlur,
     ) {
         Box(
             modifier = Modifier
@@ -498,38 +494,35 @@ fun MainContent(
                         .coerceAtLeast(0)
 
 // 使用新的 GlassBottomNavigationBar
-                    GlassBottomNavigationBar(
-                        modifier = Modifier.fillMaxWidth(),
-                        hazeState = hazeState,
-                        enabled = liquidGlassEnabled,
-                        blurRadius = liquidGlassBlur.dp,
-                        selectedIndex = selectedIndex,
-                        itemCount = visibleAppDestinations.size,
-                        surfaceColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.15f),
-                        indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
-                    ) {
-                        visibleAppDestinations.forEachIndexed { index, item ->
-                            val isSelected = index == selectedIndex
-                            NavigationBarItem(
-                                icon = {
-                                    Crossfade(targetState = isSelected) { selected ->
-                                        Icon(
-                                            imageVector = if (selected) item.icon else item.iconOutlined,
-                                            contentDescription = null
-                                        )
-                                    }
-                                },
-                                label = {
-                                    AnimatedVisibility(
-                                        visible = isSelected,
-                                        enter = fadeIn(tween(200)) + scaleIn(tween(200)),
-                                        exit = fadeOut(tween(150)) + scaleOut(tween(150))
-                                    ) {
-                                        Text(item.label)
-                                    }
-                                },
-                                selected = isSelected,
-                                onClick = { navController.navigateToTopLevel(item.route) }
+                    val liquidBackdrop = rememberLayerBackdrop()
+
+                    LiquidBottomTabs(
+                        selectedTabIndex = selectedIndex,
+                        onTabSelected = { index ->
+                            navController.navigateToTopLevel(visibleAppDestinations[index].route)
+                        },
+                        backdrop = liquidBackdrop,
+                        tabsCount = visibleAppDestinations.size,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .navigationBarsPadding()
+                            .padding(start = 20.dp, end = 20.dp, bottom = 10.dp, top = 8.dp),
+                    ) { index, selected, overlayPass ->
+                        if (!overlayPass) {
+                            val item = visibleAppDestinations[index]
+                            Icon(
+                                imageVector = if (selected) item.icon else item.iconOutlined,
+                                contentDescription = item.label,
+                                modifier = Modifier.size(24.dp),
+                                tint = if (selected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = item.label,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (selected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
