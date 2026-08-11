@@ -37,6 +37,9 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.toolbox.utils.getAppVersionInfo
 import androidx.compose.material.icons.filled.RoundedCorner
+import com.example.toolbox.ui.theme.LiquidGlassSettings
+import androidx.compose.material.icons.filled.BlurOn
+import androidx.compose.material.icons.filled.FilterDrama
 
 /**
  * 计算目录大小（字节）
@@ -129,6 +132,9 @@ fun SettingsScreen(
         }
     }
 
+    val glassSettings = remember { LiquidGlassSettings(context) }
+    var glassEnabled by remember { mutableStateOf(glassSettings.enabled) }
+    var glassBlur by remember { mutableFloatStateOf(glassSettings.blurRadius) }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     val prefs = context.getSharedPreferences("app_preferences", MODE_PRIVATE)
@@ -348,9 +354,6 @@ fun SettingsScreen(
         }
 
             item {
-                val glassPrefs = remember { LiquidGlassSettings(context) }
-                var glassEnabled by remember { mutableStateOf(glassPrefs.enabled) }
-                var glassBlur by remember { mutableFloatStateOf(glassPrefs.blurRadius) }
                 SettingsGroup(
                     title = "外观",
                     items = listOf(
@@ -360,7 +363,7 @@ fun SettingsScreen(
                                 title = "主题设置",
                                 subtitle = "设置应用主题",
                                 onClick = {
-                                    val intent = Intent(context, ThemeActivity::class.java)  // 主题
+                                    val intent = Intent(context, ThemeActivity::class.java)
                                     context.startActivity(intent)
                                 }
                             )
@@ -371,12 +374,56 @@ fun SettingsScreen(
                                 title = "气泡样式",
                                 subtitle = "调整消息气泡的圆角和透明度",
                                 onClick = {
-                                    val intent = Intent(context, BubbleStyleActivity::class.java)  // 气泡
+                                    val intent = Intent(context, BubbleStyleActivity::class.java)
                                     context.startActivity(intent)
                                 }
                             )
                         },
-
+                        // ========== 液态玻璃开关 ==========
+                        {
+                            SettingsSwitchItem(
+                                icon = Icons.Default.FilterDrama,
+                                title = "液态玻璃效果",
+                                subtitle = if (glassEnabled) "已开启" else "已关闭",
+                                checked = glassEnabled,
+                                onCheckedChange = { checked ->
+                                    glassEnabled = checked
+                                    glassSettings.enabled = checked
+                                }
+                            )
+                        },
+                        // ========== 液态玻璃模糊强度滑块 ==========
+                        {
+                            SettingsCustomItem {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Default.BlurOn,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(Modifier.width(16.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("模糊强度", style = MaterialTheme.typography.titleMedium)
+                                        Text("${glassBlur.toInt()}dp", style = MaterialTheme.typography.bodySmall)
+                                    }
+                                    Slider(
+                                        value = glassBlur,
+                                        onValueChange = {
+                                            glassBlur = it
+                                            glassSettings.blurRadius = it
+                                        },
+                                        valueRange = 0f..50f,
+                                        steps = 9,
+                                        modifier = Modifier.width(120.dp)
+                                    )
+                                }
+                            }
+                        }
                     )
                 )
             }
@@ -415,51 +462,8 @@ fun SettingsScreen(
                                     }
                                 }
                             )
-                        },
-                        {
-                            SettingsSwitchItem(
-                                icon = Icons.Default.FilterDrama, // 可选图标
-                                title = "液态玻璃效果",
-                                subtitle = if (glassEnabled) "已开启" else "已关闭",
-                                checked = glassEnabled,
-                                onCheckedChange = { checked ->
-                                    glassEnabled = checked
-                                    glassPrefs.enabled = checked
-                                }
-                            )
-                        },
-                        {
-                            // 透明度滑块（这里用模糊强度代替透明度，也可以专门做透明度）
-                            SettingsCustomItem {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        Icons.Default.BlurOn,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                    Spacer(Modifier.width(16.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text("模糊强度", style = MaterialTheme.typography.titleMedium)
-                                        Text("${glassBlur.toInt()}dp", style = MaterialTheme.typography.bodySmall)
-                                    }
-                                    Slider(
-                                        value = glassBlur,
-                                        onValueChange = {
-                                            glassBlur = it
-                                            glassPrefs.blurRadius = it
-                                        },
-                                        valueRange = 0f..50f,
-                                        steps = 9,
-                                        modifier = Modifier.width(120.dp)
-                                    )
-                                }
-                            }
-                        }
+                        
+            }
                     )
                 )
             }

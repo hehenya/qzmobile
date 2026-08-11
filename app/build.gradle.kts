@@ -135,7 +135,7 @@ dependencies {
     
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("dev.chrisbanes.haze:haze:1.2.2")
-    implementation("com.github.Kyant:backdrop:1.1.0")
+    
 }
 
 configurations.all {
