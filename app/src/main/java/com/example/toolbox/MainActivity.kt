@@ -495,35 +495,38 @@ fun MainContent(
 
 // 使用新的 GlassBottomNavigationBar
                     val liquidBackdrop = rememberLayerBackdrop()
-
-                    LiquidBottomTabs(
-                        selectedTabIndex = selectedIndex,
-                        onTabSelected = { index ->
-                            navController.navigateToTopLevel(visibleAppDestinations[index].route)
-                        },
-                        backdrop = liquidBackdrop,
-                        tabsCount = visibleAppDestinations.size,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .navigationBarsPadding()
-                            .padding(start = 20.dp, end = 20.dp, bottom = 10.dp, top = 8.dp),
-                    ) { index, selected, overlayPass ->
-                        if (!overlayPass) {
-                            val item = visibleAppDestinations[index]
-                            Icon(
-                                imageVector = if (selected) item.icon else item.iconOutlined,
-                                contentDescription = item.label,
-                                modifier = Modifier.size(24.dp),
-                                tint = if (selected) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = item.label,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (selected) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                    CompositionLocalProvider(
+                        LocalLiquidGlassBackdrop provides liquidBackdrop,
+                    ) {
+                        LiquidBottomTabs(
+                            selectedTabIndex = selectedIndex,
+                            onTabSelected = { index ->
+                                navController.navigateToTopLevel(visibleAppDestinations[index].route)
+                            },
+                            backdrop = liquidBackdrop,
+                            tabsCount = visibleAppDestinations.size,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .navigationBarsPadding()
+                                .padding(start = 20.dp, end = 20.dp, bottom = 10.dp, top = 8.dp),
+                        ) { index, selected, overlayPass ->
+                            if (!overlayPass) {
+                                val item = visibleAppDestinations[index]
+                                Icon(
+                                    imageVector = if (selected) item.icon else item.iconOutlined,
+                                    contentDescription = item.label,
+                                    modifier = Modifier.size(24.dp),
+                                    tint = if (selected) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = item.label,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (selected) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                     }
                 }
