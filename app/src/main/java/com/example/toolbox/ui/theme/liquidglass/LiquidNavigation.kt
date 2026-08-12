@@ -164,7 +164,7 @@ fun LiquidBottomTabs(
                     shape = { Capsule() },
                     effects = {
                         vibrancy()
-                        blur(1.dp.toPx() * blurScale)
+                        blur(3.8.dp.toPx() * blurScale)
                         lens(24.dp.toPx(), 32.dp.toPx())
                     },
                     highlight = if (isLightTheme) {

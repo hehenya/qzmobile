@@ -87,7 +87,11 @@ import com.example.toolbox.ui.theme.liquidglass.LiquidBottomTabs
 import com.example.toolbox.ui.theme.LocalLiquidGlassEnabled
 import com.example.toolbox.ui.theme.LocalLiquidGlassBlur
 import com.example.toolbox.ui.theme.LocalLiquidGlassBackdrop
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         val prefs = this.getSharedPreferences("app_preferences", MODE_PRIVATE)
@@ -110,9 +114,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MyApplicationApp() {
     val context = LocalContext.current
-
     val hazeState = remember { HazeState() }
-
+    val liquidBackdrop: LayerBackdrop = rememberLayerBackdrop()
     val mainViewModel: MainViewModel = viewModel()
     val musicPlayerViewModel: MusicPlayerViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
@@ -322,7 +325,8 @@ fun MyApplicationApp() {
                                 onUserDialogDismiss = { mainViewModel.changeUserDialogStatus(false) },
                                 hazeState = hazeState,
                                 liquidGlassEnabled = glassEnabled,
-                                liquidGlassBlur = glassBlur
+                                liquidGlassBlur = glassBlur,
+                                liquidBackdrop = liquidBackdrop,
                             )
                         }
                     }
@@ -347,7 +351,8 @@ fun MyApplicationApp() {
                         onUserDialogDismiss = { mainViewModel.changeUserDialogStatus(false) },
                         hazeState = hazeState,
                         liquidGlassEnabled = glassEnabled,
-                        liquidGlassBlur = glassBlur
+                        liquidGlassBlur = glassBlur,
+                        liquidBackdrop = liquidBackdrop,
                     )
                 }
             }
@@ -462,7 +467,8 @@ fun MainContent(
     onUserDialogDismiss: () -> Unit,
     hazeState: HazeState,
     liquidGlassEnabled: Boolean,
-    liquidGlassBlur: Float
+    liquidGlassBlur: Float,
+    liquidBackdrop: LayerBackdrop,
 ) {
     Box(
         modifier = Modifier
@@ -476,7 +482,10 @@ fun MainContent(
             musicPlayerViewModel = musicPlayerViewModel,
             drawerState = drawerState,
             scope = scope,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .layerBackdrop(liquidBackdrop),
+            liquidBackdrop = liquidBackdrop
         )
 
         if (isMainPage) {
@@ -494,7 +503,7 @@ fun MainContent(
                         .coerceAtLeast(0)
 
 // 使用新的 GlassBottomNavigationBar
-                    val liquidBackdrop = rememberLayerBackdrop()
+
                     CompositionLocalProvider(
                         LocalLiquidGlassBackdrop provides liquidBackdrop,
                     ) {
@@ -550,7 +559,8 @@ fun MainContentNavHost(
     musicPlayerViewModel: MusicPlayerViewModel,
     drawerState: DrawerState,
     scope: CoroutineScope,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    liquidBackdrop: LayerBackdrop,
 ) {
     val context = LocalContext.current
     val onMenuClick: () -> Unit = remember { { scope.launch { drawerState.open() } } }
