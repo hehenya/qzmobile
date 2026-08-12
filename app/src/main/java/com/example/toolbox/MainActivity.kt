@@ -128,7 +128,7 @@ fun MyApplicationApp() {
 
     val prefs = context.getSharedPreferences("app_preferences", Context.MODE_PRIVATE)
     var glassEnabled by remember { mutableStateOf(prefs.getBoolean("liquid_glass_enabled", true)) }
-    var glassBlur by remember { mutableFloatStateOf(prefs.getFloat("liquid_glass_blur", 1f)) }
+    var glassBlur by remember { mutableFloatStateOf(prefs.getFloat("liquid_glass_blur", 3f)) }
     var lastBackPressedTime by remember { mutableLongStateOf(0L) }
 
 
@@ -502,7 +502,6 @@ fun MainContent(
                     val selectedIndex = visibleAppDestinations.indexOfFirst { it.route == selectedRoute }
                         .coerceAtLeast(0)
 
-// 使用新的 GlassBottomNavigationBar
 
                     CompositionLocalProvider(
                         LocalLiquidGlassBackdrop provides liquidBackdrop,
@@ -518,24 +517,22 @@ fun MainContent(
                                 .fillMaxWidth()
                                 .navigationBarsPadding()
                                 .padding(start = 20.dp, end = 20.dp, bottom = 10.dp, top = 8.dp),
-                        ) { index, selected, overlayPass ->
-                            if (!overlayPass) {
-                                val item = visibleAppDestinations[index]
-                                Icon(
-                                    imageVector = if (selected) item.icon else item.iconOutlined,
-                                    contentDescription = item.label,
-                                    modifier = Modifier.size(24.dp),
-                                    tint = if (selected) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = item.label,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = if (selected) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
+                        ) { index, selected, _ ->
+                            val item = visibleAppDestinations[index]
+                            Icon(
+                                imageVector = if (selected) item.icon else item.iconOutlined,
+                                contentDescription = item.label,
+                                modifier = Modifier.size(24.dp),
+                                tint = if (selected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = item.label,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (selected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                     }
                 }

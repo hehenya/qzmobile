@@ -417,8 +417,8 @@ fun SettingsScreen(
                                             glassBlur = it
                                             prefs.edit().putFloat("liquid_glass_blur", it).apply()
                                         },
-                                        valueRange = 0f..50f,
-                                        steps = 9,
+                                        valueRange = 1f..5f,   // ← 改为 1~5
+                                        steps = 7,             // ← 8 档：1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5
                                         modifier = Modifier.width(120.dp)
                                     )
                                 }
