@@ -123,111 +123,133 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material3.SnackbarDefaults.actionColor
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
+import com.example.toolbox.ui.theme.LocalLiquidGlassEnabled
+import com.example.toolbox.ui.theme.LocalLiquidGlassBlur
 
 @OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
-private fun FloatingChatTopBar(
+fun FloatingChatTopBar(
     hazeState: HazeState,
+    liquidBackdrop: Backdrop?,   // 新增参数
     showBackButton: Boolean,
     onBackClick: () -> Unit,
     title: @Composable () -> Unit,
     onMoreClick: () -> Unit,
-    moreMenu: @Composable BoxScope.() -> Unit
+    moreMenu: @Composable () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val controlSize = 48.dp
-    val buttonShape = CircleShape
+    val liquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val liquidGlassBlur = LocalLiquidGlassBlur.current
     val topBarColor = MaterialTheme.colorScheme.surface
-    val buttonHazeStyle = HazeMaterials.thin(
-        containerColor = topBarColor
-    ).copy(
-        blurRadius = 32.dp,
-        noiseFactor = 0f
-    )
-    val cardShape = RoundedCornerShape(24.dp)
+    val buttonShape = CircleShape
+    val useGlassBar = liquidGlassEnabled && liquidBackdrop != null
 
-    Box(modifier = Modifier.fillMaxWidth()) {
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            topBarColor.copy(alpha = 0.8f),
-                            topBarColor.copy(alpha = 0.7f),
-                            topBarColor.copy(alpha = 0.6f),
-                            Color.Transparent
+    @Composable
+    fun Modifier.glassControl(shape: androidx.compose.ui.graphics.Shape): Modifier =
+        if (useGlassBar) {
+            this.drawBackdrop(
+                backdrop = liquidBackdrop!!,
+                shape = { shape },
+                effects = {
+                    vibrancy()
+                    blur(1.dp.toPx() * liquidGlassBlur)
+                    lens(16.dp.toPx(), 32.dp.toPx())
+                },
+                onDrawSurface = {
+                    drawRect(topBarColor.copy(alpha = 0.6f))
+                },
+            )
+        } else {
+            this.shadow(2.dp, shape)
+                .clip(shape)
+                .hazeEffect(
+                    state = hazeState,
+                    style = HazeMaterials.thin().copy(
+                        blurRadius = 32.dp,
+                        noiseFactor = 0f
+                    ),
+                    block = null
+                )
+        }
+
+    Box(modifier = modifier.fillMaxWidth()) {
+        // 渐变背景遮罩（仅非选择模式）
+        if (true) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                topBarColor.copy(alpha = 0.8f),
+                                topBarColor.copy(alpha = 0.6f),
+                                Color.Transparent
+                            )
                         )
                     )
-                )
-        )
+            )
+        }
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(horizontal = 8.dp, vertical = 8.dp),
+                .padding(horizontal = 6.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
+            // 返回按钮
             if (showBackButton) {
                 Box(
                     modifier = Modifier
-                        .size(controlSize)
-                        .shadow(2.dp, buttonShape)
-                        .clip(buttonShape)
-                        .hazeEffect(
-                            state = hazeState,
-                            style = buttonHazeStyle,
-                            block = null
-                        )
-                        .clickable(onClick = onBackClick),
+                        .size(48.dp)
+                        .glassControl(buttonShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "返回",
-                        modifier = Modifier.size(24.dp)
-                    )
+                    IconButton(onClick = onBackClick, modifier = Modifier.size(46.dp)) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "返回",
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
             }
 
+            // 标题区域
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .height(controlSize)
-                    .shadow(2.dp, cardShape)
-                    .clip(cardShape)
-                    .hazeEffect(
-                        state = hazeState,
-                        style = buttonHazeStyle,
-                        block = null
-                    ),
+                    .height(48.dp)
+                    .glassControl(RoundedCornerShape(24.dp)),
                 contentAlignment = Alignment.CenterStart
             ) {
                 title()
             }
 
+            // 更多按钮
             Box(
                 modifier = Modifier
-                    .size(controlSize)
-                    .shadow(2.dp, buttonShape)
-                    .clip(buttonShape)
-                    .hazeEffect(
-                        state = hazeState,
-                        style = buttonHazeStyle,
-                        block = null
-                    )
-                    .clickable(onClick = onMoreClick),
+                    .size(48.dp)
+                    .glassControl(buttonShape),
                 contentAlignment = Alignment.Center
             ) {
+                IconButton(onClick = onMoreClick, modifier = Modifier.size(46.dp)) {
+                    Icon(
+                        Icons.Default.MoreVert,
+                        contentDescription = "更多",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
                 moreMenu()
-                Icon(
-                    imageVector = Icons.Default.MoreVert,
-                    contentDescription = "更多",
-                    modifier = Modifier.size(24.dp)
-                )
             }
         }
     }
@@ -663,110 +685,131 @@ class MessageDetailActivity : ComponentActivity() {
         val context = this
         setContent {
             ToolBoxTheme {
-                val token = TokenManager.get(this)
-                val viewModel: MessageDetailViewModel = viewModel(
-                    factory = token?.let { MessageDetailViewModelFactory(it, chatType, finalChatId) }
-                )
+                val prefs = getSharedPreferences("app_preferences", MODE_PRIVATE)
+                val glassEnabled = prefs.getBoolean("liquid_glass_enabled", true)
+                val glassBlur = prefs.getFloat("liquid_glass_blur", 3f)
 
-                val hazeState = remember { HazeState() }
-                var showShareSheet by remember { mutableStateOf(false) }
-                var shareSheetMessages by remember { mutableStateOf<List<Message>>(emptyList()) }
+                CompositionLocalProvider(
+                    LocalLiquidGlassEnabled provides glassEnabled,
+                    LocalLiquidGlassBlur provides glassBlur,
+                ) {
+                    val token = TokenManager.get(this)
+                    val viewModel: MessageDetailViewModel = viewModel(
+                        factory = token?.let { MessageDetailViewModelFactory(it, chatType, finalChatId) }
+                    )
 
-                val uiState by viewModel.uiState.collectAsState()
-                val announcementMessage = uiState.latestAnnouncement
-                var showScreenshotSheet by remember { mutableStateOf(false) }
-                Scaffold(
-                    modifier = Modifier.fillMaxSize(),
-                    contentWindowInsets = WindowInsets(0.dp),
-                    topBar = {
-                        AnimatedContent(
-                            targetState = uiState.selectionMode,
-                            transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(200)) },
-                            label = "topbar"
-                        ) { isSelecting ->
-                            if (isSelecting) {
-                                val selectedIds = uiState.selectedMessages.toSet()
-                                val selectedMsgs = uiState.messages.filter { it.effectiveMsgId in selectedIds }
-                                var showSelectionMenu by remember { mutableStateOf(false) }
+                    val hazeState = remember { HazeState() }
+                    var showShareSheet by remember { mutableStateOf(false) }
+                    var shareSheetMessages by remember { mutableStateOf<List<Message>>(emptyList()) }
 
-                                FloatingChatTopBar(
-                                    hazeState = hazeState,
-                                    showBackButton = true,
-                                    onBackClick = { viewModel.exitSelectionMode() },
-                                    title = {
-                                        Row(
-                                            modifier = Modifier.padding(start = 12.dp).height(46.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(2.dp)
-                                        ) {
-                                            Text("已选中", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                            Text("${selectedMsgs.size}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                            Text("条", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                        }
-                                    },
-                                    onMoreClick = { showSelectionMenu = true },
-                                    moreMenu = {
-                                        DropdownMenu(
-                                            expanded = showSelectionMenu,
-                                            onDismissRequest = { showSelectionMenu = false },
-                                            modifier = Modifier.background(
-                                                MaterialTheme.colorScheme.surfaceContainerHigh,
-                                                RoundedCornerShape(24.dp)
-                                            )
-                                        ) {
-                                            if (selectedMsgs.isNotEmpty() && selectedMsgs.all { it.isMine }) {
-                                                DropdownMenuItem(
-                                                    text = { Text("撤回") },
-                                                    onClick = {
-                                                        showSelectionMenu = false
-                                                        viewModel.recallSelectedMessages()
-                                                    },
-                                                    leadingIcon = {
-                                                        Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null, modifier = Modifier.size(18.dp))
-                                                    }
-                                                )
+                    val uiState by viewModel.uiState.collectAsState()
+                    val announcementMessage = uiState.latestAnnouncement
+                    var showScreenshotSheet by remember { mutableStateOf(false) }
+
+                    val liquidBackdrop = if (glassEnabled) {
+                        rememberLayerBackdrop()
+                    } else {
+                        null
+                    }
+
+                    Scaffold(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .then(
+                                if (liquidBackdrop != null) Modifier.layerBackdrop(liquidBackdrop!!)
+                                else Modifier
+                            ),
+                        contentWindowInsets = WindowInsets(0.dp),
+                        topBar = {
+                            AnimatedContent(
+                                targetState = uiState.selectionMode,
+                                transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(200)) },
+                                label = "topbar"
+                            ) { isSelecting ->
+                                if (isSelecting) {
+                                    val selectedIds = uiState.selectedMessages.toSet()
+                                    val selectedMsgs = uiState.messages.filter { it.effectiveMsgId in selectedIds }
+                                    var showSelectionMenu by remember { mutableStateOf(false) }
+
+                                    FloatingChatTopBar(
+                                        hazeState = hazeState,
+                                        showBackButton = true,
+                                        onBackClick = { viewModel.exitSelectionMode() },
+                                        title = {
+                                            Row(
+                                                modifier = Modifier.padding(start = 12.dp).height(46.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                            ) {
+                                                Text("已选中", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                                Text("${selectedMsgs.size}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                                Text("条", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                             }
-                                            if (selectedMsgs.size == 1 && selectedMsgs.first().content.isNotBlank()) {
-                                                DropdownMenuItem(
-                                                    text = { Text("复制") },
-                                                    onClick = {
-                                                        showSelectionMenu = false
-                                                        val clipboard = context.getSystemService(ClipboardManager::class.java)
-                                                        clipboard?.setPrimaryClip(ClipData.newPlainText("text", selectedMsgs.first().content))
-                                                        Toast.makeText(context, "已复制", Toast.LENGTH_SHORT).show()
-                                                        viewModel.exitSelectionMode()
-                                                    },
-                                                    leadingIcon = {
-                                                        Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
-                                                    }
+                                        },
+                                        onMoreClick = { showSelectionMenu = true },
+                                        liquidBackdrop = liquidBackdrop,
+                                        moreMenu = {
+                                            DropdownMenu(
+                                                expanded = showSelectionMenu,
+                                                onDismissRequest = { showSelectionMenu = false },
+                                                modifier = Modifier.background(
+                                                    MaterialTheme.colorScheme.surfaceContainerHigh,
+                                                    RoundedCornerShape(24.dp)
                                                 )
-                                            }
-                                            if (selectedMsgs.size == 1 && selectedMsgs.first().isMine && selectedMsgs.first().content.isNotBlank()) {
-                                                DropdownMenuItem(
-                                                    text = { Text("编辑") },
-                                                    onClick = {
-                                                        showSelectionMenu = false
-                                                        viewModel.startEditMessage(selectedMsgs.first())
-                                                        viewModel.exitSelectionMode()
-                                                    },
-                                                    leadingIcon = {
-                                                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
-                                                    }
-                                                )
-                                            }
-                                            DropdownMenuItem(
-                                                text = { Text("截图") },
-                                                onClick = {
-                                                    showSelectionMenu = false
-                                                    showScreenshotSheet = true
-                                                },
-                                                leadingIcon = {
-                                                    Icon(Icons.Default.Crop, contentDescription = null, modifier = Modifier.size(18.dp))
+                                            ) {
+                                                if (selectedMsgs.isNotEmpty() && selectedMsgs.all { it.isMine }) {
+                                                    DropdownMenuItem(
+                                                        text = { Text("撤回") },
+                                                        onClick = {
+                                                            showSelectionMenu = false
+                                                            viewModel.recallSelectedMessages()
+                                                        },
+                                                        leadingIcon = {
+                                                            Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                        }
+                                                    )
                                                 }
-                                            )
+                                                if (selectedMsgs.size == 1 && selectedMsgs.first().content.isNotBlank()) {
+                                                    DropdownMenuItem(
+                                                        text = { Text("复制") },
+                                                        onClick = {
+                                                            showSelectionMenu = false
+                                                            val clipboard = context.getSystemService(ClipboardManager::class.java)
+                                                            clipboard?.setPrimaryClip(ClipData.newPlainText("text", selectedMsgs.first().content))
+                                                            Toast.makeText(context, "已复制", Toast.LENGTH_SHORT).show()
+                                                            viewModel.exitSelectionMode()
+                                                        },
+                                                        leadingIcon = {
+                                                            Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                        }
+                                                    )
+                                                }
+                                                if (selectedMsgs.size == 1 && selectedMsgs.first().isMine && selectedMsgs.first().content.isNotBlank()) {
+                                                    DropdownMenuItem(
+                                                        text = { Text("编辑") },
+                                                        onClick = {
+                                                            showSelectionMenu = false
+                                                            viewModel.startEditMessage(selectedMsgs.first())
+                                                            viewModel.exitSelectionMode()
+                                                        },
+                                                        leadingIcon = {
+                                                            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                        }
+                                                    )
+                                                }
+                                                DropdownMenuItem(
+                                                    text = { Text("截图") },
+                                                    onClick = {
+                                                        showSelectionMenu = false
+                                                        showScreenshotSheet = true
+                                                    },
+                                                    leadingIcon = {
+                                                        Icon(Icons.Default.Crop, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                    }
+                                                )
+                                            }
                                         }
-                                    }
-                                )
+                                    )
 
                             } else {
                                 Column {
@@ -776,6 +819,7 @@ class MessageDetailActivity : ComponentActivity() {
                                         hazeState = hazeState,
                                         showBackButton = true,
                                         onBackClick = { finish() },
+                                        liquidBackdrop = liquidBackdrop,
                                         title = {
                                             if (chatType == 2 && uiState.groupInfo != null) {
                                                 val group = uiState.groupInfo!!
@@ -931,7 +975,8 @@ class MessageDetailActivity : ComponentActivity() {
                                 },
                                 onShareImage = { bitmap -> shareBitmap(this@MessageDetailActivity, bitmap) }
                             )
-                        }
+                        } // 关闭 if (showShareSheet...)
+                    } // 关闭 Box
                     }
                 }
             }
