@@ -931,7 +931,8 @@ class MessageDetailActivity : ComponentActivity() {
                                                 }
                                                 startActivity(intent)
                                             },
-                                            hazeState = hazeState
+                                            hazeState = hazeState,
+                                            liquidBackdrop = liquidBackdrop
                                         )
                                     }
                                 }
@@ -3329,7 +3330,8 @@ private fun buildMessageShareBitmap(message: Message): Bitmap {
 fun AnnouncementBanner(
     message: Message,
     onClick: () -> Unit,
-    hazeState: HazeState   // 新增参数，接收外部 hazeState
+    hazeState: HazeState,
+    liquidBackdrop: Backdrop? = null // 新增参数，接收外部 hazeState
 ) {
     val controlShape = RoundedCornerShape(12.dp)
     // 使用与顶栏按钮相同的容器色（不使用强制实色背景，依赖 hazeEffect）
