@@ -3331,29 +3331,48 @@ fun AnnouncementBanner(
     message: Message,
     onClick: () -> Unit,
     hazeState: HazeState,
-    liquidBackdrop: Backdrop? = null // 新增参数，接收外部 hazeState
+    liquidBackdrop: Backdrop? = null   // 新增参数
 ) {
+    val liquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val liquidGlassBlur = LocalLiquidGlassBlur.current
     val controlShape = RoundedCornerShape(12.dp)
-    // 使用与顶栏按钮相同的容器色（不使用强制实色背景，依赖 hazeEffect）
     val containerColor = MaterialTheme.colorScheme.surface
+    val useGlass = liquidGlassEnabled && liquidBackdrop != null
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 4.dp)
-            .shadow(2.dp, controlShape)          // 投影
-            .clip(controlShape)                  // 裁剪圆角
-            .hazeEffect(                          // 毛玻璃效果（与顶栏按钮参数一致）
-                state = hazeState,
-                style = HazeMaterials.thin(containerColor = containerColor).copy(
-                    blurRadius = 32.dp,
-                    noiseFactor = 0f
-                ),
-                block = null
+            .then(
+                if (useGlass) {
+                    Modifier.drawBackdrop(
+                        backdrop = liquidBackdrop!!,
+                        shape = { controlShape },
+                        effects = {
+                            vibrancy()
+                            blur(1.dp.toPx() * liquidGlassBlur)
+                            lens(16.dp.toPx(), 24.dp.toPx())
+                        },
+                        onDrawSurface = {
+                            drawRect(containerColor.copy(alpha = 0.5f))
+                        },
+                    )
+                } else {
+                    Modifier
+                        .shadow(2.dp, controlShape)
+                        .clip(controlShape)
+                        .hazeEffect(
+                            state = hazeState,
+                            style = HazeMaterials.thin(containerColor = containerColor).copy(
+                                blurRadius = 32.dp,
+                                noiseFactor = 0f
+                            ),
+                            block = null
+                        )
+                }
             )
             .clickable { onClick() }
     ) {
-        // 内部内容保持原有样式，Surface 背景设为透明，视觉由 hazeEffect 提供
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = controlShape,
