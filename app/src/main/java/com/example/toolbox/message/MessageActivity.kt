@@ -713,12 +713,7 @@ class MessageDetailActivity : ComponentActivity() {
                     }
 
                     Scaffold(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .then(
-                                if (liquidBackdrop != null) Modifier.layerBackdrop(liquidBackdrop!!)
-                                else Modifier
-                            ),
+                        modifier = Modifier.fillMaxSize(),
                         contentWindowInsets = WindowInsets(0.dp),
                         topBar = {
                             AnimatedContent(
@@ -943,12 +938,16 @@ class MessageDetailActivity : ComponentActivity() {
                             }
                         }
                     }
-                ) { innerPadding ->
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .hazeSource(hazeState)
-                    ) {
+                    ) { innerPadding ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .hazeSource(hazeState)
+                                .then(
+                                    if (liquidBackdrop != null) Modifier.layerBackdrop(liquidBackdrop!!)
+                                    else Modifier
+                                )
+                        ) {
                         MessageDetailScreen(innerPadding, viewModel)
                         if (showShareSheet && shareSheetMessages.isNotEmpty()) {
                             val shareChatName = when {

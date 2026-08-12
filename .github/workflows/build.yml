@@ -35,16 +35,20 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    # 注释掉或删除Decode Keystore步骤（Debug不需要签名）
-    # - name: Decode Keystore
-    #   run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > keystore.jks
+    - name: Decode Keystore
+      run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > keystore.jks
 
-    - name: Build Debug APK
-      run: ./gradlew assembleDebug
+    - name: Build Release APK
+      run: |
+        ./gradlew assembleRelease \
+          -Pandroid.injected.signing.store.file=$(pwd)/keystore.jks \
+          -Pandroid.injected.signing.store.password=android \
+          -Pandroid.injected.signing.key.alias=release \
+          -Pandroid.injected.signing.key.password=android
     
-    - name: Upload Debug APK
+    - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
-        name: app-debug
-        path: app/build/outputs/apk/debug/*.apk
+        name: app-release
+        path: app/build/outputs/apk/release/*.apk
         retention-days: 30
