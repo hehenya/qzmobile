@@ -304,7 +304,7 @@ fun MyApplicationApp() {
                             }
                         }
                     },
-                    gesturesEnabled = true,
+                    gesturesEnabled = false,
                     content = {
                         Box(modifier = Modifier.fillMaxSize()) {
                             MainContent(
