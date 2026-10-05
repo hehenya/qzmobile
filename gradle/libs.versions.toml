@@ -25,6 +25,7 @@ socketIoClient = "2.1.2"
 uiText = "1.10.6"
 haze = "1.7.2"
 hazeMaterials = "1.7.2"
+foundationLayoutVersion = "1.11.4"
 
 [libraries]
 accompanist-systemuicontroller = { module = "com.google.accompanist:accompanist-systemuicontroller", version.ref = "accompanistSwiperefresh" }
@@ -63,6 +64,7 @@ socket-io-client = { module = "io.socket:socket.io-client", version.ref = "socke
 
 haze = { group = "dev.chrisbanes.haze", name = "haze", version.ref = "haze" }
 haze-materials = { module = "dev.chrisbanes.haze:haze-materials", version.ref = "hazeMaterials" }
+androidx-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayoutVersion" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

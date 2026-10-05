@@ -37,6 +37,8 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.toolbox.utils.getAppVersionInfo
 import androidx.compose.material.icons.filled.RoundedCorner
+import androidx.compose.material.icons.filled.BlurOn
+import androidx.compose.material.icons.filled.FilterDrama
 
 /**
  * 计算目录大小（字节）
@@ -129,9 +131,13 @@ fun SettingsScreen(
         }
     }
 
+
+
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     val prefs = context.getSharedPreferences("app_preferences", MODE_PRIVATE)
+    var glassEnabled by remember { mutableStateOf(prefs.getBoolean("liquid_glass_enabled", true)) }
+    var glassBlur by remember { mutableFloatStateOf(prefs.getFloat("liquid_glass_blur", 1f)) }
     var isDisableInAppBrowser by remember {
         mutableStateOf(prefs.getBoolean("disable_in_app_browser", false))
     }
@@ -357,7 +363,7 @@ fun SettingsScreen(
                                 title = "主题设置",
                                 subtitle = "设置应用主题",
                                 onClick = {
-                                    val intent = Intent(context, ThemeActivity::class.java)  // 主题
+                                    val intent = Intent(context, ThemeActivity::class.java)
                                     context.startActivity(intent)
                                 }
                             )
@@ -368,10 +374,55 @@ fun SettingsScreen(
                                 title = "气泡样式",
                                 subtitle = "调整消息气泡的圆角和透明度",
                                 onClick = {
-                                    val intent = Intent(context, BubbleStyleActivity::class.java)  // 气泡
+                                    val intent = Intent(context, BubbleStyleActivity::class.java)
                                     context.startActivity(intent)
                                 }
                             )
+                        },
+                        // ========== 液态玻璃开关 ==========
+                        {
+                            SettingsSwitchItem(
+                                icon = Icons.Default.FilterDrama,
+                                title = "液态玻璃效果",
+                                subtitle = if (glassEnabled) "已开启" else "已关闭",
+                                checked = glassEnabled,
+                                onCheckedChange = { checked ->
+                                    glassEnabled = checked
+                                    prefs.edit().putBoolean("liquid_glass_enabled", checked).apply()
+                                }
+                            )
+                        },
+                        // ========== 液态玻璃模糊强度滑块 ==========
+                        {
+                            SettingsCustomItem {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Default.BlurOn,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(Modifier.width(16.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("模糊强度", style = MaterialTheme.typography.titleMedium)
+                                        Text("${glassBlur.toInt()}dp", style = MaterialTheme.typography.bodySmall)
+                                    }
+                                    Slider(
+                                        value = glassBlur,
+                                        onValueChange = {
+                                            glassBlur = it
+                                            prefs.edit().putFloat("liquid_glass_blur", it).apply()
+                                        },
+                                        valueRange = 1f..5f,   // ← 改为 1~5
+                                        steps = 7,             // ← 8 档：1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5
+                                        modifier = Modifier.width(120.dp)
+                                    )
+                                }
+                            }
                         }
                     )
                 )
@@ -411,7 +462,8 @@ fun SettingsScreen(
                                     }
                                 }
                             )
-                        },
+
+            }
                     )
                 )
             }
