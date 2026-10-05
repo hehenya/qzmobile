@@ -507,7 +507,7 @@ fun MainContent(
                         .coerceAtLeast(0)
 
 
-                    if (glassEnabled) {
+                    if (liquidGlassEnabled) {
                         CompositionLocalProvider(
                             LocalLiquidGlassBackdrop provides liquidBackdrop,
                         ) {
