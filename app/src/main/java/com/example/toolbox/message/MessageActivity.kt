@@ -37,6 +37,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
@@ -62,6 +63,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathOperation
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.Clipboard
@@ -566,9 +571,32 @@ fun ScheduledMessageListOverlay(
                             .padding(horizontal = 8.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-
-
-                        Spacer(Modifier.width(5.dp))
+                            BasicTextField(
+                                value = inputText,
+                                onValueChange = { inputText = it },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(horizontal = 8.dp)
+                                    .defaultMinSize(minHeight = 40.dp),
+                                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    lineHeight = 20.sp
+                                ),
+                                minLines = 1,
+                                maxLines = 4,
+                                decorationBox = { innerTextField ->
+                                    Box(contentAlignment = Alignment.CenterStart) {
+                                        if (inputText.isEmpty()) {
+                                            Text(
+                                                text = "输入定时消息",
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        innerTextField()
+                                    }
+                                }
+                            )
                         IconButton(
                             onClick = { if (inputText.isNotBlank()) showTimePicker = true },
                             enabled = inputText.isNotBlank()
@@ -2143,28 +2171,31 @@ fun MessageBubble(
                         )
                 ) {
                     Column(horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
-                        Card(
-                            shape = RoundedCornerShape(
-                                topStart = bubbleCornerRadius.dp,
-                                topEnd = bubbleCornerRadius.dp,
-                                bottomStart = if (isMine) bubbleCornerRadius.dp
-                                else if (!isNewerSameSender) bubbleCornerRadius.dp
-                                else (bubbleCornerRadius * 0.3f).dp,
-                                bottomEnd = if (isMine) if (!isNewerSameSender) bubbleCornerRadius.dp
-                                else (bubbleCornerRadius * 0.3f).dp
-                                else bubbleCornerRadius.dp
-                            ),
-                            modifier = Modifier.widthIn(max = 260.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = when {
-                                    message.images.isNotEmpty() && message.content.isBlank() -> Color.Transparent
-                                    isMine -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = bubbleOpacity)
-                                    else -> MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp).copy(alpha = bubbleOpacity)
-                                }
-                            ),
-                            elevation = if (message.images.isNotEmpty()) CardDefaults.cardElevation(defaultElevation = 0.dp) else CardDefaults.cardElevation()
-                        ) {
-                            Column(modifier = Modifier.padding(8.dp)) {
+                        val bubbleColor = when {
+                            message.images.isNotEmpty() && message.content.isBlank() -> Color.Transparent
+                            isMine -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = bubbleOpacity)
+                            else -> MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp).copy(alpha = bubbleOpacity)
+                        }
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            if (!isMine && isNewerSameSender) {
+                                QuarterCircleCorner(color = bubbleColor, isMine = false, size = 12.dp)
+                            }
+                            Card(
+                                shape = RoundedCornerShape(
+                                    topStart = if (!isMine && isOlderSameSender) (bubbleCornerRadius * 0.3f).dp else bubbleCornerRadius.dp,
+                                    topEnd = if (isMine && isOlderSameSender) (bubbleCornerRadius * 0.3f).dp else bubbleCornerRadius.dp,
+                                    bottomStart = if (isMine) bubbleCornerRadius.dp
+                                    else if (!isNewerSameSender) bubbleCornerRadius.dp
+                                    else (bubbleCornerRadius * 0.3f).dp,
+                                    bottomEnd = if (isMine) if (!isNewerSameSender) bubbleCornerRadius.dp
+                                    else (bubbleCornerRadius * 0.3f).dp
+                                    else bubbleCornerRadius.dp
+                                ),
+                                modifier = Modifier.widthIn(max = 260.dp),
+                                colors = CardDefaults.cardColors(containerColor = bubbleColor),
+                                elevation = if (message.images.isNotEmpty()) CardDefaults.cardElevation(defaultElevation = 0.dp) else CardDefaults.cardElevation()
+                            ) {
+                                Column(modifier = Modifier.padding(8.dp)) {
                                 if (message.forwardInfo != null) {
                                     val fi = message.forwardInfo!!
                                     Row(
@@ -2373,6 +2404,10 @@ fun MessageBubble(
                                     }
                                     if (message.editTime != null) Text("已编辑", fontSize = 10.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f), modifier = Modifier.padding(start = 4.dp))
                                 }
+                                }
+                            }
+                            if (isMine && isNewerSameSender) {
+                                QuarterCircleCorner(color = bubbleColor, isMine = true, size = 12.dp)
                             }
                         }
                     }
@@ -2482,6 +2517,33 @@ fun MessageBubble(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun QuarterCircleCorner(
+    modifier: Modifier = Modifier,
+    color: Color,
+    size: Dp = 16.dp,
+    isMine: Boolean
+) {
+    val halfWidth = size / 2
+
+    Canvas(modifier = modifier.size(width = halfWidth, height = size)) {
+        val width = this.size.width
+        val height = this.size.height
+        val centerX = if (isMine) width else 0f
+        val left = centerX - width
+        val top = -height
+        val right = centerX + width
+        val bottom = height
+        val rectPath = Path().apply { addRect(Rect(left, top, right, bottom)) }
+        val ovalPath = Path().apply { addOval(Rect(left, top, right, bottom)) }
+        val cornerPath = Path().apply { op(rectPath, ovalPath, PathOperation.Difference) }
+
+        clipRect(left = 0f, top = 0f, right = width, bottom = height) {
+            drawPath(path = cornerPath, color = color)
         }
     }
 }
@@ -3025,8 +3087,11 @@ fun MessageInput(
                             fontSize = 16.sp,
                             lineHeight = 20.sp
                         ),
-                        modifier = Modifier.fillMaxWidth()
-                        // ③ 移除 .offset(y = 2.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .defaultMinSize(minHeight = 40.dp),
+                        minLines = 1,
+                        maxLines = 5
                     )
 
                     if (inputText.isEmpty()) {
