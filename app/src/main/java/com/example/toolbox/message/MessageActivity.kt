@@ -1773,7 +1773,7 @@ fun MessageDetailScreen(
                 val emojiPanelVisible by viewModel.emojiPanelVisible.collectAsState()
                 val emojis by viewModel.emojis.collectAsState()
                 val isLoadingEmojis by viewModel.isLoadingEmojis.collectAsState()
-
+                val liquidGlassBlur = LocalLiquidGlassBlur.current  
                 val liquidGlassEnabled = LocalLiquidGlassEnabled.current
                 val bottomBarShape = RoundedCornerShape(24.dp)
                 val useGlass = liquidGlassEnabled && liquidBackdrop != null
@@ -1791,7 +1791,7 @@ fun MessageDetailScreen(
                                     shape = { bottomBarShape },
                                     effects = {
                                         vibrancy()
-                                        blur(1.dp.toPx() * LocalLiquidGlassBlur.current)
+                                        blur(1.dp.toPx() * liquidGlassBlur)
                                         lens(16.dp.toPx(), 32.dp.toPx())
                                     },
                                     onDrawSurface = {
@@ -3044,6 +3044,7 @@ private suspend fun saveBitmapToGallery(context: Context, bitmap: Bitmap) = with
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MessageInput(
     inputText: String, selectedImages: List<String>, isMarkdown: Boolean,
