@@ -651,13 +651,20 @@ fun FriendItem(friend: Friend, viewModel: MessageViewModel, refreshKey: Long) {
                     Spacer(modifier = Modifier.width(4.dp))
                 }
 
-                // 时间或草稿时间
+
                 if (!draft.isNullOrBlank()) {
-                    Text(
-                        text = formatRelativeTime(draftTime ?: ""),
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    val displayTime = if (!draftTime.isNullOrBlank()) {
+                        formatRelativeTime(draftTime)
+                    } else {
+                        ""  // 无时间则不显示
+                    }
+                    if (displayTime.isNotBlank()) {
+                        Text(
+                            text = displayTime,
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 } else if (friend.lastMessageTime != null) {
                     Text(
                         text = formatRelativeTime(friend.lastMessageTime),

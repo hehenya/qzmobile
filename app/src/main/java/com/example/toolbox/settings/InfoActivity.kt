@@ -350,7 +350,7 @@ fun InfoScreen(modifier: Modifier = Modifier) {
                                         putExtra(Intent.EXTRA_SUBJECT, "推荐工具箱应用")
                                         putExtra(
                                             Intent.EXTRA_TEXT,
-                                            "我正在使用一款很实用的工具箱应用，推荐给你"
+                                            "我正在使用一款很实用的工具箱应用，推荐给你，软件官网：https://qztool.dpdns.org"
                                         )
                                     }
                                     context.startActivity(Intent.createChooser(intent, "分享应用"))
