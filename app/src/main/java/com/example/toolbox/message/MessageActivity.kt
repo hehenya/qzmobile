@@ -990,7 +990,11 @@ class MessageDetailActivity : ComponentActivity() {
                                     else Modifier
                                 )
                         ) {
-                        MessageDetailScreen(innerPadding, viewModel)
+                        MessageDetailScreen(
+                            innerPadding = innerPadding,
+                            viewModel = viewModel,
+                            liquidBackdrop = liquidBackdrop
+                        )
                         if (showShareSheet && shareSheetMessages.isNotEmpty()) {
                             val shareChatName = when {
                                 chatType == 2 && uiState.groupInfo != null -> uiState.groupInfo!!.name
@@ -1028,7 +1032,8 @@ class MessageDetailActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 fun MessageDetailScreen(
     innerPadding: PaddingValues,
-    viewModel: MessageDetailViewModel
+    viewModel: MessageDetailViewModel,
+    liquidBackdrop: com.kyant.backdrop.Backdrop? = null
 ) {
 
     val context = LocalContext.current
@@ -1769,45 +1774,77 @@ fun MessageDetailScreen(
                 val emojis by viewModel.emojis.collectAsState()
                 val isLoadingEmojis by viewModel.isLoadingEmojis.collectAsState()
 
-                MessageInput(
-                    inputText = if (uiState.editingMessage != null) uiState.editingContent else uiState.inputText,
-                    selectedImages = uiState.selectedImages,
-                    isMarkdown = uiState.isMarkdown,
-                    onTextChange = {
-                        if (uiState.editingMessage != null) {
-                            viewModel.updateEditingContent(it)
-                        } else {
-                            viewModel.onInputTextChanged(it)
-                        }
-                    },
-                    onSendClick = {
-                        if (uiState.editingMessage != null) {
-                            viewModel.submitEditMessage()
-                        } else {
-                            viewModel.sendMessage()
-                        }
-                    },
-                    onAddImageClick = { imagePicker.launch("image/*") },
-                    onRemoveImage = { viewModel.removeImage(it) },
-                    onToggleMarkdown = {
-                        if (uiState.editingMessage != null) {
-                            viewModel.toggleEditingMarkdown()
-                        } else {
-                            viewModel.toggleMarkdown()
-                        }
-                    },
-                    innerPadding = innerPadding,
-                    isUploading = isUploading,
-                    uploadProgress = uploadProgress,
-                    onCancelUpload = { viewModel.cancelUpload() },
-                    onEmojiClick = { viewModel.toggleEmojiPanel() },
-                    hasScheduled = uiState.hasScheduled,
-                    onScheduledListClick = { showScheduledList = true },
-                    showScheduleMenu = showScheduleMenu,
-                    onShowScheduleMenuChange = { showScheduleMenu = it },
-                    onScheduleMenuConfirm = { showTimePicker = true },
-                    hazeState = hazeState
-                )
+                val liquidGlassEnabled = LocalLiquidGlassEnabled.current
+                val bottomBarShape = RoundedCornerShape(24.dp)
+                val useGlass = liquidGlassEnabled && liquidBackdrop != null
+                val glassSurfaceColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 6.dp, vertical = 8.dp)
+                        .clip(bottomBarShape)
+                        .then(
+                            if (useGlass) {
+                                Modifier.drawBackdrop(
+                                    backdrop = liquidBackdrop!!,
+                                    shape = { bottomBarShape },
+                                    effects = {
+                                        vibrancy()
+                                        blur(1.dp.toPx() * LocalLiquidGlassBlur.current)
+                                        lens(16.dp.toPx(), 32.dp.toPx())
+                                    },
+                                    onDrawSurface = {
+                                        drawRect(glassSurfaceColor)
+                                    }
+                                )
+                            } else {
+                                Modifier
+                                    .shadow(2.dp, bottomBarShape)
+                                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                            }
+                        )
+                ) {
+                    MessageInput(
+                        inputText = if (uiState.editingMessage != null) uiState.editingContent else uiState.inputText,
+                        selectedImages = uiState.selectedImages,
+                        isMarkdown = uiState.isMarkdown,
+                        onTextChange = {
+                            if (uiState.editingMessage != null) {
+                                viewModel.updateEditingContent(it)
+                            } else {
+                                viewModel.onInputTextChanged(it)
+                            }
+                        },
+                        onSendClick = {
+                            if (uiState.editingMessage != null) {
+                                viewModel.submitEditMessage()
+                            } else {
+                                viewModel.sendMessage()
+                            }
+                        },
+                        onAddImageClick = { imagePicker.launch("image/*") },
+                        onRemoveImage = { viewModel.removeImage(it) },
+                        onToggleMarkdown = {
+                            if (uiState.editingMessage != null) {
+                                viewModel.toggleEditingMarkdown()
+                            } else {
+                                viewModel.toggleMarkdown()
+                            }
+                        },
+                        innerPadding = innerPadding,
+                        isUploading = isUploading,
+                        uploadProgress = uploadProgress,
+                        onCancelUpload = { viewModel.cancelUpload() },
+                        onEmojiClick = { viewModel.toggleEmojiPanel() },
+                        hasScheduled = uiState.hasScheduled,
+                        onScheduledListClick = { showScheduledList = true },
+                        showScheduleMenu = showScheduleMenu,
+                        onShowScheduleMenuChange = { showScheduleMenu = it },
+                        onScheduleMenuConfirm = { showTimePicker = true },
+                        hazeState = hazeState
+                    )
+                }
 
                 AnimatedVisibility(
                     visible = emojiPanelVisible,
@@ -3020,189 +3057,175 @@ fun MessageInput(
     onScheduleMenuConfirm: () -> Unit,
     hazeState: HazeState
 ) {
-    val inputBarBg = Color(0xFF2C2D35).copy(alpha = 0.95f)
-    val textColor = Color(0xFFE0E0E0)
-    val placeholderColor = Color(0xFF888888)
-    val sendBtnBg = Color(0xFF1E90FF)
-    val iconColor = Color(0xFFCCCCCC)
-
     var showAttachmentMenu by remember { mutableStateOf(false) }
+    val iconTint = MaterialTheme.colorScheme.onSurfaceVariant
+    val sendEnabled = inputText.isNotBlank() || selectedImages.isNotEmpty()
 
-    Surface(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-            .padding(bottom = innerPadding.calculateBottomPadding())
-            .heightIn(max = 150.dp)
-            .hazeEffect(
-                state = hazeState,
-                style = HazeMaterials.thin(containerColor = inputBarBg).copy(
-                    blurRadius = 32.dp,
-                    noiseFactor = 0f
-                ),
-                block = null
-            ),
-        color = inputBarBg,
-        shape = RoundedCornerShape(30.dp)
+            .padding(horizontal = 6.dp, vertical = 4.dp)
     ) {
-        Column(modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 6.dp)) {
-
-            // --- 图片/上传预览层 ---
-            if (isUploading) {
-                UploadProgressBar(progress = uploadProgress, onCancel = onCancelUpload)
-            } else if (selectedImages.isNotEmpty()) {
-                LazyRow(modifier = Modifier
+        if (isUploading) {
+            UploadProgressBar(progress = uploadProgress, onCancel = onCancelUpload)
+        } else if (selectedImages.isNotEmpty()) {
+            LazyRow(
+                modifier = Modifier
                     .fillMaxWidth()
-                    .height(80.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    items(selectedImages.size) { index ->
-                        Box(modifier = Modifier
+                    .height(80.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                items(selectedImages.size) { index ->
+                    Box(
+                        modifier = Modifier
                             .size(70.dp)
-                            .clip(RoundedCornerShape(8.dp))) {
-                            AsyncImage(model = selectedImages[index], contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                            IconButton(onClick = { onRemoveImage(index) }, modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                    ) {
+                        AsyncImage(
+                            model = selectedImages[index],
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                        IconButton(
+                            onClick = { onRemoveImage(index) },
+                            modifier = Modifier
                                 .align(Alignment.TopEnd)
                                 .size(20.dp)
-                                .background(
-                                    color = Color.Black.copy(alpha = 0.7f),
-                                    shape = CircleShape
-                                )) {
-                                Icon(Icons.Default.Close, contentDescription = "移除", tint = Color.White, modifier = Modifier.size(12.dp))
-                            }
+                                .background(Color.Black.copy(alpha = 0.7f), CircleShape)
+                        ) {
+                            Icon(Icons.Default.Close, "移除", tint = Color.White, modifier = Modifier.size(12.dp))
                         }
                     }
                 }
-                Spacer(Modifier.height(6.dp))
+            }
+            Spacer(Modifier.height(6.dp))
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onEmojiClick, modifier = Modifier.size(36.dp)) {
+                Icon(Icons.Default.Face, contentDescription = "表情", tint = iconTint)
             }
 
-            // --- 核心排版 ---
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically  // ① 改 Bottom → CenterVertically
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 4.dp),
+                contentAlignment = Alignment.CenterStart
             ) {
-                // 1. 表情按钮
-                IconButton(onClick = onEmojiClick, modifier = Modifier.size(36.dp)) {
-                    Icon(imageVector = Icons.Default.Face, contentDescription = "表情", tint = iconColor)
-                }
-                Spacer(modifier = Modifier.width(4.dp))
-
-                // 2. 输入框区域
-                Box(
+                BasicTextField(
+                    value = inputText,
+                    onValueChange = onTextChange,
+                    textStyle = TextStyle(
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 16.sp,
+                        lineHeight = 20.sp
+                    ),
                     modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 4.dp),
-                    contentAlignment = Alignment.CenterStart  // ② 改 BottomStart → CenterStart
-                ) {
-                    BasicTextField(
-                        value = inputText,
-                        onValueChange = onTextChange,
-                        textStyle = TextStyle(
-                            color = textColor,
-                            fontSize = 16.sp,
-                            lineHeight = 20.sp
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .defaultMinSize(minHeight = 40.dp),
-                        minLines = 1,
-                        maxLines = 5
+                        .fillMaxWidth()
+                        .defaultMinSize(minHeight = 40.dp),
+                    minLines = 1,
+                    maxLines = 5
+                )
+                if (inputText.isEmpty()) {
+                    Text(
+                        text = "输入消息",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
+                        fontSize = 16.sp
                     )
-
-                    if (inputText.isEmpty()) {
-                        Text(
-                            text = "输入消息",
-                            color = placeholderColor,
-                            fontSize = 16.sp
-                            // ③ 移除 Modifier.align 和 offset，直接由 Box 的 contentAlignment 控制
-                        )
-                    }
                 }
+            }
 
-                Spacer(modifier = Modifier.width(4.dp))
-
-                // 3. 回形针菜单
-                Box {
-                    IconButton(onClick = { showAttachmentMenu = true }, modifier = Modifier.size(36.dp)) {
-                        Icon(imageVector = Icons.Outlined.AttachFile, contentDescription = "附件", tint = iconColor)
-                    }
-                    DropdownMenu(expanded = showAttachmentMenu, onDismissRequest = { showAttachmentMenu = false }) {
-                        DropdownMenuItem(text = { Text("发送图片") }, onClick = { showAttachmentMenu = false; onAddImageClick() }, leadingIcon = { Icon(Icons.Default.Image, null) })
-                        DropdownMenuItem(
-                            text = {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("Markdown 模式")
-                                    Spacer(Modifier.width(8.dp))
-                                    Box(
-                                        modifier = Modifier
-                                            .size(8.dp)
-                                            .clip(CircleShape)
-                                            .background(if (isMarkdown) Color(0xFF4CAF50) else Color.Gray)
-                                    )
-                                }
-                            },
-                            onClick = { showAttachmentMenu = false; onToggleMarkdown() },
-                            leadingIcon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.markdown),
-                                    contentDescription = null,
-                                    tint = if (isMarkdown) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                                    modifier = Modifier.size(24.dp)
+            Box {
+                IconButton(onClick = { showAttachmentMenu = true }, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Outlined.AttachFile, contentDescription = "附件", tint = iconTint)
+                }
+                DropdownMenu(
+                    expanded = showAttachmentMenu,
+                    onDismissRequest = { showAttachmentMenu = false },
+                    shape = MenuDefaults.standaloneGroupShape
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("发送图片") },
+                        onClick = { showAttachmentMenu = false; onAddImageClick() },
+                        leadingIcon = { Icon(Icons.Default.Image, null) }
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Markdown 模式")
+                                Spacer(Modifier.width(8.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            if (isMarkdown) MaterialTheme.colorScheme.primary
+                                            else MaterialTheme.colorScheme.outline
+                                        )
                                 )
                             }
-                        )
-                    }
-                }
-
-                // 4. 日历图标
-                if (hasScheduled) {
-                    IconButton(onClick = onScheduledListClick, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Event, contentDescription = "定时消息", tint = iconColor)
-                    }
-                    Spacer(modifier = Modifier.width(4.dp))
-                }
-
-                // 5. 蓝色发送按钮
-                val isSendEnabled = inputText.isNotBlank() || selectedImages.isNotEmpty()
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(sendBtnBg)
-                        .combinedClickable(
-                            onClick = {
-                                if (isSendEnabled && !showScheduleMenu) {
-                                    onSendClick()
-                                }
-                            },
-                            onLongClick = {
-                                if (isSendEnabled) {
-                                    onShowScheduleMenuChange(true)
-                                }
-                            }
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "发送",
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
+                        },
+                        onClick = { showAttachmentMenu = false; onToggleMarkdown() },
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(R.drawable.markdown),
+                                contentDescription = null,
+                                tint = if (isMarkdown) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     )
-                    DropdownMenu(
-                        expanded = showScheduleMenu,
-                        onDismissRequest = { onShowScheduleMenuChange(false) },
-                        modifier = Modifier.background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("定时消息", fontWeight = FontWeight.Medium) },
-                            leadingIcon = { Icon(Icons.Default.Event, null, Modifier.size(18.dp)) },
-                            onClick = {
-                                onShowScheduleMenuChange(false)
-                                onScheduleMenuConfirm()
-                            }
-                        )
-                    }
+                }
+            }
+
+            if (hasScheduled) {
+                IconButton(onClick = onScheduledListClick, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Default.Event, contentDescription = "定时消息", tint = iconTint)
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .padding(start = 4.dp)
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (sendEnabled) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.surfaceContainerHighest
+                    )
+                    .combinedClickable(
+                        onClick = { if (sendEnabled && !showScheduleMenu) onSendClick() },
+                        onLongClick = { if (sendEnabled) onShowScheduleMenuChange(true) }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.Send,
+                    contentDescription = "发送",
+                    tint = if (sendEnabled) MaterialTheme.colorScheme.onPrimary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(22.dp)
+                )
+                DropdownMenu(
+                    expanded = showScheduleMenu,
+                    onDismissRequest = { onShowScheduleMenuChange(false) },
+                    shape = MenuDefaults.standaloneGroupShape
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("定时消息", fontWeight = FontWeight.Medium) },
+                        leadingIcon = { Icon(Icons.Default.Event, null, Modifier.size(18.dp)) },
+                        onClick = {
+                            onShowScheduleMenuChange(false)
+                            onScheduleMenuConfirm()
+                        }
+                    )
                 }
             }
         }
