@@ -990,24 +990,15 @@ class MessageDetailActivity : ComponentActivity() {
                         }
                     }
                     ) { innerPadding ->
-                        // 修复 RenderThread 栈溢出（prepareTreeImpl 无限递归）：
-                        // hazeSource 与 layerBackdrop 不能挂在同一个节点上 —— 两者都会改写同一节点的
-                        // 子 RenderNode 关系，叠加会产生环，玻璃开启时聊天页必崩（真机/模拟器均复现，
-                        // 与玻璃面数量无关）。主屏之所以正常，是因为 hazeSource 在根 Box、
-                        // layerBackdrop 在 NavHost Box，分属不同节点。这里同样拆成两层。
+                        // 修复 RenderThread 栈溢出：layerBackdrop 已下移到 MessageDetailScreen 内部，
+                        // 只捕获"背景+列表"内容（见 MessageDetailScreen 根布局注释）；
+                        // 玻璃采样面（输入栏）在层外，避免 RenderNode 成环。此处只保留 hazeSource，
+                        // 供输入栏/选区的 haze 回退分支使用。
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .hazeSource(hazeState)
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .then(
-                                        if (liquidBackdrop != null) Modifier.layerBackdrop(liquidBackdrop!!)
-                                        else Modifier
-                                    )
-                            ) {
                         MessageDetailScreen(
                             innerPadding = innerPadding,
                             viewModel = viewModel,
@@ -1039,8 +1030,7 @@ class MessageDetailActivity : ComponentActivity() {
                                 onShareImage = { bitmap -> shareBitmap(this@MessageDetailActivity, bitmap) }
                             )
                         } // 关闭 if (showShareSheet...)
-                            } // 关闭 layerBackdrop Box
-                        } // 关闭 hazeSource Box
+                        } // 关闭 content Box（hazeSource）
                     }
                 }
             }
@@ -1289,6 +1279,18 @@ fun MessageDetailScreen(
     // 👇 悬浮布局核心结构 👇
     // ==============================
     Box(modifier = Modifier.fillMaxSize()) {
+        // 修复 RenderThread 栈溢出：layerBackdrop 只捕获"玻璃后面的内容"（背景 + 列表）。
+        // 玻璃采样面（输入栏 glassControl / drawBackdrop）必须以兄弟节点放在本层之外
+        // （与主屏 LiquidBottomTabs、murexide 的 Scaffold bottomBar 结构一致）；
+        // 否则采样面位于自己采样的层内部，RenderNode 成环，prepareTreeImpl 无限递归 → 栈溢出。
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .then(
+                    if (liquidBackdrop != null) Modifier.layerBackdrop(liquidBackdrop!!)
+                    else Modifier
+                )
+        ) {
         // 1. 统一的背景层
         val backgroundUrl by viewModel.backgroundUrl.collectAsState()
         backgroundUrl?.takeIf { it.isNotEmpty() }?.let { bgUrl ->
@@ -1632,6 +1634,7 @@ fun MessageDetailScreen(
                 )
             }
         }
+        } // 关闭内容层（layerBackdrop 只捕获背景+列表，输入栏在其外）
         // ==============================
         // 👇 3. 悬浮在底部的操作栏 (无任何省略) 👇
         // ==============================
