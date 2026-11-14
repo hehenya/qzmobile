@@ -2234,13 +2234,16 @@ fun MessageBubble(
                             isMine -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = bubbleOpacity)
                             else -> MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp).copy(alpha = bubbleOpacity)
                         }
-                        Row(verticalAlignment = Alignment.Bottom) {
-    // 小尾巴：组内【最后一条】消息（isLastFromSender）在最外沿画四分之一圆尾巴，
-    // 与头像同侧对齐；纯媒体消息（图片等，hideCard）不画气泡也不画尾巴；其余用 Spacer 占位。
+                        // —— 与参考项目完全一致：自己消息整体 RTL 翻转，尾巴画在行首（自己=右侧、对方=左侧）——
+    val defaultLayoutDirection = LocalLayoutDirection.current
+    val bubbleLayoutDirection = if (isMine) defaultLayoutDirection.opposite() else defaultLayoutDirection
+    CompositionLocalProvider(LocalLayoutDirection provides bubbleLayoutDirection) {
+    Row(verticalAlignment = Alignment.Bottom) {
+    // 组内最后一条消息（isLastFromSender）在最外沿画四分之一圆尾巴；纯媒体消息（hideCard）不画气泡也不画尾巴
     val hideCard = message.images.isNotEmpty() && message.content.isBlank() && !isRecalledMessage
-    if (!isMine && isLastFromSender && !hideCard) {
+    if (isLastFromSender && !hideCard) {
         Spacer(Modifier.size(4.dp))
-        QuarterCircleCorner(color = bubbleColor, isMine = false)
+        QuarterCircleCorner(color = bubbleColor, isMine = isMine, defaultLayoutDirection = defaultLayoutDirection)
     } else {
         Spacer(Modifier.size(12.dp))
     }
@@ -2250,19 +2253,17 @@ fun MessageBubble(
             topStart = if (!isLastFromSender) (bubbleCornerRadius / 4).dp else bubbleCornerRadius.dp,
             topEnd = bubbleCornerRadius.dp,
             bottomStart = when {
-                !isMine && isLastFromSender && !hideCard -> 0.dp   // 对方尾巴角（左下）
-                hideCard -> bubbleCornerRadius.dp                  // 纯媒体消息恢复完整圆角
-                else -> (bubbleCornerRadius / 4).dp                // 组内相邻收窄
+                isLastFromSender && !hideCard -> 0.dp   // 尾巴角（自己=右下、对方=左下，RTL 自动镜像）
+                hideCard -> bubbleCornerRadius.dp       // 纯媒体消息恢复完整圆角
+                else -> (bubbleCornerRadius / 4).dp     // 组内相邻收窄
             },
-            bottomEnd = when {
-                isMine && isLastFromSender && !hideCard -> 0.dp    // 自己尾巴角（右下）
-                hideCard -> bubbleCornerRadius.dp
-                else -> (bubbleCornerRadius / 4).dp
-            }
+            bottomEnd = bubbleCornerRadius.dp
         ),
         colors = CardDefaults.cardColors(containerColor = bubbleColor),
         modifier = Modifier.weight(1f, fill = false)
                             ) {
+                                // 卡片内容复位为 LTR，避免自己消息的 RTL 翻转影响内部排版（与参考项目一致）
+                                CompositionLocalProvider(LocalLayoutDirection provides defaultLayoutDirection) {
                                 Column(modifier = Modifier.padding(8.dp)) {
                                 if (message.forwardInfo != null) {
                                     val fi = message.forwardInfo!!
@@ -2473,12 +2474,10 @@ fun MessageBubble(
                                     if (message.editTime != null) Text("已编辑", fontSize = 10.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f), modifier = Modifier.padding(start = 4.dp))
                                 }
                                 }
-                            }
-                            if (isMine && isLastFromSender && !hideCard) {
-                                // 自己的消息在右侧：isMine=false 让尾巴向外（右）凸出
-                                QuarterCircleCorner(color = bubbleColor, isMine = false)
-                            }
-                        }
+                                } // 关闭 Card 内 LTR 复位 provider
+                            } // 关闭 Card
+                        } // 关闭 Row（尾巴行）
+                        } // 关闭 bubbleLayoutDirection provider
                     }
                     DropdownMenu(
                         expanded = showMenu,
@@ -2588,6 +2587,11 @@ fun MessageBubble(
             }
         }
     }
+}
+
+private fun LayoutDirection.opposite(): LayoutDirection = when (this) {
+    LayoutDirection.Ltr -> LayoutDirection.Rtl
+    LayoutDirection.Rtl -> LayoutDirection.Ltr
 }
 
 @Composable
