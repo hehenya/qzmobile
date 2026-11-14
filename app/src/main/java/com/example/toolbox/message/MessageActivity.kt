@@ -2235,10 +2235,10 @@ fun MessageBubble(
                             else -> MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp).copy(alpha = bubbleOpacity)
                         }
                         Row(verticalAlignment = Alignment.Bottom) {
-    // 小尾巴显示逻辑与参考项目一致：组内第一条消息在最外沿画四分之一圆尾巴，
-    // 纯媒体消息（图片等，hideCard）不画气泡也不画尾巴；其余用 Spacer 占位。
+    // 小尾巴：组内【最后一条】消息（isLastFromSender）在最外沿画四分之一圆尾巴，
+    // 与头像同侧对齐；纯媒体消息（图片等，hideCard）不画气泡也不画尾巴；其余用 Spacer 占位。
     val hideCard = message.images.isNotEmpty() && message.content.isBlank() && !isRecalledMessage
-    if (!isMine && isFirstFromSender && !hideCard) {
+    if (!isMine && isLastFromSender && !hideCard) {
         Spacer(Modifier.size(4.dp))
         QuarterCircleCorner(color = bubbleColor, isMine = false)
     } else {
@@ -2249,10 +2249,16 @@ fun MessageBubble(
         shape = RoundedCornerShape(
             topStart = if (!isLastFromSender) (bubbleCornerRadius / 4).dp else bubbleCornerRadius.dp,
             topEnd = bubbleCornerRadius.dp,
-            bottomStart = if (isFirstFromSender && hideCard) bubbleCornerRadius.dp
-                          else if (isFirstFromSender) 0.dp
-                          else (bubbleCornerRadius / 4).dp,
-            bottomEnd = bubbleCornerRadius.dp
+            bottomStart = when {
+                !isMine && isLastFromSender && !hideCard -> 0.dp   // 对方尾巴角（左下）
+                hideCard -> bubbleCornerRadius.dp                  // 纯媒体消息恢复完整圆角
+                else -> (bubbleCornerRadius / 4).dp                // 组内相邻收窄
+            },
+            bottomEnd = when {
+                isMine && isLastFromSender && !hideCard -> 0.dp    // 自己尾巴角（右下）
+                hideCard -> bubbleCornerRadius.dp
+                else -> (bubbleCornerRadius / 4).dp
+            }
         ),
         colors = CardDefaults.cardColors(containerColor = bubbleColor),
         modifier = Modifier.weight(1f, fill = false)
@@ -2468,8 +2474,9 @@ fun MessageBubble(
                                 }
                                 }
                             }
-                            if (isMine && isFirstFromSender && !hideCard) {
-                                QuarterCircleCorner(color = bubbleColor, isMine = true)
+                            if (isMine && isLastFromSender && !hideCard) {
+                                // 自己的消息在右侧：isMine=false 让尾巴向外（右）凸出
+                                QuarterCircleCorner(color = bubbleColor, isMine = false)
                             }
                         }
                     }
