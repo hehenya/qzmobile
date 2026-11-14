@@ -136,6 +136,7 @@ import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.SnackbarDefaults.actionColor
 import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
@@ -1042,7 +1043,7 @@ class MessageDetailActivity : ComponentActivity() {
 fun MessageDetailScreen(
     innerPadding: PaddingValues,
     viewModel: MessageDetailViewModel,
-    liquidBackdrop: com.kyant.backdrop.Backdrop? = null
+    liquidBackdrop: LayerBackdrop? = null
 ) {
 
     val context = LocalContext.current
