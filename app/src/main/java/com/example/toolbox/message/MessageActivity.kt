@@ -2372,7 +2372,8 @@ fun MessageBubble(
                                     Text(
                                         message.content,
                                         fontSize = 14.sp,
-                                        color = MaterialTheme.colorScheme.onSurface
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.padding(end = footerReserveDp)
                                     )
                                 }
                                 if (message.images.isNotEmpty()) {
@@ -2381,9 +2382,10 @@ fun MessageBubble(
                                         Box(modifier = Modifier
                                             .widthIn(max = 200.dp)
                                             .heightIn(min = 120.dp)
+                                            .aspectRatio(1f)   // 无尺寸信息时默认 1:1（参考项目 imageAspectRatio 缺省值）
                                             .clip(RoundedCornerShape(8.dp))
                                             .clickable { onImageClick(message.images, 0) }) {
-                                            AsyncImage(model = message.images[0], imageLoader = imageLoader, contentDescription = null, contentScale = ContentScale.FillWidth, modifier = Modifier.fillMaxWidth())
+                                            BubbleImage(model = message.images[0], imageLoader = imageLoader, modifier = Modifier.fillMaxSize())
                                             if (!hasText) {
                                                 Text(
                                                     timestampDisplay,
@@ -2481,19 +2483,27 @@ fun MessageBubble(
                                         })
                                     }
                                 }
-                                Row(
-                                    modifier = Modifier
-                                        .align(if (isMine) Alignment.End else Alignment.Start)
-                                        .clickable { onTimeClick?.invoke() }  // 添加点击事件
-                                ) {
-                                    if (message.content.isNotBlank()) {
+                                }
+                                // footer 用 align(BottomEnd) 叠加在气泡右下角（参考项目）；纯媒体消息时间已叠图上，避免重复
+                                if (!hideCard) {
+                                    Row(
+                                        modifier = Modifier
+                                            .align(Alignment.BottomEnd)
+                                            .padding(4.dp)
+                                            .clickable { onTimeClick?.invoke() }  // 添加点击事件
+                                    ) {
                                         Text(timestampDisplay, fontSize = 10.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+                                        if (message.editTime != null) Text("已编辑", fontSize = 10.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f), modifier = Modifier.padding(start = 4.dp))
                                     }
-                                    if (message.editTime != null) Text("已编辑", fontSize = 10.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f), modifier = Modifier.padding(start = 4.dp))
                                 }
-                                }
+                                } // 关闭 Box（内容 + footer 叠加层）
                                 } // 关闭 Card 内 LTR 复位 provider
                             } // 关闭 Card
+                                // 纯媒体消息（hideCard）的引用并排显示在气泡外（参考项目 hideCard && hasQuote）
+                                if (hideCard && message.quoteMsgInfo != null) {
+                                    Spacer(Modifier.width(8.dp))
+                                    BubbleQuotePreview(message = message, isMine = isMine, imageLoader = imageLoader)
+                                }
                         } // 关闭 Row（尾巴行）
                         } // 关闭 bubbleLayoutDirection provider
                     }
@@ -2601,6 +2611,87 @@ fun MessageBubble(
                             )
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+// 图片消息：加入默认宽高比、加载动画与失败重试（参考项目 MediaContent）
+@Composable
+private fun BubbleImage(model: Any?, imageLoader: coil3.ImageLoader, modifier: Modifier = Modifier) {
+    var retry by remember(model) { mutableIntStateOf(0) }
+    var loadState by remember(model, retry) { mutableIntStateOf(0) } // 0=加载中 1=成功 2=失败
+    Box(modifier = modifier) {
+        AsyncImage(
+            model = model,
+            imageLoader = imageLoader,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+            onLoading = { loadState = 0 },
+            onSuccess = { loadState = 1 },
+            onError = { loadState = 2 }
+        )
+        if (loadState == 0) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+            }
+        } else if (loadState == 2) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
+                contentAlignment = Alignment.Center
+            ) {
+                IconButton(onClick = { retry++ }) {
+                    Icon(Icons.Default.Refresh, contentDescription = "重试", modifier = Modifier.size(22.dp))
+                }
+            }
+        }
+    }
+}
+
+// 引用卡片（气泡外并排样式，参考项目 QuoteCard）：左侧竖条 + 发送者 + 内容
+@Composable
+private fun BubbleQuotePreview(message: Message, isMine: Boolean, imageLoader: coil3.ImageLoader) {
+    val ref = message.quoteMsgInfo ?: return
+    val name = ref.senderUsername ?: ""
+    Surface(
+        shape = RoundedCornerShape(6.dp),
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+        modifier = Modifier.widthIn(max = 180.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.height(IntrinsicSize.Max)
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .fillMaxHeight()
+                    .background(MaterialTheme.colorScheme.primary)
+            )
+            Column(modifier = Modifier.padding(8.dp)) {
+                if (name.isNotBlank()) {
+                    Text(
+                        name,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                when {
+                    ref.contentType == 7 -> Text("表情消息", fontSize = 12.sp, maxLines = 1, color = MaterialTheme.colorScheme.onSurface)
+                    ref.content.isNotBlank() -> Text(ref.content, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurface)
+                    ref.images.isNotEmpty() -> Text("[图片]", fontSize = 12.sp, maxLines = 1, color = MaterialTheme.colorScheme.onSurface)
                 }
             }
         }
