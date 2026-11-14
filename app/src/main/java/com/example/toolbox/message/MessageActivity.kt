@@ -990,15 +990,24 @@ class MessageDetailActivity : ComponentActivity() {
                         }
                     }
                     ) { innerPadding ->
+                        // 修复 RenderThread 栈溢出（prepareTreeImpl 无限递归）：
+                        // hazeSource 与 layerBackdrop 不能挂在同一个节点上 —— 两者都会改写同一节点的
+                        // 子 RenderNode 关系，叠加会产生环，玻璃开启时聊天页必崩（真机/模拟器均复现，
+                        // 与玻璃面数量无关）。主屏之所以正常，是因为 hazeSource 在根 Box、
+                        // layerBackdrop 在 NavHost Box，分属不同节点。这里同样拆成两层。
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .hazeSource(hazeState)
-                                .then(
-                                    if (liquidBackdrop != null) Modifier.layerBackdrop(liquidBackdrop!!)
-                                    else Modifier
-                                )
                         ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .then(
+                                        if (liquidBackdrop != null) Modifier.layerBackdrop(liquidBackdrop!!)
+                                        else Modifier
+                                    )
+                            ) {
                         MessageDetailScreen(
                             innerPadding = innerPadding,
                             viewModel = viewModel,
@@ -1030,7 +1039,8 @@ class MessageDetailActivity : ComponentActivity() {
                                 onShareImage = { bitmap -> shareBitmap(this@MessageDetailActivity, bitmap) }
                             )
                         } // 关闭 if (showShareSheet...)
-                    } // 关闭 Box
+                            } // 关闭 layerBackdrop Box
+                        } // 关闭 hazeSource Box
                     }
                 }
             }
