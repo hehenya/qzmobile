@@ -1649,7 +1649,7 @@ fun MessageDetailScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = innerPadding.calculateBottomPadding())
+                    .navigationBarsPadding()
                     .hazeEffect(state = hazeState, style = HazeMaterials.thin())
                     .padding(12.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
@@ -1671,7 +1671,10 @@ fun MessageDetailScreen(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(bottom = innerPadding.calculateBottomPadding())
+                    // 键盘弹起时输入栏随之整体上移（参考项目的 imePadding），
+                    // 并悬浮在系统导航条之上，不贴底边
+                    .imePadding()
+                    .navigationBarsPadding()
             ) {
                 replyTo?.let { repliedMessage ->
                     Surface(

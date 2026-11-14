@@ -959,11 +959,17 @@ class GroupInfoViewModel(
 
             try {
                 val gid = targetGroupId ?: groupId
-                val url = "${ApiAddress}group/pending_list/$gid"
+                // 服务端接口：POST /group/pending_list，body {"group_id": gid, "status": 1}
+                // （原来用 GET /group/pending_list/$gid 会 404，导致申请列表拉取不到）
+                val url = "${ApiAddress}group/pending_list"
+                val requestBody = buildJsonObject {
+                    put("group_id", gid)
+                    put("status", 1)
+                }
                 val request = Request.Builder()
                     .url(url)
                     .header("x-access-token", token)
-                    .get()
+                    .post(json.encodeToString(requestBody).toRequestBody("application/json".toMediaType()))
                     .build()
 
                 val result = withContext(Dispatchers.IO) {
