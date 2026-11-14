@@ -144,6 +144,7 @@ import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
 import com.example.toolbox.ui.theme.LocalLiquidGlassEnabled
 import com.example.toolbox.ui.theme.LocalLiquidGlassBlur
+import com.example.toolbox.ui.theme.liquidglass.glassControl
 
 @OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
@@ -1775,36 +1776,19 @@ fun MessageDetailScreen(
                 val emojiPanelVisible by viewModel.emojiPanelVisible.collectAsState()
                 val emojis by viewModel.emojis.collectAsState()
                 val isLoadingEmojis by viewModel.isLoadingEmojis.collectAsState()
-                val liquidGlassBlur = LocalLiquidGlassBlur.current  
                 val liquidGlassEnabled = LocalLiquidGlassEnabled.current
                 val bottomBarShape = RoundedCornerShape(24.dp)
-                val useGlass = liquidGlassEnabled && liquidBackdrop != null
-                val glassSurfaceColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
 
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 6.dp, vertical = 8.dp)
-                        .clip(bottomBarShape)
-                        .then(
-                            if (useGlass) {
-                                Modifier.drawBackdrop(
-                                    backdrop = liquidBackdrop!!,
-                                    shape = { bottomBarShape },
-                                    effects = {
-                                        vibrancy()
-                                        blur(1.dp.toPx() * liquidGlassBlur)
-                                        lens(16.dp.toPx(), 32.dp.toPx())
-                                    },
-                                    onDrawSurface = {
-                                        drawRect(glassSurfaceColor)
-                                    }
-                                )
-                            } else {
-                                Modifier
-                                    .shadow(2.dp, bottomBarShape)
-                                    .background(MaterialTheme.colorScheme.surfaceContainer)
-                            }
+                        .glassControl(
+                            shape = bottomBarShape,
+                            liquidBackdrop = liquidBackdrop,
+                            hazeState = hazeState,
+                            useGlassBar = liquidGlassEnabled,
+                            isInteractive = false
                         )
                 ) {
                     MessageInput(
@@ -3118,34 +3102,35 @@ fun MessageInput(
                 Icon(Icons.Default.Face, contentDescription = "表情", tint = iconTint)
             }
 
-            Box(
+            BasicTextField(
+                value = inputText,
+                onValueChange = onTextChange,
+                textStyle = TextStyle(
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 16.sp,
+                    lineHeight = 20.sp
+                ),
                 modifier = Modifier
                     .weight(1f)
-                    .padding(horizontal = 4.dp),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                BasicTextField(
-                    value = inputText,
-                    onValueChange = onTextChange,
-                    textStyle = TextStyle(
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontSize = 16.sp,
-                        lineHeight = 20.sp
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .defaultMinSize(minHeight = 40.dp),
-                    minLines = 1,
-                    maxLines = 5
-                )
-                if (inputText.isEmpty()) {
-                    Text(
-                        text = "输入消息",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
-                        fontSize = 16.sp
-                    )
+                    .padding(horizontal = 4.dp)
+                    .fillMaxWidth()
+                    .heightIn(max = 144.dp)
+                    .defaultMinSize(minHeight = 40.dp),
+                minLines = 1,
+                maxLines = 5,
+                decorationBox = { innerTextField ->
+                    Box(contentAlignment = Alignment.CenterStart) {
+                        if (inputText.isEmpty()) {
+                            Text(
+                                text = "输入消息",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
+                                fontSize = 16.sp
+                            )
+                        }
+                        innerTextField()
+                    }
                 }
-            }
+            )
 
             Box {
                 IconButton(onClick = { showAttachmentMenu = true }, modifier = Modifier.size(36.dp)) {
@@ -3200,10 +3185,10 @@ fun MessageInput(
             Box(
                 modifier = Modifier
                     .padding(start = 4.dp)
-                    .size(44.dp)
+                    .size(36.dp)
                     .clip(CircleShape)
                     .background(
-                        if (sendEnabled) MaterialTheme.colorScheme.primary
+                        if (sendEnabled) MaterialTheme.colorScheme.primaryContainer
                         else MaterialTheme.colorScheme.surfaceContainerHighest
                     )
                     .combinedClickable(
@@ -3215,9 +3200,9 @@ fun MessageInput(
                 Icon(
                     Icons.AutoMirrored.Filled.Send,
                     contentDescription = "发送",
-                    tint = if (sendEnabled) MaterialTheme.colorScheme.onPrimary
+                    tint = if (sendEnabled) MaterialTheme.colorScheme.onPrimaryContainer
                     else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(20.dp)
                 )
                 DropdownMenu(
                     expanded = showScheduleMenu,

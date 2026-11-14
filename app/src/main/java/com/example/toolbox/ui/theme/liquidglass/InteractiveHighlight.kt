@@ -33,6 +33,14 @@ internal class InteractiveHighlight(
         Animatable(Offset.Zero, Offset.VectorConverter, Offset.VisibilityThreshold)
     private var startPosition = Offset.Zero
 
+    /** 当前按压进度，0f~1f，供 [layerBlock] 的液滴位移/缩放计算使用 */
+    val pressProgress: Float
+        get() = pressProgressAnimation.value
+
+    /** 当前指针偏移位置，供 [layerBlock] 的液滴位移/缩放计算使用 */
+    val offset: Offset
+        get() = positionAnimation.value
+
     private val shader = if (isRuntimeShaderSupported()) {
         RuntimeShader(
             """
