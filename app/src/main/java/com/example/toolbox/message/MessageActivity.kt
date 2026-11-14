@@ -156,13 +156,16 @@ fun FloatingChatTopBar(
     title: @Composable () -> Unit,
     onMoreClick: () -> Unit,
     moreMenu: @Composable () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // 修复模拟器 RenderThread 栈溢出：聊天页同时存在多个 drawBackdrop 会让渲染节点链过深/成环。
+    // 传 true 时本顶栏放弃 drawBackdrop，改走下面的实心回退分支，只保留输入栏一个玻璃面。
+    forceSolid: Boolean = false
 ) {
     val liquidGlassEnabled = LocalLiquidGlassEnabled.current
     val liquidGlassBlur = LocalLiquidGlassBlur.current
     val topBarColor = MaterialTheme.colorScheme.surface
     val buttonShape = CircleShape
-    val useGlassBar = liquidGlassEnabled && liquidBackdrop != null
+    val useGlassBar = !forceSolid && liquidGlassEnabled && liquidBackdrop != null
 
     @Composable
     fun Modifier.glassControl(shape: androidx.compose.ui.graphics.Shape): Modifier =
@@ -787,6 +790,7 @@ class MessageDetailActivity : ComponentActivity() {
                                         },
                                         onMoreClick = { showSelectionMenu = true },
                                         liquidBackdrop = liquidBackdrop,
+                                        forceSolid = true,
                                         moreMenu = {
                                             DropdownMenu(
                                                 expanded = showSelectionMenu,
@@ -859,6 +863,7 @@ class MessageDetailActivity : ComponentActivity() {
                                         showBackButton = true,
                                         onBackClick = { finish() },
                                         liquidBackdrop = liquidBackdrop,
+                                        forceSolid = true,
                                         title = {
                                             if (chatType == 2 && uiState.groupInfo != null) {
                                                 val group = uiState.groupInfo!!
@@ -976,7 +981,8 @@ class MessageDetailActivity : ComponentActivity() {
                                                 startActivity(intent)
                                             },
                                             hazeState = hazeState,
-                                            liquidBackdrop = liquidBackdrop
+                                            liquidBackdrop = liquidBackdrop,
+                                            forceSolid = true
                                         )
                                     }
                                 }
@@ -3434,13 +3440,15 @@ fun AnnouncementBanner(
     message: Message,
     onClick: () -> Unit,
     hazeState: HazeState,
-    liquidBackdrop: Backdrop? = null   // 新增参数
+    liquidBackdrop: Backdrop? = null,   // 新增参数
+    // 修复模拟器 RenderThread 栈溢出：聊天页只保留输入栏一个玻璃面，公告栏走 haze 回退分支
+    forceSolid: Boolean = false
 ) {
     val liquidGlassEnabled = LocalLiquidGlassEnabled.current
     val liquidGlassBlur = LocalLiquidGlassBlur.current
     val controlShape = RoundedCornerShape(12.dp)
     val containerColor = MaterialTheme.colorScheme.surface
-    val useGlass = liquidGlassEnabled && liquidBackdrop != null
+    val useGlass = !forceSolid && liquidGlassEnabled && liquidBackdrop != null
 
     Box(
         modifier = Modifier
