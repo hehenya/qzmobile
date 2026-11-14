@@ -236,12 +236,13 @@ DisposableEffect(lifecycle) {
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("加入群") },
+                                    text = { Text("加入会话") },
                                     leadingIcon = {
                                         Icon(Icons.Default.Group, contentDescription = null)
                                     },
                                     onClick = {
-                                        groupViewModel.showJoinDialog()
+                                        groupViewModel.hideDropdownMenu()
+                                        context.startActivity(Intent(context, JoinConversationActivity::class.java))
                                     }
                                 )
                             }

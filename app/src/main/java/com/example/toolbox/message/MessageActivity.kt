@@ -1805,7 +1805,8 @@ fun MessageDetailScreen(
                 val emojis by viewModel.emojis.collectAsState()
                 val isLoadingEmojis by viewModel.isLoadingEmojis.collectAsState()
                 val liquidGlassEnabled = LocalLiquidGlassEnabled.current
-                val bottomBarShape = RoundedCornerShape(24.dp)
+                // 输入栏圆角调大（28dp），更接近参考项目的圆润观感
+                val bottomBarShape = RoundedCornerShape(28.dp)
 
                 Box(
                     modifier = Modifier
@@ -2234,25 +2235,24 @@ fun MessageBubble(
                             else -> MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp).copy(alpha = bubbleOpacity)
                         }
                         Row(verticalAlignment = Alignment.Bottom) {
-    // 对方消息：组尾才在左侧画尾巴
-    if (!isMine && isLastFromSender) {
-        QuarterCircleCorner(color = bubbleColor, isMine = false, size = 12.dp)
+    // 小尾巴显示逻辑与参考项目一致：组内第一条消息在最外沿画四分之一圆尾巴，
+    // 纯媒体消息（图片等，hideCard）不画气泡也不画尾巴；其余用 Spacer 占位。
+    val hideCard = message.images.isNotEmpty() && message.content.isBlank() && !isRecalledMessage
+    if (!isMine && isFirstFromSender && !hideCard) {
+        Spacer(Modifier.size(4.dp))
+        QuarterCircleCorner(color = bubbleColor, isMine = false)
+    } else {
+        Spacer(Modifier.size(12.dp))
     }
 
     Card(
         shape = RoundedCornerShape(
-            topStart = if (!isMine && isOlderSameSender) (bubbleCornerRadius * 0.3f).dp else bubbleCornerRadius.dp,
-            topEnd   = if ( isMine && isOlderSameSender) (bubbleCornerRadius * 0.3f).dp else bubbleCornerRadius.dp,
-            bottomStart = when {
-                isMine -> bubbleCornerRadius.dp
-                isLastFromSender -> bubbleCornerRadius.dp      // 组尾恢复完整圆角
-                else -> (bubbleCornerRadius * 0.3f).dp          // 组内收窄
-            },
-            bottomEnd = when {
-                !isMine -> bubbleCornerRadius.dp
-                isLastFromSender -> bubbleCornerRadius.dp
-                else -> (bubbleCornerRadius * 0.3f).dp
-            }
+            topStart = if (!isLastFromSender) (bubbleCornerRadius / 4).dp else bubbleCornerRadius.dp,
+            topEnd = bubbleCornerRadius.dp,
+            bottomStart = if (isFirstFromSender && hideCard) bubbleCornerRadius.dp
+                          else if (isFirstFromSender) 0.dp
+                          else (bubbleCornerRadius / 4).dp,
+            bottomEnd = bubbleCornerRadius.dp
         ),
         colors = CardDefaults.cardColors(containerColor = bubbleColor),
         modifier = Modifier.weight(1f, fill = false)
@@ -2468,8 +2468,8 @@ fun MessageBubble(
                                 }
                                 }
                             }
-                            if (isMine && isNewerSameSender) {
-                                QuarterCircleCorner(color = bubbleColor, isMine = true, size = 12.dp)
+                            if (isMine && isFirstFromSender && !hideCard) {
+                                QuarterCircleCorner(color = bubbleColor, isMine = true)
                             }
                         }
                     }
