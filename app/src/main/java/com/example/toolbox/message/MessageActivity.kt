@@ -41,6 +41,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.foundation.layout.*
@@ -2126,6 +2127,11 @@ fun MessageBubble(
                     }
                 }
             }
+            // 表情消息的引用：气泡外并排（参考项目 hideCard && hasQuote）
+            if (message.quoteMsgInfo != null) {
+                Spacer(Modifier.width(8.dp))
+                BubbleQuotePreview(message = message, isMine = isMine, imageLoader = imageLoader)
+            }
         }
     } else {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -2229,10 +2235,17 @@ fun MessageBubble(
                         )
                 ) {
                     Column(horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
+                        // 对方气泡颜色（参考项目）：浅色主题固定 #EEEEF0，深色主题 surfaceContainerHigh，
+                        // 其他主题 surfaceColorAtElevation(8.dp)（项目暂无"白"主题开关，暂以亮/暗划分）
+                        val incomingBubbleColor = if (!isSystemInDarkTheme()) {
+                            Color(0xFFEEEEF0)
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = bubbleOpacity)
+                        }
                         val bubbleColor = when {
                             message.images.isNotEmpty() && message.content.isBlank() -> Color.Transparent
                             isMine -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = bubbleOpacity)
-                            else -> MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp).copy(alpha = bubbleOpacity)
+                            else -> incomingBubbleColor
                         }
                         // —— 与参考项目完全一致：自己消息整体 RTL 翻转，尾巴画在行首（自己=右侧、对方=左侧）——
     val defaultLayoutDirection = LocalLayoutDirection.current
@@ -2264,7 +2277,12 @@ fun MessageBubble(
                             ) {
                                 // 卡片内容复位为 LTR，避免自己消息的 RTL 翻转影响内部排版（与参考项目一致）
                                 CompositionLocalProvider(LocalLayoutDirection provides defaultLayoutDirection) {
+                                Box {
                                 Column(modifier = Modifier.padding(8.dp)) {
+                                // 正文为 footer 预留右侧空间（预估宽度，近似参考项目的 textReserveWidthPx）
+                                val footerReserveDp = remember(timestampDisplay, message.editTime) {
+                                    (timestampDisplay.length + (if (message.editTime != null) 4 else 0)) * 5.5f.dp + 8.dp
+                                }
                                 if (message.forwardInfo != null) {
                                     val fi = message.forwardInfo!!
                                     Row(
