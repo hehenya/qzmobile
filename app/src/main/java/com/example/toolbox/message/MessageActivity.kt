@@ -2281,7 +2281,7 @@ fun MessageBubble(
                                 Column(modifier = Modifier.padding(8.dp)) {
                                 // 正文为 footer 预留右侧空间（预估宽度，近似参考项目的 textReserveWidthPx）
                                 val footerReserveDp = remember(timestampDisplay, message.editTime) {
-                                    (timestampDisplay.length + (if (message.editTime != null) 4 else 0)) * 5.5f.dp + 8.dp
+                                    ((timestampDisplay.length + (if (message.editTime != null) 4 else 0)) * 5.5f).dp + 8.dp
                                 }
                                 if (message.forwardInfo != null) {
                                     val fi = message.forwardInfo!!
