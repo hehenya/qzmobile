@@ -791,7 +791,6 @@ class MessageDetailActivity : ComponentActivity() {
                                         },
                                         onMoreClick = { showSelectionMenu = true },
                                         liquidBackdrop = liquidBackdrop,
-                                        forceSolid = true,
                                         moreMenu = {
                                             DropdownMenu(
                                                 expanded = showSelectionMenu,
@@ -864,7 +863,6 @@ class MessageDetailActivity : ComponentActivity() {
                                         showBackButton = true,
                                         onBackClick = { finish() },
                                         liquidBackdrop = liquidBackdrop,
-                                        forceSolid = true,
                                         title = {
                                             if (chatType == 2 && uiState.groupInfo != null) {
                                                 val group = uiState.groupInfo!!
@@ -982,8 +980,7 @@ class MessageDetailActivity : ComponentActivity() {
                                                 startActivity(intent)
                                             },
                                             hazeState = hazeState,
-                                            liquidBackdrop = liquidBackdrop,
-                                            forceSolid = true
+                                            liquidBackdrop = liquidBackdrop
                                         )
                                     }
                                 }
@@ -1292,6 +1289,14 @@ fun MessageDetailScreen(
                     else Modifier
                 )
         ) {
+        // 玻璃层底衬：保证 layerBackdrop 捕获的层里始终有不透明内容（背景色），
+        // 玻璃面（blur/lens）才有东西可采样，否则无壁纸时层内是透明的，
+        // 玻璃看起来会退化成普通圆角面板。有壁纸时背景图盖在它上面。
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surface)
+        )
         // 1. 统一的背景层
         val backgroundUrl by viewModel.backgroundUrl.collectAsState()
         backgroundUrl?.takeIf { it.isNotEmpty() }?.let { bgUrl ->
