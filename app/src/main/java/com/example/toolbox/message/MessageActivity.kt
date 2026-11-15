@@ -758,6 +758,8 @@ class MessageDetailActivity : ComponentActivity() {
                     val uiState by viewModel.uiState.collectAsState()
                     val announcementMessage = uiState.latestAnnouncement
                     var showScreenshotSheet by remember { mutableStateOf(false) }
+                    // 顶部悬浮叠层的实测高度，用于让"第一条消息"停在顶栏下方（其余消息可滚入顶栏被玻璃模糊）
+                    var topBarHeightPx by remember { mutableIntStateOf(0) }
 
                     val rememberedLiquidBackdrop = rememberLayerBackdrop()
                     val liquidBackdrop = if (glassEnabled) rememberedLiquidBackdrop else null
@@ -765,7 +767,58 @@ class MessageDetailActivity : ComponentActivity() {
                     Scaffold(
                         modifier = Modifier.fillMaxSize(),
                         contentWindowInsets = WindowInsets(0.dp),
-                        topBar = {
+                    ) { innerPadding ->
+                        // 修复 RenderThread 栈溢出：layerBackdrop 已下移到 MessageDetailScreen 内部，
+                        // 只捕获"背景+列表"内容（见 MessageDetailScreen 根布局注释）；
+                        // 玻璃采样面（输入栏）在层外，避免 RenderNode 成环。此处只保留 hazeSource，
+                        // 供输入栏/选区的 haze 回退分支使用。
+                        Box(modifier = Modifier.fillMaxSize()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .hazeSource(hazeState)
+                        ) {
+                        MessageDetailScreen(
+                            innerPadding = innerPadding,
+                            viewModel = viewModel,
+                            liquidBackdrop = liquidBackdrop,
+                            topBarHeight = with(LocalDensity.current) { topBarHeightPx.toDp() }
+                        )
+                        if (showShareSheet && shareSheetMessages.isNotEmpty()) {
+                            val shareChatName = when {
+                                chatType == 2 && uiState.groupInfo != null -> uiState.groupInfo!!.name
+                                uiState.otherUser != null -> uiState.otherUser!!.username
+                                else -> "会话"
+                            }
+                            val shareChatAvatar = when {
+                                chatType == 2 && uiState.groupInfo != null -> uiState.groupInfo!!.avatarUrl
+                                uiState.otherUser != null -> uiState.otherUser!!.avatar
+                                else -> ""
+                            }
+                            MessageShareBottomSheet(
+                                messages = shareSheetMessages,
+                                chatName = shareChatName,
+                                chatAvatar = shareChatAvatar,
+                                chatType = chatType,
+                                onDismiss = {
+                                    showShareSheet = false
+                                    shareSheetMessages = emptyList()
+                                },
+                                onSaveImage = { bitmap ->
+                                    kotlinx.coroutines.MainScope().launch { saveBitmapToGallery(this@MessageDetailActivity, bitmap) }
+                                },
+                                onShareImage = { bitmap -> shareBitmap(this@MessageDetailActivity, bitmap) }
+                            )
+                        } // 关闭 if (showShareSheet...)
+                        } // 关闭 content Box（hazeSource）
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .align(Alignment.TopCenter)
+                                .zIndex(100f)
+                                .onSizeChanged { topBarHeightPx = it.height }
+                                .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {}
+                        ) {
                             AnimatedContent(
                                 targetState = uiState.selectionMode,
                                 transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(200)) },
@@ -988,49 +1041,8 @@ class MessageDetailActivity : ComponentActivity() {
                                 }
                             }
                         }
-                    }
-                    ) { innerPadding ->
-                        // 修复 RenderThread 栈溢出：layerBackdrop 已下移到 MessageDetailScreen 内部，
-                        // 只捕获"背景+列表"内容（见 MessageDetailScreen 根布局注释）；
-                        // 玻璃采样面（输入栏）在层外，避免 RenderNode 成环。此处只保留 hazeSource，
-                        // 供输入栏/选区的 haze 回退分支使用。
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .hazeSource(hazeState)
-                        ) {
-                        MessageDetailScreen(
-                            innerPadding = innerPadding,
-                            viewModel = viewModel,
-                            liquidBackdrop = liquidBackdrop
-                        )
-                        if (showShareSheet && shareSheetMessages.isNotEmpty()) {
-                            val shareChatName = when {
-                                chatType == 2 && uiState.groupInfo != null -> uiState.groupInfo!!.name
-                                uiState.otherUser != null -> uiState.otherUser!!.username
-                                else -> "会话"
-                            }
-                            val shareChatAvatar = when {
-                                chatType == 2 && uiState.groupInfo != null -> uiState.groupInfo!!.avatarUrl
-                                uiState.otherUser != null -> uiState.otherUser!!.avatar
-                                else -> ""
-                            }
-                            MessageShareBottomSheet(
-                                messages = shareSheetMessages,
-                                chatName = shareChatName,
-                                chatAvatar = shareChatAvatar,
-                                chatType = chatType,
-                                onDismiss = {
-                                    showShareSheet = false
-                                    shareSheetMessages = emptyList()
-                                },
-                                onSaveImage = { bitmap ->
-                                    kotlinx.coroutines.MainScope().launch { saveBitmapToGallery(this@MessageDetailActivity, bitmap) }
-                                },
-                                onShareImage = { bitmap -> shareBitmap(this@MessageDetailActivity, bitmap) }
-                            )
-                        } // 关闭 if (showShareSheet...)
-                        } // 关闭 content Box（hazeSource）
+                        }
+                        } // 关闭 外层 Box（内容 + 顶栏叠加）
                     }
                 }
             }
@@ -1042,7 +1054,8 @@ class MessageDetailActivity : ComponentActivity() {
 fun MessageDetailScreen(
     innerPadding: PaddingValues,
     viewModel: MessageDetailViewModel,
-    liquidBackdrop: LayerBackdrop? = null
+    liquidBackdrop: LayerBackdrop? = null,
+    topBarHeight: Dp = 0.dp
 ) {
 
     val context = LocalContext.current
@@ -1106,6 +1119,8 @@ fun MessageDetailScreen(
     } else {
         bottomPaddingForList
     }
+    // 顶栏为悬浮叠加层：第一条消息应停留在顶栏下方（不被玻璃模糊），其余消息可滚入顶栏被模糊
+    val listTopPadding = if (topBarHeight > 0.dp) topBarHeight + 8.dp else 96.dp
     val selectionMode = uiState.selectionMode
     val selectedMessages = uiState.selectedMessages
     var showMenuMsgId by remember { mutableStateOf<String?>(null) }
@@ -1321,11 +1336,12 @@ fun MessageDetailScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = innerPadding.calculateTopPadding()) // 避开顶部栏，防止第一条消息/未加好友提示进入顶栏
         ) {
             if (uiState.chatType == 1 && uiState.relationship != "friend") {
                 Surface(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = listTopPadding), // 未加好友提示避开悬浮顶栏
                     color = MaterialTheme.colorScheme.errorContainer,
                     tonalElevation = 2.dp
                 ) {
@@ -1387,7 +1403,7 @@ fun MessageDetailScreen(
                         reverseLayout = true,
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                         contentPadding = PaddingValues(
-                            top = 6.dp,
+                            top = listTopPadding, // 第一条消息停在悬浮顶栏下方
                             bottom = innerPadding.calculateBottomPadding() + listBottomPadding // 与输入栏高度联动，避免最后一条被遮挡
                         )
                     ) {
@@ -1769,7 +1785,8 @@ fun MessageDetailScreen(
                             }
                         )
                 ) {
-                    // 编辑消息提示与输入框共用一个玻璃胶囊（参考项目：编辑行在输入栏容器内）
+                    Column {
+                    // 编辑消息提示与输入框共用一个玻璃胶囊（参考项目：编辑行在输入栏容器内），纵向排列不重叠
                     uiState.editingMessage?.let { editingMsg ->
                         Row(
                             modifier = Modifier
@@ -1876,6 +1893,7 @@ fun MessageDetailScreen(
                         onScheduleMenuConfirm = { showTimePicker = true },
                         hazeState = hazeState
                     )
+                    } // 关闭 胶囊内 Column（编辑提示 + 输入框纵向排列）
                 }
 
                 AnimatedVisibility(
