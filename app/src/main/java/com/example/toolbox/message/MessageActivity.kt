@@ -104,6 +104,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
@@ -1098,6 +1099,13 @@ fun MessageDetailScreen(
         uiState.selectedImages.isNotEmpty() -> 100.dp
         else -> 80.dp
     }
+    // 输入区实际高度（随编辑/回复/上传条变化），消息列表底部据此预留，避免最后一条消息被输入框挡住
+    var inputAreaHeightPx by remember { mutableIntStateOf(0) }
+    val listBottomPadding = if (inputAreaHeightPx > 0) {
+        with(LocalDensity.current) { inputAreaHeightPx.toDp() } + 8.dp
+    } else {
+        bottomPaddingForList
+    }
     val selectionMode = uiState.selectionMode
     val selectedMessages = uiState.selectedMessages
     var showMenuMsgId by remember { mutableStateOf<String?>(null) }
@@ -1310,7 +1318,11 @@ fun MessageDetailScreen(
         }
 
         // 2. 主要内容区（好友提示 + 消息列表）
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = innerPadding.calculateTopPadding()) // 避开顶部栏，防止第一条消息/未加好友提示进入顶栏
+        ) {
             if (uiState.chatType == 1 && uiState.relationship != "friend") {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
@@ -1376,7 +1388,7 @@ fun MessageDetailScreen(
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                         contentPadding = PaddingValues(
                             top = 6.dp,
-                            bottom = innerPadding.calculateBottomPadding() + 64.dp // 保持底部与输入栏的间距
+                            bottom = innerPadding.calculateBottomPadding() + listBottomPadding // 与输入栏高度联动，避免最后一条被遮挡
                         )
                     ) {
                         items(
@@ -1676,6 +1688,7 @@ fun MessageDetailScreen(
                     // 并悬浮在系统导航条之上，不贴底边
                     .imePadding()
                     .navigationBarsPadding()
+                    .onSizeChanged { inputAreaHeightPx = it.height }
             ) {
                 replyTo?.let { repliedMessage ->
                     Surface(
@@ -1727,81 +1740,6 @@ fun MessageDetailScreen(
                     }
                 }
 
-                uiState.editingMessage?.let { editingMsg ->
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f),
-                        shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.Edit,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(
-                                    "编辑消息",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                                )
-                                Text(
-                                    editingMsg.content.take(30).ifEmpty { "图片消息" },
-                                    fontSize = 11.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
-                                )
-                            }
-                            IconButton(
-                                onClick = { viewModel.cancelEditMessage() },
-                                modifier = Modifier.size(24.dp)
-                            ) {
-                                Icon(Icons.Default.Close, "取消编辑", Modifier.size(16.dp))
-                            }
-                        }
-                    }
-
-                    if (uiState.editingImages.isNotEmpty()) {
-                        LazyRow(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            items(uiState.editingImages.size) { index ->
-                                Box(Modifier
-                                    .size(60.dp)
-                                    .clip(RoundedCornerShape(4.dp))) {
-                                    AsyncImage(
-                                        model = uiState.editingImages[index],
-                                        contentDescription = null,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                    IconButton(
-                                        onClick = { viewModel.removeEditingImage(index) },
-                                        modifier = Modifier
-                                            .align(Alignment.TopEnd)
-                                            .size(18.dp)
-                                            .background(Color.Black.copy(alpha = 0.5f), CircleShape)
-                                    ) {
-                                        Icon(Icons.Default.Close, "移除", Modifier.size(10.dp), tint = Color.White)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
                 val emojiPanelVisible by viewModel.emojiPanelVisible.collectAsState()
                 val emojis by viewModel.emojis.collectAsState()
                 val isLoadingEmojis by viewModel.isLoadingEmojis.collectAsState()
@@ -1813,14 +1751,92 @@ fun MessageDetailScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 6.dp, vertical = 8.dp)
-                        .glassControl(
-                            shape = bottomBarShape,
-                            liquidBackdrop = liquidBackdrop,
-                            hazeState = hazeState,
-                            useGlassBar = liquidGlassEnabled,
-                            isInteractive = false
+                        .then(
+                            if (liquidGlassEnabled && liquidBackdrop != null) {
+                                Modifier.glassControl(
+                                    shape = bottomBarShape,
+                                    liquidBackdrop = liquidBackdrop,
+                                    hazeState = hazeState,
+                                    useGlassBar = true,
+                                    isInteractive = false
+                                )
+                            } else {
+                                // 关闭液态玻璃时与顶栏一致：实心圆角面板（避免 haze 回退导致透明）
+                                Modifier
+                                    .shadow(2.dp, bottomBarShape)
+                                    .clip(bottomBarShape)
+                                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                            }
                         )
                 ) {
+                    // 编辑消息提示与输入框共用一个玻璃胶囊（参考项目：编辑行在输入栏容器内）
+                    uiState.editingMessage?.let { editingMsg ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    "编辑消息",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    editingMsg.content.take(30).ifEmpty { "图片消息" },
+                                    fontSize = 11.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            IconButton(
+                                onClick = { viewModel.cancelEditMessage() },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(Icons.Default.Close, "取消编辑", Modifier.size(16.dp))
+                            }
+                        }
+                        if (uiState.editingImages.isNotEmpty()) {
+                            LazyRow(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                items(uiState.editingImages.size) { index ->
+                                    Box(Modifier
+                                        .size(60.dp)
+                                        .clip(RoundedCornerShape(4.dp))) {
+                                        AsyncImage(
+                                            model = uiState.editingImages[index],
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                        IconButton(
+                                            onClick = { viewModel.removeEditingImage(index) },
+                                            modifier = Modifier
+                                                .align(Alignment.TopEnd)
+                                                .size(18.dp)
+                                                .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                                        ) {
+                                            Icon(Icons.Default.Close, "移除", Modifier.size(10.dp), tint = Color.White)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                     MessageInput(
                         inputText = if (uiState.editingMessage != null) uiState.editingContent else uiState.inputText,
                         selectedImages = uiState.selectedImages,
